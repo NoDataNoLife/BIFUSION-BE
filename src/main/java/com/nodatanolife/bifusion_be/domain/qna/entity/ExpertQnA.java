@@ -1,0 +1,46 @@
+package com.nodatanolife.bifusion_be.domain.qna.entity;
+
+import com.nodatanolife.bifusion_be.domain.user.entity.User;
+import jakarta.persistence.*;
+import lombok.*;
+import java.time.LocalDateTime;
+
+@Entity
+@Table(name = "expert_qna")
+@Getter
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+public class ExpertQnA {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "expert_qna_id")
+    private Long expertQnAId;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id", nullable = false)
+    private User user;
+
+    @Column(name = "title")
+    private String title;
+
+    @Column(name = "content")
+    private String content;
+
+    @Column(name = "status", length = 20)
+    private String status;
+
+    @Column(name = "has_expert_reply")
+    private Boolean hasExpertReply;
+
+    @Column(name = "answer_count")
+    private Integer answerCount;
+
+    @Column(name = "is_public")
+    private Boolean isPublic;
+
+    @Column(name = "created_at")
+    private LocalDateTime createdAt;
+
+    @Column(name = "updated_at")
+    private LocalDateTime updatedAt;
+}
