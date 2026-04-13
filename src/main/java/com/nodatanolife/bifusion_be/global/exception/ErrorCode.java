@@ -50,7 +50,14 @@ public enum ErrorCode {
     ALREADY_PROJECT_MEMBER(HttpStatus.CONFLICT, "P003", "이미 프로젝트 멤버입니다."),
     PROJECT_MEMBER_NOT_FOUND(HttpStatus.NOT_FOUND, "P004", "프로젝트 멤버를 찾을 수 없습니다."),
     COLLABORATION_REQUEST_NOT_FOUND(HttpStatus.NOT_FOUND, "P005", "협업 요청을 찾을 수 없습니다."),
-    COLLABORATION_REQUEST_ALREADY_PROCESSED(HttpStatus.CONFLICT, "P006", "이미 처리된 협업 요청입니다.");
+    COLLABORATION_REQUEST_ALREADY_PROCESSED(HttpStatus.CONFLICT, "P006", "이미 처리된 협업 요청입니다."),
+
+    /* ================================
+     * File
+     * ================================ */
+    FILE_UPLOAD_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "F001", "파일 업로드 중 오류가 발생했습니다."),
+    FILE_READ_FAILED(HttpStatus.BAD_REQUEST, "F002", "파일을 읽을 수 없습니다."),
+    FILE_DOWNLOAD_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "F003", "파일 다운로드 중 오류가 발생했습니다.");
 
     private final HttpStatus status;
     private final String code;
