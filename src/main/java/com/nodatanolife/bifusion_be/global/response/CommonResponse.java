@@ -24,6 +24,11 @@ public class CommonResponse<T> {
         return new CommonResponse<T>(true, data, null, null);
     }
 
+    // 메시지 포함 성공
+    public static <T> CommonResponse<T> success(T data, String message) {
+        return new CommonResponse<>(true, data, message, null);
+    }
+
     // 실패
     public static <T> CommonResponse<T> fail(String code, String message){
         return new CommonResponse<>(false, null, message, code);
