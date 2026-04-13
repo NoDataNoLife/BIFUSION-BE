@@ -17,7 +17,7 @@ public class File {
     private Long fileId;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_id", nullable = false)
+    @JoinColumn(name = "user_id", nullable = true) //TODO: 로그인구현 후 false로 변경
     private User user;
 
     @Column(name = "file_url")
@@ -28,10 +28,6 @@ public class File {
 
     @Column(name = "file_type", length = 50)
     private String fileType;
-
-    // NOTE: DDL에 "Field" BIGINT 컬럼이 있으나 오타로 보임 - file_size 등으로 용도 확인 필요
-    @Column(name = "\"Field\"")
-    private Long field;
 
     @Column(name = "target_id")
     private Long targetId;
@@ -44,4 +40,18 @@ public class File {
 
     @Column(name = "created_at")
     private LocalDateTime createdAt;
+
+
+    // 정적 팩토리 메서드
+    @Builder
+    public static File createTemp(User user, String fileUrl, String fileName, String fileType) {
+        File file = new File();
+        file.user = user;
+        file.fileUrl = fileUrl;
+        file.fileName = fileName;
+        file.fileType = fileType;
+        file.isTemp = true;
+        file.createdAt = LocalDateTime.now();
+        return file;
+    }
 }

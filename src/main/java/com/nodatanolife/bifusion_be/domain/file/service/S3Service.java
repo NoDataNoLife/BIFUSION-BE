@@ -3,6 +3,7 @@ package com.nodatanolife.bifusion_be.domain.file.service;
 import com.nodatanolife.bifusion_be.global.exception.ErrorCode;
 import com.nodatanolife.bifusion_be.global.exception.business.BusinessException;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
@@ -13,8 +14,7 @@ import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.GetObjectRequest;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 
-import java.io.IOException;
-
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class S3Service {
@@ -39,9 +39,8 @@ public class S3Service {
                     RequestBody.fromInputStream(file.getInputStream(), file.getSize())
             );
             return "https://" + bucketName + ".s3." + region + ".amazonaws.com/" + s3Key;
-        } catch (IOException e) {
-            throw new BusinessException(ErrorCode.FILE_READ_FAILED);
-        } catch (SdkException e) {
+        } catch (Exception e) {
+            log.error("S3 업로드 실패: {}", e.getMessage(), e);
             throw new BusinessException(ErrorCode.FILE_UPLOAD_FAILED);
         }
     }
