@@ -1,26 +1,20 @@
 spring:
   application:
     name: BIFUSION-BE
+  profiles:
+    # 기본 프로필 (배포 시: SPRING_PROFILES_ACTIVE=prod java -jar app.jar)
+    active: local
 
-  datasource:
-    url: jdbc:postgresql://localhost:5432/bifusion
-    username: ${DB_USERNAME}
-    password: ${DB_PASSWORD}
-    driver-class-name: org.postgresql.Driver
-
-  jpa:
-    hibernate:
-      ddl-auto: update
-    show-sql: true
-    properties:
-      hibernate:
-        format_sql: true
-        dialect: org.hibernate.dialect.PostgreSQLDialect
+  cloud:
+    aws:
+      region:
+        static: ap-northeast-2
+      s3:
+        bucket: bifusion-files
 
 server:
   port: 8080
 
-# Swagger/OpenAPI 설정
 springdoc:
   api-docs:
     path: /api-docs
@@ -30,10 +24,3 @@ springdoc:
     operations-sorter: alpha
   default-consumes-media-type: application/json
   default-produces-media-type: application/json
-
-logging:
-  level:
-    root: INFO
-    com.nodatanolife.bifusion_be: DEBUG
-    org.hibernate.SQL: DEBUG
-    org.hibernate.orm.jdbc.bind: TRACE
