@@ -9,6 +9,8 @@ import java.time.LocalDateTime;
 @Table(name = "file")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
+@AllArgsConstructor(access = AccessLevel.PRIVATE)
+@Builder(access = AccessLevel.PRIVATE)
 public class File {
 
     @Id
@@ -43,15 +45,14 @@ public class File {
 
 
     // 정적 팩토리 메서드
-    @Builder
     public static File createTemp(User user, String fileUrl, String fileName, String fileType) {
-        File file = new File();
-        file.user = user;
-        file.fileUrl = fileUrl;
-        file.fileName = fileName;
-        file.fileType = fileType;
-        file.isTemp = true;
-        file.createdAt = LocalDateTime.now();
-        return file;
+        return File.builder()
+                .user(user)
+                .fileUrl(fileUrl)
+                .fileName(fileName)
+                .fileType(fileType)
+                .isTemp(true)
+                .createdAt(LocalDateTime.now())
+                .build();
     }
 }
