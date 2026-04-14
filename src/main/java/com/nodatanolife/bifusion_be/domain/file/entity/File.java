@@ -40,15 +40,19 @@ public class File {
     @Column(name = "is_temp")
     private Boolean isTemp;
 
+    @Column(name = "s3_key")
+    private String s3Key;
+
     @Column(name = "created_at")
     private LocalDateTime createdAt;
 
 
     // 정적 팩토리 메서드
-    public static File createTemp(User user, String fileUrl, String fileName, String fileType) {
+    public static File createTemp(User user, String fileUrl, String s3Key, String fileName, String fileType) {
         return File.builder()
                 .user(user)
                 .fileUrl(fileUrl)
+                .s3Key(s3Key)
                 .fileName(fileName)
                 .fileType(fileType)
                 .isTemp(true)
