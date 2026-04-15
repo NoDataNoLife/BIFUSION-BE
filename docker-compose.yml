@@ -6,8 +6,8 @@ services:
     container_name: bifusion-db
     environment:
       POSTGRES_DB: bifusion
-      POSTGRES_USER: admin
-      POSTGRES_PASSWORD: 0000
+      POSTGRES_USER: ${DB_USERNAME}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
     ports:
       - "5432:5432"
     volumes:

@@ -40,6 +40,9 @@ out/
 .env
 .env.local
 
+### Spring Profiles ###
+application-local.yml
+
 ### Logs ###
 *.log
 
