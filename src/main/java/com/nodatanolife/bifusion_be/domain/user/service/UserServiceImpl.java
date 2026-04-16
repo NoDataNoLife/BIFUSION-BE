@@ -1,8 +1,8 @@
 package com.nodatanolife.bifusion_be.domain.user.service;
 
-import com.nodatanolife.bifusion_be.domain.user.repository.UserRepository;
+import com.nodatanolife.bifusion_be.domain.user.dto.NicknameUpdateResponse;
 import com.nodatanolife.bifusion_be.domain.user.entity.User;
-import com.nodatanolife.bifusion_be.domain.user.dto.NicknameUpdateResponse;  // 추가!
+import com.nodatanolife.bifusion_be.domain.user.repository.UserRepository;
 import com.nodatanolife.bifusion_be.global.exception.business.UserNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -22,5 +22,4 @@ public class UserServiceImpl implements UserService {
         user.updateNickname(nickname);
         return NicknameUpdateResponse.from(user);
     }
-
 }

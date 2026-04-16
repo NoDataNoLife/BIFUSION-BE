@@ -19,5 +19,4 @@ public class UserController {
         NicknameUpdateResponse response = userService.updateNickname(1L, request.getNickname());
         return CommonResponse.success(response);
     }
-
 }
