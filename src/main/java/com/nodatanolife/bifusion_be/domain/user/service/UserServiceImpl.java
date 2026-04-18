@@ -1,7 +1,9 @@
 package com.nodatanolife.bifusion_be.domain.user.service;
 
-import com.nodatanolife.bifusion_be.domain.user.repository.UserRepository;
+import com.nodatanolife.bifusion_be.domain.user.dto.NicknameUpdateResponse;
 import com.nodatanolife.bifusion_be.domain.user.entity.User;
+import com.nodatanolife.bifusion_be.domain.user.repository.UserRepository;
+import com.nodatanolife.bifusion_be.global.exception.business.UserNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -14,9 +16,10 @@ public class UserServiceImpl implements UserService {
 
     @Override
     @Transactional
-    public void updateNickname(Long userId, String nickname) {
+    public NicknameUpdateResponse updateNickname(Long userId, String nickname) {
         User user = userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("유저를 찾을 수 없습니다."));
+                .orElseThrow(UserNotFoundException::new);
         user.updateNickname(nickname);
+        return NicknameUpdateResponse.from(user);
     }
 }
