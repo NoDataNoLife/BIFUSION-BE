@@ -29,3 +29,5 @@ logging:
     com.nodatanolife.bifusion_be: DEBUG
     org.hibernate.SQL: DEBUG
     org.hibernate.orm.jdbc.bind: TRACE
+    org.springframework.security: DEBUG
+    org.springframework.security.oauth2: TRACE

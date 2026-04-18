@@ -23,6 +23,7 @@ public enum ErrorCode {
     DUPLICATE_EMAIL(HttpStatus.CONFLICT, "A004", "이미 사용 중인 이메일입니다."),
     INVALID_TOKEN(HttpStatus.UNAUTHORIZED, "A005", "유효하지 않은 토큰입니다."),
     TOKEN_EXPIRED(HttpStatus.UNAUTHORIZED, "A006", "토큰이 만료되었습니다."),
+    ALREADY_ONBOARDED(HttpStatus.CONFLICT, "A007", "이미 온보딩이 완료된 사용자입니다."),
 
     /* ================================
      * Bio Data / AI Augmentation
