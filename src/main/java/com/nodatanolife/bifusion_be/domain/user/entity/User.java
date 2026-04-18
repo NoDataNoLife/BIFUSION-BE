@@ -63,4 +63,8 @@ public class User {
     public void updateNickname(String nickname) {
         this.nickname = nickname;
     }
+
+    public void updateBio(String bio) {
+        this.bio = bio;
+    }
 }

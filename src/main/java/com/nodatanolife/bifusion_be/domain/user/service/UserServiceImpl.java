@@ -1,6 +1,7 @@
 package com.nodatanolife.bifusion_be.domain.user.service;
 
-import com.nodatanolife.bifusion_be.domain.user.dto.NicknameUpdateResponse;
+import com.nodatanolife.bifusion_be.domain.user.dto.response.BioUpdateResponse;
+import com.nodatanolife.bifusion_be.domain.user.dto.response.NicknameUpdateResponse;
 import com.nodatanolife.bifusion_be.domain.user.entity.User;
 import com.nodatanolife.bifusion_be.domain.user.repository.UserRepository;
 import com.nodatanolife.bifusion_be.global.exception.business.UserNotFoundException;
@@ -22,4 +23,16 @@ public class UserServiceImpl implements UserService {
         user.updateNickname(nickname);
         return NicknameUpdateResponse.from(user);
     }
+
+
+    @Override
+    @Transactional
+    public BioUpdateResponse updateBio(Long userId, String bio) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("유저를 찾을 수 없습니다."));
+        user.updateBio(bio);
+        return BioUpdateResponse.from(user);
+    }
+
+
 }
