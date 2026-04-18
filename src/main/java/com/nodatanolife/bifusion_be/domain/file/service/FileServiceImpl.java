@@ -1,6 +1,6 @@
 package com.nodatanolife.bifusion_be.domain.file.service;
 
-import com.nodatanolife.bifusion_be.domain.file.DTO.response.TempFileUploadResponse;
+import com.nodatanolife.bifusion_be.domain.file.dto.response.TempFileUploadResponse;
 import com.nodatanolife.bifusion_be.domain.file.entity.File;
 import com.nodatanolife.bifusion_be.domain.file.repository.FileRepository;
 import com.nodatanolife.bifusion_be.domain.user.entity.User;
@@ -16,24 +16,24 @@ import java.util.UUID;
 @Service
 @RequiredArgsConstructor
 @Transactional
-public class FileServiceImpl implements FileService{
+public class FileServiceImpl implements FileService {
 
     private final S3Service s3Service;
     private final FileRepository fileRepository;
     private final UserRepository userRepository;
 
     @Override
-    public List<TempFileUploadResponse> uploadTempFiles(List<MultipartFile> files) {
+    public List<TempFileUploadResponse> uploadTempFiles(Long userId, List<MultipartFile> files) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
         return files.stream()
-                .map(this::uploadSingleTempFile)
+                .map(file -> uploadSingleTempFile(user, file))
                 .toList();
     }
 
     // 임시 파일 단건 업로드
-    private TempFileUploadResponse uploadSingleTempFile(MultipartFile file) {
-        // TODO: 로그인 구현 후 수정예정
-        User user = userRepository.findById(1L).orElse(null);
-
+    private TempFileUploadResponse uploadSingleTempFile(User user, MultipartFile file) {
         String originalFilename = file.getOriginalFilename();
         String nameWithoutExt = (originalFilename != null && originalFilename.contains("."))
                 ? originalFilename.substring(0, originalFilename.lastIndexOf("."))

@@ -1,4 +1,4 @@
-package com.nodatanolife.bifusion_be.domain.user.dto;
+package com.nodatanolife.bifusion_be.domain.user.dto.response;
 
 import com.nodatanolife.bifusion_be.domain.user.entity.User;
 import lombok.Builder;
