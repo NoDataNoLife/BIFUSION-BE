@@ -1,7 +1,7 @@
 package com.nodatanolife.bifusion_be.domain.user.controller;
 
-import com.nodatanolife.bifusion_be.domain.user.dto.NicknameUpdateRequest;
-import com.nodatanolife.bifusion_be.domain.user.dto.NicknameUpdateResponse;
+import com.nodatanolife.bifusion_be.domain.user.dto.request.NicknameUpdateRequest;
+import com.nodatanolife.bifusion_be.domain.user.dto.response.NicknameUpdateResponse;
 import com.nodatanolife.bifusion_be.domain.user.service.UserService;
 import com.nodatanolife.bifusion_be.global.response.CommonResponse;
 import lombok.RequiredArgsConstructor;

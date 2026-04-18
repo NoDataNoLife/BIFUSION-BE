@@ -1,6 +1,6 @@
 package com.nodatanolife.bifusion_be.domain.file.service;
 
-import com.nodatanolife.bifusion_be.domain.file.DTO.response.TempFileUploadResponse;
+import com.nodatanolife.bifusion_be.domain.file.dto.response.TempFileUploadResponse;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;

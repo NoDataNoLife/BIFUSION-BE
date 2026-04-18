@@ -1,6 +1,6 @@
 package com.nodatanolife.bifusion_be.domain.file.service;
 
-import com.nodatanolife.bifusion_be.domain.file.DTO.response.TempFileUploadResponse;
+import com.nodatanolife.bifusion_be.domain.file.dto.response.TempFileUploadResponse;
 import com.nodatanolife.bifusion_be.domain.file.entity.File;
 import com.nodatanolife.bifusion_be.domain.file.repository.FileRepository;
 import com.nodatanolife.bifusion_be.domain.user.entity.User;

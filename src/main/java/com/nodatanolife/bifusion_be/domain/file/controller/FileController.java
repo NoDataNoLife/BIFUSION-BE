@@ -1,6 +1,6 @@
 package com.nodatanolife.bifusion_be.domain.file.controller;
 
-import com.nodatanolife.bifusion_be.domain.file.DTO.response.TempFileUploadResponse;
+import com.nodatanolife.bifusion_be.domain.file.dto.response.TempFileUploadResponse;
 import com.nodatanolife.bifusion_be.domain.file.service.FileService;
 import com.nodatanolife.bifusion_be.global.response.CommonResponse;
 import io.swagger.v3.oas.annotations.Operation;
