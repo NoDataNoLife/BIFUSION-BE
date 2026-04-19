@@ -17,6 +17,7 @@ import com.nodatanolife.bifusion_be.domain.recruitment.service.RecruitService;
 import com.nodatanolife.bifusion_be.domain.user.dto.request.OnboardingRequest;
 import com.nodatanolife.bifusion_be.domain.user.dto.response.LocationUpdateResponse;
 import com.nodatanolife.bifusion_be.domain.user.dto.response.NicknameUpdateResponse;
+import com.nodatanolife.bifusion_be.domain.user.dto.response.WebsiteUpdateResponse;
 import com.nodatanolife.bifusion_be.domain.user.dto.response.UserResponse;
 import com.nodatanolife.bifusion_be.domain.user.entity.User;
 import com.nodatanolife.bifusion_be.domain.user.repository.UserRepository;
@@ -93,7 +94,7 @@ public class UserServiceImpl implements UserService {
 }
     /**
      * 위치 수정
-     * 유저 마이페이지 위치 변경 후 변경된 정보 반환
+     * 유저 마이페이지 웹사이트 변경 후 변경된 정보 반환
      */
     @Override
     public LocationUpdateResponse updateLocation(Long userId, String location) {
@@ -101,6 +102,17 @@ public class UserServiceImpl implements UserService {
                 .orElseThrow(UserNotFoundException::new);
         user.updateLocation(location);
         return LocationUpdateResponse.from(user);
+    }
+    /**
+     * 웹사이트 수정
+     * 유저 마이페이지 위치 변경 후 변경된 정보 반환
+     */
+    @Override
+    public WebsiteUpdateResponse updateWebsiteUrl(Long userId, String websiteUrl) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(UserNotFoundException::new);
+        user.updateWebsiteUrl(websiteUrl);
+        return WebsiteUpdateResponse.from(user);
     }
 
     /**

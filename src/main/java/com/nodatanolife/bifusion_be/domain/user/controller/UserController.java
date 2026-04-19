@@ -2,6 +2,8 @@ package com.nodatanolife.bifusion_be.domain.user.controller;
 
 import com.nodatanolife.bifusion_be.domain.user.dto.request.BioUpdateRequest;
 import com.nodatanolife.bifusion_be.domain.user.dto.response.BioUpdateResponse;
+import com.nodatanolife.bifusion_be.domain.user.dto.request.WebsiteUpdateRequest;
+import com.nodatanolife.bifusion_be.domain.user.dto.response.WebsiteUpdateResponse;
 import com.nodatanolife.bifusion_be.domain.user.dto.request.LocationUpdateRequest;
 import com.nodatanolife.bifusion_be.domain.user.dto.request.NicknameUpdateRequest;
 import com.nodatanolife.bifusion_be.domain.user.dto.request.OnboardingRequest;
@@ -71,6 +73,18 @@ public CommonResponse<BioUpdateResponse> updateBio(
         LocationUpdateResponse response = userService.updateLocation(
                 principal.getUser().getUserId(), request.getLocation());
         return CommonResponse.success(response, "위치 수정 완료!");
+    }
+    /**
+     * 웹사이트 수정
+     * 인증된 유저의 웹사이트 변경
+     */
+    @PutMapping("/profile/website")
+    public CommonResponse<WebsiteUpdateResponse> updateWebsiteUrl(
+            @AuthenticationPrincipal CustomOAuth2User principal,
+            @RequestBody WebsiteUpdateRequest request) {
+        WebsiteUpdateResponse response = userService.updateWebsiteUrl(
+                principal.getUser().getUserId(), request.getWebsiteUrl());
+        return CommonResponse.success(response, "웹사이트가 수정되었습니다.");
     }
 
     /**

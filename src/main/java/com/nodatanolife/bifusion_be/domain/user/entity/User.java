@@ -113,10 +113,18 @@ public class User extends BaseEntity {
 
     public void updateBio(String bio) {
         this.bio = bio;
+
+    }
     /**
      * 위치 변경 (마이페이지에서 사용)
      */
     public void updateLocation(String location) {
         this.location = location;
+    }
+    /**
+     * 웹사이트 변경 (마이페이지에서 사용)
+     */
+    public void updateWebsiteUrl(String websiteUrl) {
+        this.websiteUrl = websiteUrl;
     }
 }
