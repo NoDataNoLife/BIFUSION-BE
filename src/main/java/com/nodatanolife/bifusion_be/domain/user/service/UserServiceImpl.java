@@ -86,11 +86,10 @@ public class UserServiceImpl implements UserService {
     @Transactional
     public BioUpdateResponse updateBio(Long userId, String bio) {
         User user = userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("유저를 찾을 수 없습니다."));
+                .orElseThrow(UserNotFoundException::new);
         user.updateBio(bio);
         return BioUpdateResponse.from(user);
-    }
-
+}
     /**
      * 온보딩 완료 처리
      * 최초 로그인 후 추가 정보 입력 시 호출
