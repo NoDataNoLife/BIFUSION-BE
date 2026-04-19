@@ -2,15 +2,15 @@ package com.nodatanolife.bifusion_be.domain.job.entity;
 
 import com.nodatanolife.bifusion_be.domain.project.entity.Project;
 import com.nodatanolife.bifusion_be.domain.user.entity.User;
+import com.nodatanolife.bifusion_be.global.entity.BaseEntity;
 import jakarta.persistence.*;
 import lombok.*;
-import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "job")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-public class Job {
+public class Job extends BaseEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -39,12 +39,6 @@ public class Job {
 
     @Column(name = "seed_number", length = 20)
     private String seedNumber;
-
-    @Column(name = "created_at")
-    private LocalDateTime createdAt;
-
-    @Column(name = "updated_at")
-    private LocalDateTime updatedAt;
 
     public void anonymize(User deletedUser) {
         this.user = deletedUser;

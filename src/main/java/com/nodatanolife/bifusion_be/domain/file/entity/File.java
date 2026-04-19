@@ -1,9 +1,9 @@
 package com.nodatanolife.bifusion_be.domain.file.entity;
 
 import com.nodatanolife.bifusion_be.domain.user.entity.User;
+import com.nodatanolife.bifusion_be.global.entity.BaseCreatedEntity;
 import jakarta.persistence.*;
 import lombok.*;
-import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "file")
@@ -11,7 +11,7 @@ import java.time.LocalDateTime;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
 @Builder(access = AccessLevel.PRIVATE)
-public class File {
+public class File extends BaseCreatedEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -43,10 +43,6 @@ public class File {
     @Column(name = "s3_key")
     private String s3Key;
 
-    @Column(name = "created_at")
-    private LocalDateTime createdAt;
-
-
     public void anonymize(User deletedUser) {
         this.user = deletedUser;
     }
@@ -60,7 +56,6 @@ public class File {
                 .fileName(fileName)
                 .fileType(fileType)
                 .isTemp(true)
-                .createdAt(LocalDateTime.now())
                 .build();
     }
 }

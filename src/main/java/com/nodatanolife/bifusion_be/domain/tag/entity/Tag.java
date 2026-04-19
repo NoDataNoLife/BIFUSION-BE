@@ -1,5 +1,6 @@
 package com.nodatanolife.bifusion_be.domain.tag.entity;
 
+import com.nodatanolife.bifusion_be.global.entity.BaseEntity;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -7,7 +8,7 @@ import lombok.*;
 @Table(name = "tag")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-public class Tag {
+public class Tag extends BaseEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

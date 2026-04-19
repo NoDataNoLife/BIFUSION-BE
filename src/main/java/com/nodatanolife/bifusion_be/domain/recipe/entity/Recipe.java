@@ -1,16 +1,16 @@
 package com.nodatanolife.bifusion_be.domain.recipe.entity;
 
 import com.nodatanolife.bifusion_be.domain.user.entity.User;
+import com.nodatanolife.bifusion_be.global.entity.BaseEntity;
 import jakarta.persistence.*;
 import lombok.*;
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "recipe")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-public class Recipe {
+public class Recipe extends BaseEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -85,12 +85,6 @@ public class Recipe {
 
     @Column(name = "batch_size")
     private Integer batchSize;
-
-    @Column(name = "created_at")
-    private LocalDateTime createdAt;
-
-    @Column(name = "updated_at")
-    private LocalDateTime updatedAt;
 
     public void anonymize(User deletedUser) {
         this.user = deletedUser;

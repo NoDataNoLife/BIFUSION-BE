@@ -1,6 +1,7 @@
 package com.nodatanolife.bifusion_be.domain.project.entity;
 
 import com.nodatanolife.bifusion_be.domain.user.entity.User;
+import com.nodatanolife.bifusion_be.global.entity.BaseEntity;
 import jakarta.persistence.*;
 import lombok.*;
 import java.time.LocalDateTime;
@@ -9,7 +10,7 @@ import java.time.LocalDateTime;
 @Table(name = "project_member")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-public class ProjectMember {
+public class ProjectMember extends BaseEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

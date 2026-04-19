@@ -1,18 +1,14 @@
 package com.nodatanolife.bifusion_be.domain.user.entity;
 
+import com.nodatanolife.bifusion_be.global.entity.BaseCreatedEntity;
 import jakarta.persistence.*;
 import lombok.*;
-import org.springframework.data.annotation.CreatedDate;
-import org.springframework.data.jpa.domain.support.AuditingEntityListener;
-
-import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "oauth_account")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@EntityListeners(AuditingEntityListener.class)
-public class OauthAccount {
+public class OauthAccount extends BaseCreatedEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -28,10 +24,6 @@ public class OauthAccount {
 
     @Column(name = "provider_id")
     private String providerId;
-
-    @CreatedDate
-    @Column(name = "created_at", nullable = false, updatable = false)
-    private LocalDateTime createdAt;
 
     /**
      * 소셜 로그인 계정 연동 정보 생성

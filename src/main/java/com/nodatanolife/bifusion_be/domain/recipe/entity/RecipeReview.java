@@ -1,15 +1,15 @@
 package com.nodatanolife.bifusion_be.domain.recipe.entity;
 
 import com.nodatanolife.bifusion_be.domain.user.entity.User;
+import com.nodatanolife.bifusion_be.global.entity.BaseEntity;
 import jakarta.persistence.*;
 import lombok.*;
-import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "recipe_review")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-public class RecipeReview {
+public class RecipeReview extends BaseEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -29,12 +29,6 @@ public class RecipeReview {
 
     @Column(name = "content")
     private String content;
-
-    @Column(name = "created_at")
-    private LocalDateTime createdAt;
-
-    @Column(name = "updated_at")
-    private LocalDateTime updatedAt;
 
     public void anonymize(User deletedUser) {
         this.user = deletedUser;

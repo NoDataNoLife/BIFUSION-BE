@@ -1,6 +1,7 @@
 package com.nodatanolife.bifusion_be.domain.expert.entity;
 
 import com.nodatanolife.bifusion_be.domain.user.entity.User;
+import com.nodatanolife.bifusion_be.global.entity.BaseEntity;
 import jakarta.persistence.*;
 import lombok.*;
 import java.time.LocalDateTime;
@@ -13,7 +14,7 @@ import java.time.LocalDateTime;
 @Table(name = "expert_verification")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-public class ExpertVerification {
+public class ExpertVerification extends BaseEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
