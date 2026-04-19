@@ -49,13 +49,14 @@ public class UserController {
         return CommonResponse.success(response);
     }
 
-    @PutMapping("/api/v1/profile/introduction")
-    public CommonResponse<BioUpdateResponse> updateBio(
-            @RequestBody BioUpdateRequest request) {
-        BioUpdateResponse response = userService.updateBio(1L, request.getBio());
-        return CommonResponse.success(response, "소개글이 수정되었습니다.");
-
-    }
+   @PutMapping("/profile/introduction")
+public CommonResponse<BioUpdateResponse> updateBio(
+        @AuthenticationPrincipal CustomOAuth2User principal,
+        @RequestBody BioUpdateRequest request) {
+    BioUpdateResponse response = userService.updateBio(
+            principal.getUser().getUserId(), request.getBio());
+    return CommonResponse.success(response, "소개글이 수정되었습니다.");
+}
 
     /**
      * 온보딩 완료 처리
