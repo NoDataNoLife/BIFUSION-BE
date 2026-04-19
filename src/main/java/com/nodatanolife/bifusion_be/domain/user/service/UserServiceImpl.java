@@ -13,6 +13,7 @@ import com.nodatanolife.bifusion_be.domain.qna.service.ExpertQnAService;
 import com.nodatanolife.bifusion_be.domain.recipe.service.RecipeService;
 import com.nodatanolife.bifusion_be.domain.recruitment.service.RecruitService;
 import com.nodatanolife.bifusion_be.domain.user.dto.request.OnboardingRequest;
+import com.nodatanolife.bifusion_be.domain.user.dto.response.LocationUpdateResponse;
 import com.nodatanolife.bifusion_be.domain.user.dto.response.NicknameUpdateResponse;
 import com.nodatanolife.bifusion_be.domain.user.dto.response.UserResponse;
 import com.nodatanolife.bifusion_be.domain.user.entity.User;
@@ -77,6 +78,18 @@ public class UserServiceImpl implements UserService {
                 .orElseThrow(UserNotFoundException::new);
         user.updateNickname(nickname);
         return NicknameUpdateResponse.from(user);
+    }
+
+    /**
+     * 위치 수정
+     * 유저 마이페이지 위치 변경 후 변경된 정보 반환
+     */
+    @Override
+    public LocationUpdateResponse updateLocation(Long userId, String location) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(UserNotFoundException::new);
+        user.updateLocation(location);
+        return LocationUpdateResponse.from(user);
     }
 
     /**

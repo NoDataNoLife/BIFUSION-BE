@@ -1,7 +1,9 @@
 package com.nodatanolife.bifusion_be.domain.user.controller;
 
+import com.nodatanolife.bifusion_be.domain.user.dto.request.LocationUpdateRequest;
 import com.nodatanolife.bifusion_be.domain.user.dto.request.NicknameUpdateRequest;
 import com.nodatanolife.bifusion_be.domain.user.dto.request.OnboardingRequest;
+import com.nodatanolife.bifusion_be.domain.user.dto.response.LocationUpdateResponse;
 import com.nodatanolife.bifusion_be.domain.user.dto.response.NicknameUpdateResponse;
 import com.nodatanolife.bifusion_be.domain.user.dto.response.UserResponse;
 import com.nodatanolife.bifusion_be.domain.user.service.UserService;
@@ -44,6 +46,19 @@ public class UserController {
         NicknameUpdateResponse response = userService.updateNickname(
                 principal.getUser().getUserId(), request.getNickname());
         return CommonResponse.success(response);
+    }
+
+    /**
+     * 위치 수정
+     * 인증된 유저의 위치 변경
+     */
+    @PutMapping("/profile/location")
+    public CommonResponse<LocationUpdateResponse> updateLocation(
+            @AuthenticationPrincipal CustomOAuth2User principal,
+            @RequestBody LocationUpdateRequest request) {
+        LocationUpdateResponse response = userService.updateLocation(
+                principal.getUser().getUserId(), request.getLocation());
+        return CommonResponse.success(response, "위치 수정 완료!");
     }
 
     /**
