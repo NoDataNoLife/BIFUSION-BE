@@ -1,5 +1,7 @@
 package com.nodatanolife.bifusion_be.domain.user.controller;
 
+import com.nodatanolife.bifusion_be.domain.user.dto.request.BioUpdateRequest;
+import com.nodatanolife.bifusion_be.domain.user.dto.response.BioUpdateResponse;
 import com.nodatanolife.bifusion_be.domain.user.dto.request.LocationUpdateRequest;
 import com.nodatanolife.bifusion_be.domain.user.dto.request.NicknameUpdateRequest;
 import com.nodatanolife.bifusion_be.domain.user.dto.request.OnboardingRequest;
@@ -43,10 +45,20 @@ public class UserController {
     public CommonResponse<NicknameUpdateResponse> updateNickname(
             @AuthenticationPrincipal CustomOAuth2User principal,
             @RequestBody NicknameUpdateRequest request) {
+      
         NicknameUpdateResponse response = userService.updateNickname(
                 principal.getUser().getUserId(), request.getNickname());
         return CommonResponse.success(response);
     }
+
+   @PutMapping("/profile/introduction")
+public CommonResponse<BioUpdateResponse> updateBio(
+        @AuthenticationPrincipal CustomOAuth2User principal,
+        @RequestBody BioUpdateRequest request) {
+    BioUpdateResponse response = userService.updateBio(
+            principal.getUser().getUserId(), request.getBio());
+    return CommonResponse.success(response, "소개글이 수정되었습니다.");
+}
 
     /**
      * 위치 수정

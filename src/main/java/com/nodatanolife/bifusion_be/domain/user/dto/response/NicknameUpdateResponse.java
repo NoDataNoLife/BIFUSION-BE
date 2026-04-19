@@ -14,7 +14,7 @@ public class NicknameUpdateResponse {
 
     public static NicknameUpdateResponse from(User user) {
         return NicknameUpdateResponse.builder()
-                .userId(user.getUserId())      // getId() → getUserId()
+                .userId(user.getUserId())     
                 .nickname(user.getNickname())
                 .updatedAt(user.getUpdatedAt())
                 .build();

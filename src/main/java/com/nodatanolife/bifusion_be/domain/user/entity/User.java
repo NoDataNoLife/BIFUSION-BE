@@ -111,6 +111,8 @@ public class User extends BaseEntity {
         this.nickname = nickname;
     }
 
+    public void updateBio(String bio) {
+        this.bio = bio;
     /**
      * 위치 변경 (마이페이지에서 사용)
      */

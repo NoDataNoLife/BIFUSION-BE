@@ -1,5 +1,7 @@
 package com.nodatanolife.bifusion_be.domain.user.service;
 
+
+import com.nodatanolife.bifusion_be.domain.user.dto.response.BioUpdateResponse;
 import com.nodatanolife.bifusion_be.domain.activityLog.service.ActivityLogService;
 import com.nodatanolife.bifusion_be.domain.auth.service.AuthService;
 import com.nodatanolife.bifusion_be.domain.comment.service.CommentService;
@@ -80,6 +82,15 @@ public class UserServiceImpl implements UserService {
         return NicknameUpdateResponse.from(user);
     }
 
+
+    @Override
+    @Transactional
+    public BioUpdateResponse updateBio(Long userId, String bio) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(UserNotFoundException::new);
+        user.updateBio(bio);
+        return BioUpdateResponse.from(user);
+}
     /**
      * 위치 수정
      * 유저 마이페이지 위치 변경 후 변경된 정보 반환
