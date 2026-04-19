@@ -27,6 +27,9 @@ public class User extends BaseEntity {
     @Column(name = "organization")
     private String organization;
 
+    @Column(name = "location")
+    private String location;
+
     @Column(name = "contact", length = 20)
     private String contact;
 
@@ -110,5 +113,10 @@ public class User extends BaseEntity {
 
     public void updateBio(String bio) {
         this.bio = bio;
+    /**
+     * 위치 변경 (마이페이지에서 사용)
+     */
+    public void updateLocation(String location) {
+        this.location = location;
     }
 }
