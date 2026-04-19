@@ -1,15 +1,15 @@
 package com.nodatanolife.bifusion_be.domain.user.entity;
 
 import com.nodatanolife.bifusion_be.domain.job.entity.Job;
+import com.nodatanolife.bifusion_be.global.entity.BaseEntity;
 import jakarta.persistence.*;
 import lombok.*;
-import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "usage_history")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-public class UsageHistory {
+public class UsageHistory extends BaseEntity {
 
     @Id
     @Column(name = "usage_history_id")
@@ -32,6 +32,4 @@ public class UsageHistory {
     @Column(name = "used_tokens")
     private Long usedTokens;
 
-    @Column(name = "created_at")
-    private LocalDateTime createdAt;
 }

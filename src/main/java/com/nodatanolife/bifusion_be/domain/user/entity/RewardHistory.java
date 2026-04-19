@@ -1,15 +1,15 @@
 package com.nodatanolife.bifusion_be.domain.user.entity;
 
 import com.nodatanolife.bifusion_be.domain.expert.entity.ExpertTask;
+import com.nodatanolife.bifusion_be.global.entity.BaseCreatedEntity;
 import jakarta.persistence.*;
 import lombok.*;
-import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "reward_history")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-public class RewardHistory {
+public class RewardHistory extends BaseCreatedEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -30,6 +30,4 @@ public class RewardHistory {
     @Column(name = "type", length = 20)
     private String type;
 
-    @Column(name = "created_at")
-    private LocalDateTime createdAt;
 }

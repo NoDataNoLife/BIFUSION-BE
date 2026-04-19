@@ -2,15 +2,15 @@ package com.nodatanolife.bifusion_be.domain.activityLog.entity;
 
 import com.nodatanolife.bifusion_be.domain.project.entity.Project;
 import com.nodatanolife.bifusion_be.domain.user.entity.User;
+import com.nodatanolife.bifusion_be.global.entity.BaseCreatedEntity;
 import jakarta.persistence.*;
 import lombok.*;
-import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "activitylog")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-public class ActivityLog {
+public class ActivityLog extends BaseCreatedEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -33,9 +33,6 @@ public class ActivityLog {
 
     @Column(name = "action", length = 50)
     private String action;
-
-    @Column(name = "created_at")
-    private LocalDateTime createdAt;
 
     public void anonymize(User deletedUser) {
         this.user = deletedUser;

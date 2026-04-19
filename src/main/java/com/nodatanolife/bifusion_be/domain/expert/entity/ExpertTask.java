@@ -1,6 +1,7 @@
 package com.nodatanolife.bifusion_be.domain.expert.entity;
 
 import com.nodatanolife.bifusion_be.domain.user.entity.User;
+import com.nodatanolife.bifusion_be.global.entity.BaseEntity;
 import jakarta.persistence.*;
 import lombok.*;
 import java.math.BigDecimal;
@@ -10,7 +11,7 @@ import java.time.LocalDateTime;
 @Table(name = "expert_task")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-public class ExpertTask {
+public class ExpertTask extends BaseEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -39,9 +40,6 @@ public class ExpertTask {
 
     @Column(name = "completed_at")
     private LocalDateTime completedAt;
-
-    @Column(name = "created_at")
-    private LocalDateTime createdAt;
 
     @Column(name = "review_code", length = 20)
     private String reviewCode;

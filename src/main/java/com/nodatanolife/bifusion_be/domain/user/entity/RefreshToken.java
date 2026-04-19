@@ -1,9 +1,8 @@
 package com.nodatanolife.bifusion_be.domain.user.entity;
 
+import com.nodatanolife.bifusion_be.global.entity.BaseCreatedEntity;
 import jakarta.persistence.*;
 import lombok.*;
-import org.springframework.data.annotation.CreatedDate;
-import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 import java.time.LocalDateTime;
 
@@ -11,8 +10,7 @@ import java.time.LocalDateTime;
 @Table(name = "refresh_token")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@EntityListeners(AuditingEntityListener.class)
-public class RefreshToken {
+public class RefreshToken extends BaseCreatedEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -37,10 +35,6 @@ public class RefreshToken {
 
     @Column(name = "expires_at")
     private LocalDateTime expiresAt;
-
-    @CreatedDate
-    @Column(name = "created_at", nullable = false, updatable = false)
-    private LocalDateTime createdAt;
 
     /**
      * 로그인 성공 시 Refresh Token 발급

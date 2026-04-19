@@ -1,5 +1,6 @@
 package com.nodatanolife.bifusion_be.domain.job.entity;
 
+import com.nodatanolife.bifusion_be.global.entity.BaseEntity;
 import jakarta.persistence.*;
 import lombok.*;
 import java.math.BigDecimal;
@@ -8,7 +9,7 @@ import java.math.BigDecimal;
 @Table(name = "training_config")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-public class TrainingConfig {
+public class TrainingConfig extends BaseEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

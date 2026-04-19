@@ -1,15 +1,15 @@
 package com.nodatanolife.bifusion_be.domain.notification.entity;
 
 import com.nodatanolife.bifusion_be.domain.user.entity.User;
+import com.nodatanolife.bifusion_be.global.entity.BaseCreatedEntity;
 import jakarta.persistence.*;
 import lombok.*;
-import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "notification")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-public class Notification {
+public class Notification extends BaseCreatedEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -35,6 +35,4 @@ public class Notification {
     @Column(name = "content")
     private String content;
 
-    @Column(name = "created_at")
-    private LocalDateTime createdAt;
 }

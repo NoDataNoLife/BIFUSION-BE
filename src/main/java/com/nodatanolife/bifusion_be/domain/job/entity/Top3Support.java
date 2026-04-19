@@ -1,6 +1,7 @@
 package com.nodatanolife.bifusion_be.domain.job.entity;
 
 import com.nodatanolife.bifusion_be.domain.file.entity.File;
+import com.nodatanolife.bifusion_be.global.entity.BaseEntity;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -8,7 +9,7 @@ import lombok.*;
 @Table(name = "top3_support")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-public class Top3Support {
+public class Top3Support extends BaseEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

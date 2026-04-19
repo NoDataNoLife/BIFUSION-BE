@@ -1,5 +1,6 @@
 package com.nodatanolife.bifusion_be.domain.user.entity;
 
+import com.nodatanolife.bifusion_be.global.entity.BaseCreatedEntity;
 import jakarta.persistence.*;
 import lombok.*;
 import java.time.LocalDateTime;
@@ -8,7 +9,7 @@ import java.time.LocalDateTime;
 @Table(name = "subscription")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-public class Subscription {
+public class Subscription extends BaseCreatedEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -34,6 +35,4 @@ public class Subscription {
     @Column(name = "payment_method", length = 50)
     private String paymentMethod;
 
-    @Column(name = "created_at")
-    private LocalDateTime createdAt;
 }
