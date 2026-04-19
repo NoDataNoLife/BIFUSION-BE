@@ -3,11 +3,13 @@ package com.nodatanolife.bifusion_be.global.exception;
 import com.nodatanolife.bifusion_be.global.exception.business.BusinessException;
 import com.nodatanolife.bifusion_be.global.response.CommonResponse;
 import jakarta.validation.ConstraintViolationException;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
+@Slf4j
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
@@ -39,7 +41,7 @@ public class GlobalExceptionHandler {
 
         String message = e.getBindingResult()
                 .getFieldErrors()
-                .get(0)
+                .getFirst()
                 .getDefaultMessage();
 
         return ResponseEntity
@@ -87,8 +89,8 @@ public class GlobalExceptionHandler {
      * 예상 못 한 예외
      * ================================ */
     @ExceptionHandler(Exception.class)
-    protected ResponseEntity<CommonResponse<?>> handleException() {
-
+    protected ResponseEntity<CommonResponse<?>> handleException(Exception e) {
+        log.error("[Unhandled Exception]", e);
         return ResponseEntity
                 .status(ErrorCode.INTERNAL_SERVER_ERROR.getStatus())
                 .body(CommonResponse.fail(

@@ -1,5 +1,6 @@
 package com.nodatanolife.bifusion_be.domain.expert.entity;
 
+import com.nodatanolife.bifusion_be.global.entity.BaseEntity;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -7,7 +8,7 @@ import lombok.*;
 @Table(name = "expert_task_checklist")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-public class ExpertTaskChecklist {
+public class ExpertTaskChecklist extends BaseEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

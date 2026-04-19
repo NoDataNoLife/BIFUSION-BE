@@ -1,15 +1,15 @@
 package com.nodatanolife.bifusion_be.domain.dataset.entity;
 
 import com.nodatanolife.bifusion_be.domain.user.entity.User;
+import com.nodatanolife.bifusion_be.global.entity.BaseEntity;
 import jakarta.persistence.*;
 import lombok.*;
-import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "dataset")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-public class Dataset {
+public class Dataset extends BaseEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -71,9 +71,7 @@ public class Dataset {
     @Column(name = "citation")
     private String citation;
 
-    @Column(name = "created_at")
-    private LocalDateTime createdAt;
-
-    @Column(name = "updated_at")
-    private LocalDateTime updatedAt;
+    public void anonymize(User deletedUser) {
+        this.user = deletedUser;
+    }
 }

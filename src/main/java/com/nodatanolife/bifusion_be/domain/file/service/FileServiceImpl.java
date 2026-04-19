@@ -1,6 +1,6 @@
 package com.nodatanolife.bifusion_be.domain.file.service;
 
-import com.nodatanolife.bifusion_be.domain.file.DTO.response.TempFileUploadResponse;
+import com.nodatanolife.bifusion_be.domain.file.dto.response.TempFileUploadResponse;
 import com.nodatanolife.bifusion_be.domain.file.entity.File;
 import com.nodatanolife.bifusion_be.domain.file.repository.FileRepository;
 import com.nodatanolife.bifusion_be.domain.user.entity.User;
@@ -16,24 +16,41 @@ import java.util.UUID;
 @Service
 @RequiredArgsConstructor
 @Transactional
-public class FileServiceImpl implements FileService{
+public class FileServiceImpl implements FileService {
 
     private final S3Service s3Service;
     private final FileRepository fileRepository;
     private final UserRepository userRepository;
 
+    /**
+     * 임시 파일 다건 업로드
+     * S3에 파일 업로드 후 File 엔티티 저장
+     */
     @Override
-    public List<TempFileUploadResponse> uploadTempFiles(List<MultipartFile> files) {
+    public List<TempFileUploadResponse> uploadTempFiles(Long userId, List<MultipartFile> files) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
         return files.stream()
-                .map(this::uploadSingleTempFile)
+                .map(file -> uploadSingleTempFile(user, file))
                 .toList();
     }
 
-    // 임시 파일 단건 업로드
-    private TempFileUploadResponse uploadSingleTempFile(MultipartFile file) {
-        // TODO: 로그인 구현 후 수정예정
-        User user = userRepository.findById(1L).orElse(null);
+    /**
+     * 회원 탈퇴 시 파일 익명화
+     * 유저 소유 파일의 owner를 탈퇴 계정으로 변경
+     */
+    @Override
+    public void anonymizeByUser(User user, User deletedUser) {
+        fileRepository.findAllByUser(user)
+                .forEach(f -> f.anonymize(deletedUser));
+    }
 
+    /**
+     * 임시 파일 단건 업로드
+     * S3 temp/ 경로에 업로드 후 File 엔티티 생성
+     */
+    private TempFileUploadResponse uploadSingleTempFile(User user, MultipartFile file) {
         String originalFilename = file.getOriginalFilename();
         String nameWithoutExt = (originalFilename != null && originalFilename.contains("."))
                 ? originalFilename.substring(0, originalFilename.lastIndexOf("."))

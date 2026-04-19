@@ -1,5 +1,6 @@
 package com.nodatanolife.bifusion_be.domain.job.entity;
 
+import com.nodatanolife.bifusion_be.global.entity.BaseEntity;
 import jakarta.persistence.*;
 import lombok.*;
 import java.math.BigDecimal;
@@ -8,7 +9,7 @@ import java.math.BigDecimal;
 @Table(name = "\"InferenceConfig\"")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-public class InferenceConfig {
+public class InferenceConfig extends BaseEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

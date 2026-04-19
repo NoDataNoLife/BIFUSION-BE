@@ -1,6 +1,7 @@
 package com.nodatanolife.bifusion_be.domain.project.entity;
 
 import com.nodatanolife.bifusion_be.domain.user.entity.User;
+import com.nodatanolife.bifusion_be.global.entity.BaseEntity;
 import jakarta.persistence.*;
 import lombok.*;
 import java.time.LocalDateTime;
@@ -9,7 +10,7 @@ import java.time.LocalDateTime;
 @Table(name = "project_invitation")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-public class ProjectInvitation {
+public class ProjectInvitation extends BaseEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -34,12 +35,10 @@ public class ProjectInvitation {
     @Column(name = "status", length = 20)
     private String status;
 
-    @Column(name = "created_at")
-    private LocalDateTime createdAt;
-
     @Column(name = "responded_at")
     private LocalDateTime respondedAt;
 
     @Column(name = "is_public")
     private Boolean isPublic;
+
 }

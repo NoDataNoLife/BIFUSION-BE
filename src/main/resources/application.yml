@@ -1,4 +1,6 @@
 spring:
+  config:
+    import: optional:file:.env[.properties]
   application:
     name: BIFUSION-BE
   profiles:
@@ -15,6 +17,31 @@ spring:
         static: ap-northeast-2
       s3:
         bucket: bifusion-files-959222626767-ap-northeast-2-an
+
+  security:
+    oauth2:
+      client:
+        registration:
+          google:
+            client-id: ${GOOGLE_CLIENT_ID}
+            client-secret: ${GOOGLE_CLIENT_SECRET}
+            scope: profile, email
+
+  jackson:
+    date-format: yyyy-MM-dd'T'HH:mm:ss
+    serialization:
+      write-dates-as-timestamps: false
+
+jwt:
+  secret: ${JWT_SECRET}
+  access-expiration: 1800000
+  refresh-expiration: 604800000
+
+app:
+  oauth2:
+    frontend-uri: http://localhost:3000
+  cookie:
+    secure: false  # prod에서는 true로 변경
 
 server:
   port: 8080

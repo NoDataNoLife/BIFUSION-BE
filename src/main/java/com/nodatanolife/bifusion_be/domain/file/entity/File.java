@@ -1,9 +1,9 @@
 package com.nodatanolife.bifusion_be.domain.file.entity;
 
 import com.nodatanolife.bifusion_be.domain.user.entity.User;
+import com.nodatanolife.bifusion_be.global.entity.BaseCreatedEntity;
 import jakarta.persistence.*;
 import lombok.*;
-import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "file")
@@ -11,7 +11,7 @@ import java.time.LocalDateTime;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
 @Builder(access = AccessLevel.PRIVATE)
-public class File {
+public class File extends BaseCreatedEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -19,7 +19,7 @@ public class File {
     private Long fileId;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_id", nullable = true) //TODO: 로그인구현 후 false로 변경
+    @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
     @Column(name = "file_url")
@@ -43,9 +43,9 @@ public class File {
     @Column(name = "s3_key")
     private String s3Key;
 
-    @Column(name = "created_at")
-    private LocalDateTime createdAt;
-
+    public void anonymize(User deletedUser) {
+        this.user = deletedUser;
+    }
 
     // 정적 팩토리 메서드
     public static File createTemp(User user, String fileUrl, String s3Key, String fileName, String fileType) {
@@ -56,7 +56,6 @@ public class File {
                 .fileName(fileName)
                 .fileType(fileType)
                 .isTemp(true)
-                .createdAt(LocalDateTime.now())
                 .build();
     }
 }

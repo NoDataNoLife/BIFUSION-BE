@@ -1,6 +1,7 @@
 package com.nodatanolife.bifusion_be.domain.recruitment.entity;
 
 import com.nodatanolife.bifusion_be.domain.user.entity.User;
+import com.nodatanolife.bifusion_be.global.entity.BaseEntity;
 import jakarta.persistence.*;
 import lombok.*;
 import java.time.LocalDateTime;
@@ -9,7 +10,7 @@ import java.time.LocalDateTime;
 @Table(name = "recruit")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-public class Recruit {
+public class Recruit extends BaseEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -47,9 +48,7 @@ public class Recruit {
     @Column(name = "is_public")
     private Boolean isPublic;
 
-    @Column(name = "created_at")
-    private LocalDateTime createdAt;
-
-    @Column(name = "updated_at")
-    private LocalDateTime updatedAt;
+    public void anonymize(User deletedUser) {
+        this.user = deletedUser;
+    }
 }
