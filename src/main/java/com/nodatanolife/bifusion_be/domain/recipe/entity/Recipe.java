@@ -19,7 +19,7 @@ public class Recipe {
 
     // 자기 참조 (포크 원본). null 허용을 위해 nullable = true
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "forked_from_id", nullable = true)
+    @JoinColumn(name = "forked_from_id")
     private Recipe forkedFrom;
 
     @ManyToOne(fetch = FetchType.LAZY)
@@ -91,4 +91,8 @@ public class Recipe {
 
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
+
+    public void anonymize(User deletedUser) {
+        this.user = deletedUser;
+    }
 }

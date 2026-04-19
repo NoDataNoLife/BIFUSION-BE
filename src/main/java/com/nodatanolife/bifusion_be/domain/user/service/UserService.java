@@ -11,4 +11,6 @@ public interface UserService {
     NicknameUpdateResponse updateNickname(Long userId, String nickname);
 
     UserResponse onboard(Long userId, OnboardingRequest request);
+
+    void withdraw(Long userId);
 }

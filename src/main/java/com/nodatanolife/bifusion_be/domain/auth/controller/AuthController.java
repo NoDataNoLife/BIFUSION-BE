@@ -26,6 +26,10 @@ public class AuthController {
     private final AuthService authService;
     private final CookieUtil cookieUtil;
 
+    /**
+     * 토큰 갱신
+     * Refresh Token Rotation으로 새 Access/Refresh Token 쌍 발급
+     */
     @PostMapping("/refresh")
     public CommonResponse<Void> refresh(HttpServletRequest request,
                                         HttpServletResponse response) {
@@ -46,6 +50,10 @@ public class AuthController {
         return CommonResponse.success(null);
     }
 
+    /**
+     * 로그아웃
+     * Refresh Token DB에서 삭제 및 쿠키 만료 처리
+     */
     @PostMapping("/logout")
     public CommonResponse<Void> logout(HttpServletRequest request,
                                        HttpServletResponse response) {

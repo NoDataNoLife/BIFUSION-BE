@@ -19,7 +19,7 @@ public class File {
     private Long fileId;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_id", nullable = true) //TODO: 로그인구현 후 false로 변경
+    @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
     @Column(name = "file_url")
@@ -46,6 +46,10 @@ public class File {
     @Column(name = "created_at")
     private LocalDateTime createdAt;
 
+
+    public void anonymize(User deletedUser) {
+        this.user = deletedUser;
+    }
 
     // 정적 팩토리 메서드
     public static File createTemp(User user, String fileUrl, String s3Key, String fileName, String fileType) {

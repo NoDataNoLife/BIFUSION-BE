@@ -22,6 +22,10 @@ public class FileServiceImpl implements FileService {
     private final FileRepository fileRepository;
     private final UserRepository userRepository;
 
+    /**
+     * 임시 파일 다건 업로드
+     * S3에 파일 업로드 후 File 엔티티 저장
+     */
     @Override
     public List<TempFileUploadResponse> uploadTempFiles(Long userId, List<MultipartFile> files) {
         User user = userRepository.findById(userId)
@@ -32,7 +36,20 @@ public class FileServiceImpl implements FileService {
                 .toList();
     }
 
-    // 임시 파일 단건 업로드
+    /**
+     * 회원 탈퇴 시 파일 익명화
+     * 유저 소유 파일의 owner를 탈퇴 계정으로 변경
+     */
+    @Override
+    public void anonymizeByUser(User user, User deletedUser) {
+        fileRepository.findAllByUser(user)
+                .forEach(f -> f.anonymize(deletedUser));
+    }
+
+    /**
+     * 임시 파일 단건 업로드
+     * S3 temp/ 경로에 업로드 후 File 엔티티 생성
+     */
     private TempFileUploadResponse uploadSingleTempFile(User user, MultipartFile file) {
         String originalFilename = file.getOriginalFilename();
         String nameWithoutExt = (originalFilename != null && originalFilename.contains("."))

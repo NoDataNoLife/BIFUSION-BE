@@ -3,6 +3,7 @@ package com.nodatanolife.bifusion_be.domain.auth.service;
 import com.nodatanolife.bifusion_be.domain.auth.dto.AuthTokens;
 import com.nodatanolife.bifusion_be.domain.user.entity.RefreshToken;
 import com.nodatanolife.bifusion_be.domain.user.entity.User;
+import com.nodatanolife.bifusion_be.domain.user.repository.OauthAccountRepository;
 import com.nodatanolife.bifusion_be.domain.user.repository.RefreshTokenRepository;
 import com.nodatanolife.bifusion_be.domain.user.repository.UserRepository;
 import com.nodatanolife.bifusion_be.global.exception.ErrorCode;
@@ -23,6 +24,7 @@ public class AuthServiceImpl implements AuthService {
 
     private final JwtTokenProvider jwtTokenProvider;
     private final RefreshTokenRepository refreshTokenRepository;
+    private final OauthAccountRepository oauthAccountRepository;
     private final UserRepository userRepository;
 
     /**
@@ -66,6 +68,16 @@ public class AuthServiceImpl implements AuthService {
     public void logout(String refreshToken) {
         refreshTokenRepository.findByTokenAndIsRevokedFalse(refreshToken)
                 .ifPresent(refreshTokenRepository::delete);
+    }
+
+    /**
+     * 회원 탈퇴 시 인증 정보 삭제
+     * Refresh Token 전체 삭제 및 OauthAccount 삭제
+     */
+    @Override
+    public void deleteByUser(User user) {
+        refreshTokenRepository.deleteAllByUser(user);
+        oauthAccountRepository.deleteByUser(user);
     }
 
     /**

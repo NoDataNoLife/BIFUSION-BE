@@ -1,0 +1,8 @@
+package com.nodatanolife.bifusion_be.domain.recipe.service;
+
+import com.nodatanolife.bifusion_be.domain.user.entity.User;
+
+public interface RecipeService {
+
+    void anonymizeByUser(User user, User deletedUser);
+}

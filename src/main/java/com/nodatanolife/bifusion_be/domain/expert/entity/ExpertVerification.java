@@ -45,4 +45,12 @@ public class ExpertVerification {
 
     @Column(name = "reviewed_at")
     private LocalDateTime reviewedAt;
+
+    public void anonymize(User deletedUser) {
+        this.user = deletedUser;
+    }
+
+    public void anonymizeReviewer(User deletedUser) {
+        this.reviewedBy = deletedUser;
+    }
 }

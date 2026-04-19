@@ -24,6 +24,7 @@ public enum ErrorCode {
     INVALID_TOKEN(HttpStatus.UNAUTHORIZED, "A005", "유효하지 않은 토큰입니다."),
     TOKEN_EXPIRED(HttpStatus.UNAUTHORIZED, "A006", "토큰이 만료되었습니다."),
     ALREADY_ONBOARDED(HttpStatus.CONFLICT, "A007", "이미 온보딩이 완료된 사용자입니다."),
+    DELETED_USER_NOT_FOUND(HttpStatus.NOT_FOUND, "U404", "삭제된 사용자를 찾을 수 없습니다."),
 
     /* ================================
      * Bio Data / AI Augmentation
