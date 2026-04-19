@@ -51,4 +51,8 @@ public class ExpertTask {
 
     @Column(name = "draft_feedback")
     private String draftFeedback;
+
+    public void anonymize(User deletedUser) {
+        this.expert = deletedUser;
+    }
 }

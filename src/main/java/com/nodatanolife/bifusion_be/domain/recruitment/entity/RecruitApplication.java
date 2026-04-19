@@ -41,4 +41,8 @@ public class RecruitApplication {
 
     @Column(name = "created_at")
     private LocalDateTime createdAt;
+
+    public void anonymize(User deletedUser) {
+        this.user = deletedUser;
+    }
 }

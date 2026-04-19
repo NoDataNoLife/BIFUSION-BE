@@ -43,4 +43,8 @@ public class ExpertQnA {
 
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
+
+    public void anonymize(User deletedUser) {
+        this.user = deletedUser;
+    }
 }

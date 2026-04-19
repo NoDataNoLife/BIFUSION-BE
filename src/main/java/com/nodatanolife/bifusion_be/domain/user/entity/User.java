@@ -84,6 +84,24 @@ public class User extends BaseEntity {
     }
 
     /**
+     * 탈퇴한 사용자 익명화용 더미 계정
+     * 앱 시작 시 DataInitializer가 한 번만 생성
+     * 탈퇴 유저의 콘텐츠는 이 계정으로 FK 교체
+     */
+    public static User createDeletedUser() {
+        User user = new User();
+        user.email = "deleted@bifusion.com";
+        user.name = "탈퇴한 사용자";
+        user.nickname = "탈퇴한 사용자";
+        user.role = "DELETED";
+        user.isExpert = false;
+        user.isOnboarded = true;
+        user.remainingTokens = 0L;
+        user.rewardBalance = 0;
+        return user;
+    }
+
+    /**
      * 닉네임 변경 (마이페이지에서 사용)
      */
     public void updateNickname(String nickname) {

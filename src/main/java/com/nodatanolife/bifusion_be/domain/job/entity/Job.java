@@ -45,4 +45,8 @@ public class Job {
 
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
+
+    public void anonymize(User deletedUser) {
+        this.user = deletedUser;
+    }
 }

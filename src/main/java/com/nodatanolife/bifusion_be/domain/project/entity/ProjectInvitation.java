@@ -42,4 +42,5 @@ public class ProjectInvitation {
 
     @Column(name = "is_public")
     private Boolean isPublic;
+
 }

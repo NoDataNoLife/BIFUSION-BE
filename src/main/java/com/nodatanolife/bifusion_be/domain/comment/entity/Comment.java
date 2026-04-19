@@ -44,4 +44,8 @@ public class Comment {
 
     @Column(name = "is_accepted")
     private Boolean isAccepted;
+
+    public void anonymize(User deletedUser) {
+        this.user = deletedUser;
+    }
 }
