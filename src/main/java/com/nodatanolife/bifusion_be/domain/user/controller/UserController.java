@@ -2,6 +2,8 @@ package com.nodatanolife.bifusion_be.domain.user.controller;
 
 import com.nodatanolife.bifusion_be.domain.user.dto.request.BioUpdateRequest;
 import com.nodatanolife.bifusion_be.domain.user.dto.response.BioUpdateResponse;
+import com.nodatanolife.bifusion_be.domain.user.dto.response.ProfileImageUpdateResponse;
+import org.springframework.web.multipart.MultipartFile;
 import com.nodatanolife.bifusion_be.domain.user.dto.request.WebsiteUpdateRequest;
 import com.nodatanolife.bifusion_be.domain.user.dto.response.WebsiteUpdateResponse;
 import com.nodatanolife.bifusion_be.domain.user.dto.request.LocationUpdateRequest;
@@ -22,7 +24,7 @@ import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("/api/v1/")
+@RequestMapping("/api/v1")
 public class UserController {
 
     private final UserService userService;
@@ -85,6 +87,18 @@ public CommonResponse<BioUpdateResponse> updateBio(
         WebsiteUpdateResponse response = userService.updateWebsiteUrl(
                 principal.getUser().getUserId(), request.getWebsiteUrl());
         return CommonResponse.success(response, "웹사이트가 수정되었습니다.");
+    }
+
+    /**
+     * 프로필사진 수정
+    */
+    @PutMapping("/profile/image")
+    public CommonResponse<ProfileImageUpdateResponse> updateProfileImage(
+            @AuthenticationPrincipal CustomOAuth2User principal,
+            @RequestPart MultipartFile image) {
+        ProfileImageUpdateResponse response = userService.updateProfileImage(
+                principal.getUser().getUserId(), image);
+        return CommonResponse.success(response, "프로필 사진이 수정되었습니다.");
     }
 
     /**
