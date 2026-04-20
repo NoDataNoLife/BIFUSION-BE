@@ -2,6 +2,12 @@ package com.nodatanolife.bifusion_be.domain.user.service;
 
 
 import com.nodatanolife.bifusion_be.domain.user.dto.response.BioUpdateResponse;
+import com.nodatanolife.bifusion_be.domain.user.dto.response.WebsiteUpdateResponse;
+import com.nodatanolife.bifusion_be.domain.user.dto.response.WebsiteUpdateResponse;
+import com.nodatanolife.bifusion_be.domain.file.service.S3Service;
+import com.nodatanolife.bifusion_be.domain.user.dto.response.ProfileImageUpdateResponse;
+import org.springframework.web.multipart.MultipartFile;
+import java.util.UUID;
 import com.nodatanolife.bifusion_be.domain.activityLog.service.ActivityLogService;
 import com.nodatanolife.bifusion_be.domain.auth.service.AuthService;
 import com.nodatanolife.bifusion_be.domain.comment.service.CommentService;
@@ -56,7 +62,8 @@ public class UserServiceImpl implements UserService {
     private final JobService jobService;
     private final ActivityLogService activityLogService;
     private final FileService fileService;
-
+    // 프로필사진 변경 관련
+    private final S3Service s3Service;
     @Value("${deleted-user.email:deleted@bifusion.com}")
     private String deletedUserEmail;
 
@@ -113,6 +120,21 @@ public class UserServiceImpl implements UserService {
                 .orElseThrow(UserNotFoundException::new);
         user.updateWebsiteUrl(websiteUrl);
         return WebsiteUpdateResponse.from(user);
+    }
+
+
+    /**
+     * 프로필사진 수정
+    */
+    @Override
+    public ProfileImageUpdateResponse updateProfileImage(Long userId, MultipartFile image) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(UserNotFoundException::new);
+
+        String filename = UUID.randomUUID() + "_" + image.getOriginalFilename();
+        String imageUrl = s3Service.uploadFile(image, "profile", filename);
+        user.updateProfileImageUrl(imageUrl);
+        return ProfileImageUpdateResponse.from(user);
     }
 
     /**

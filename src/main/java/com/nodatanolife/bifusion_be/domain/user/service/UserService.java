@@ -7,6 +7,8 @@ import com.nodatanolife.bifusion_be.domain.user.dto.response.LocationUpdateRespo
 import com.nodatanolife.bifusion_be.domain.user.dto.response.NicknameUpdateResponse;
 import com.nodatanolife.bifusion_be.domain.user.dto.response.UserResponse;
 import com.nodatanolife.bifusion_be.domain.user.dto.response.WebsiteUpdateResponse;
+import org.springframework.web.multipart.MultipartFile;
+import com.nodatanolife.bifusion_be.domain.user.dto.response.ProfileImageUpdateResponse;
 
 
 public interface UserService {
@@ -14,7 +16,10 @@ public interface UserService {
     UserResponse getMe(Long userId);
 
     NicknameUpdateResponse updateNickname(Long userId, String nickname);
+
     BioUpdateResponse updateBio(Long userId, String bio);
+
+    ProfileImageUpdateResponse updateProfileImage(Long userId, MultipartFile image);
 
     LocationUpdateResponse updateLocation(Long userId, String location);
 
