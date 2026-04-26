@@ -77,4 +77,18 @@ public class ProjectInvitation extends BaseEntity {
     public void resend() {
         this.lastSentAt = LocalDateTime.now();
     }
+
+    public void accept() {
+        this.status = InvitationStatus.ACCEPTED;
+        this.respondedAt = LocalDateTime.now();
+    }
+
+    public void reject() {
+        this.status = InvitationStatus.REJECTED;
+        this.respondedAt = LocalDateTime.now();
+    }
+
+    public boolean isExpired() {
+        return this.getCreatedAt().plusDays(7).isBefore(LocalDateTime.now());
+    }
 }
