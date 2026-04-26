@@ -1,14 +1,9 @@
 package com.nodatanolife.bifusion_be.domain.user.service;
 
 
-import com.nodatanolife.bifusion_be.domain.user.dto.response.BioUpdateResponse;
+import com.nodatanolife.bifusion_be.domain.user.dto.response.*;
 import com.nodatanolife.bifusion_be.domain.user.dto.request.OnboardingRequest;
-import com.nodatanolife.bifusion_be.domain.user.dto.response.LocationUpdateResponse;
-import com.nodatanolife.bifusion_be.domain.user.dto.response.NicknameUpdateResponse;
-import com.nodatanolife.bifusion_be.domain.user.dto.response.UserResponse;
-import com.nodatanolife.bifusion_be.domain.user.dto.response.WebsiteUpdateResponse;
 import org.springframework.web.multipart.MultipartFile;
-import com.nodatanolife.bifusion_be.domain.user.dto.response.ProfileImageUpdateResponse;
 
 
 public interface UserService {
@@ -28,4 +23,6 @@ public interface UserService {
     UserResponse onboard(Long userId, OnboardingRequest request);
 
     void withdraw(Long userId);
+
+    UserSearchResponse searchByEmail(String email);
 }
