@@ -1,24 +1,13 @@
 package com.nodatanolife.bifusion_be.domain.project.service;
 
+import com.nodatanolife.bifusion_be.domain.project.dto.request.*;
+import com.nodatanolife.bifusion_be.domain.project.dto.response.*;
 import com.nodatanolife.bifusion_be.domain.project.entity.Project;
-import com.nodatanolife.bifusion_be.domain.project.entity.ProjectRole;
-import com.nodatanolife.bifusion_be.domain.user.repository.UserRepository;
-import com.nodatanolife.bifusion_be.domain.project.repository.ProjectRepository;
-import com.nodatanolife.bifusion_be.domain.project.dto.response.ProjectCreateResponse;
-import com.nodatanolife.bifusion_be.domain.project.dto.request.ProjectCreateRequest;
-import com.nodatanolife.bifusion_be.domain.project.dto.request.MemberRoleUpdateRequest;
-import com.nodatanolife.bifusion_be.domain.project.dto.response.MemberRoleUpdateResponse;
-import com.nodatanolife.bifusion_be.domain.project.dto.response.ProjectUpdateResponse;
-import com.nodatanolife.bifusion_be.domain.project.dto.request.ProjectUpdateRequest;
-import com.nodatanolife.bifusion_be.domain.project.dto.response.ProjectInfoResponse;
-import com.nodatanolife.bifusion_be.domain.project.dto.response.MyProjectsResponse;
-import com.nodatanolife.bifusion_be.domain.project.dto.request.ProjectVisibilityUpdateRequest;
-import com.nodatanolife.bifusion_be.domain.project.dto.response.ProjectVisibilityUpdateResponse;
 import com.nodatanolife.bifusion_be.domain.project.entity.ProjectMember;
-import com.nodatanolife.bifusion_be.domain.project.repository.ProjectFavoriteRepository;
-import com.nodatanolife.bifusion_be.domain.project.repository.ProjectInvitationRepository;
-import com.nodatanolife.bifusion_be.domain.project.repository.ProjectMemberRepository;
+import com.nodatanolife.bifusion_be.domain.project.entity.ProjectRole;
+import com.nodatanolife.bifusion_be.domain.project.repository.*;
 import com.nodatanolife.bifusion_be.domain.user.entity.User;
+import com.nodatanolife.bifusion_be.domain.user.repository.UserRepository;
 import com.nodatanolife.bifusion_be.global.exception.ErrorCode;
 import com.nodatanolife.bifusion_be.global.exception.business.BusinessException;
 import lombok.RequiredArgsConstructor;
@@ -33,6 +22,7 @@ import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -44,7 +34,6 @@ public class ProjectServiceImpl implements ProjectService {
     private final ProjectFavoriteRepository projectFavoriteRepository;
     private final ProjectMemberRepository projectMemberRepository;
     private final ProjectInvitationRepository projectInvitationRepository;
-
 
     /**
      * 프로젝트 생성
@@ -224,7 +213,16 @@ public class ProjectServiceImpl implements ProjectService {
         projectMemberRepository.delete(targetMember);
     }
 
-  
+    /**
+     * 관리/참여 중인 프로젝트 목록 조회 (develop 머지 반영)
+     */
+
+    @Override
+    @Transactional(readOnly = true)
+    public MyProjectDashboardResponse findAllProjectsByUserId(Long userId) {
+        return getMyProjectDashboard(userId);
+    }
+
     /**
      * 회원 탈퇴 시 프로젝트 관련 데이터 삭제
      * 즐겨찾기, 멤버, 초대 내역 삭제
@@ -297,5 +295,54 @@ public class ProjectServiceImpl implements ProjectService {
         targetMember.updateRole(request.role());
 
         return MemberRoleUpdateResponse.of(targetMember);
+    }
+    /**
+     * 내 프로젝트 대시보드 조회
+     */
+    @Override
+    @Transactional(readOnly = true)
+    public MyProjectDashboardResponse getMyProjectDashboard(Long userId) {
+        List<ProjectMember> memberships = projectMemberRepository.findAllByUser_UserId(userId);
+
+        List<ProjectDetailResponse> managingProjects = memberships.stream()
+                .filter(m -> "MANAGER".equals(m.getRole()))
+                .map(this::convertToDetailResponse)
+                .collect(Collectors.toList());
+
+        List<ProjectDetailResponse> participatingProjects = memberships.stream()
+                .filter(m -> "MEMBER".equals(m.getRole()))
+                .map(this::convertToDetailResponse)
+                .collect(Collectors.toList());
+
+        return MyProjectDashboardResponse.of(managingProjects, participatingProjects);
+    }
+
+    /**
+     * ProjectMember 엔티티를 ProjectDetailResponse DTO로 변환
+     */
+    private ProjectDetailResponse convertToDetailResponse(ProjectMember membership) {
+        Project project = membership.getProject();
+
+        List<ProjectMember> allMembersInProject = projectMemberRepository.findAllByProject(project);
+
+        List<ProjectMemberResponse> memberResponses = allMembersInProject.stream()
+                .map(pm -> new ProjectMemberResponse(
+                        pm.getUser().getUserId(),
+                        pm.getUser().getNickname(),
+                        pm.getUser().getProfileImageUrl()
+                ))
+                .toList();
+
+        return new ProjectDetailResponse(
+                project.getProjectId(),
+                project.getTitle(),
+                project.getDescription(),
+                membership.getRole(),
+                project.getBannerImageUrl(),
+                false,
+                memberResponses.size(),
+                memberResponses,
+                project.getUpdatedAt()
+        );
     }
 }

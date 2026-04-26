@@ -11,6 +11,8 @@ import com.nodatanolife.bifusion_be.domain.project.dto.response.MyProjectsRespon
 import com.nodatanolife.bifusion_be.domain.project.dto.request.ProjectVisibilityUpdateRequest;
 import com.nodatanolife.bifusion_be.domain.project.dto.response.ProjectVisibilityUpdateResponse;
 import com.nodatanolife.bifusion_be.domain.user.entity.User;
+import com.nodatanolife.bifusion_be.domain.project.dto.response.MyProjectDashboardResponse;
+
 
 public interface ProjectService {
 
@@ -30,4 +32,8 @@ public interface ProjectService {
 
     ProjectUpdateResponse updateProject(Long projectId, ProjectUpdateRequest request, String email);
 
+    MyProjectDashboardResponse getMyProjectDashboard(Long userId);
+
+    MyProjectDashboardResponse findAllProjectsByUserId(Long userId);
 }
+

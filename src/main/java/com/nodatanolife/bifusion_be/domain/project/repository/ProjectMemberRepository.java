@@ -1,5 +1,6 @@
 package com.nodatanolife.bifusion_be.domain.project.repository;
 
+import com.nodatanolife.bifusion_be.domain.project.entity.Project;
 import com.nodatanolife.bifusion_be.domain.project.entity.ProjectMember;
 import com.nodatanolife.bifusion_be.domain.project.entity.ProjectRole;
 import com.nodatanolife.bifusion_be.domain.user.entity.User;
@@ -7,7 +8,6 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
-
 import java.time.LocalDateTime;
 import java.util.Optional;
 import java.util.List;
@@ -54,4 +54,6 @@ public interface ProjectMemberRepository extends JpaRepository<ProjectMember, Lo
             Pageable pageable
     );
 
+    List<ProjectMember> findAllByUser_UserId(Long userId);
+    List<ProjectMember> findAllByProject(Project project);
 }

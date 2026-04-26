@@ -7,22 +7,20 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import com.nodatanolife.bifusion_be.domain.project.dto.request.ProjectCreateRequest;
 import com.nodatanolife.bifusion_be.domain.project.dto.response.ProjectCreateResponse;
+import com.nodatanolife.bifusion_be.domain.project.dto.request.*;
+import com.nodatanolife.bifusion_be.domain.project.dto.response.*;
 import com.nodatanolife.bifusion_be.domain.project.service.ProjectService;
 import com.nodatanolife.bifusion_be.global.response.CommonResponse;
+import com.nodatanolife.bifusion_be.global.security.oauth2.CustomOAuth2User;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import com.nodatanolife.bifusion_be.global.security.oauth2.CustomOAuth2User;
-import com.nodatanolife.bifusion_be.domain.project.dto.request.MemberRoleUpdateRequest;
-import com.nodatanolife.bifusion_be.domain.project.dto.response.MemberRoleUpdateResponse;
-import com.nodatanolife.bifusion_be.domain.project.dto.response.ProjectInfoResponse;
-import com.nodatanolife.bifusion_be.domain.project.dto.response.MyProjectsResponse;
 import org.springframework.web.bind.annotation.*;
 
 
 @Tag(name = "Project", description = "프로젝트 관리 API")
 @RestController
-@RequestMapping("/api/v1/projects")
 @RequiredArgsConstructor
+@RequestMapping("/api/v1/projects")
 public class ProjectController {
 
     private final ProjectService projectService;
@@ -35,7 +33,6 @@ public class ProjectController {
     ) {
         String email = oAuth2User.getUser().getEmail();
         ProjectCreateResponse response = projectService.createProject(request, email);
-
         return CommonResponse.success(response, "프로젝트 생성 성공!");
     }
 
