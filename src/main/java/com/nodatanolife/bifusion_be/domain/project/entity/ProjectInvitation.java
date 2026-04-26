@@ -87,8 +87,4 @@ public class ProjectInvitation extends BaseEntity {
         this.status = InvitationStatus.REJECTED;
         this.respondedAt = LocalDateTime.now();
     }
-
-    public boolean isExpired() {
-        return this.getCreatedAt().plusDays(7).isBefore(LocalDateTime.now());
-    }
 }
