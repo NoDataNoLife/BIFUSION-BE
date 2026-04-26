@@ -59,6 +59,9 @@ public enum ErrorCode {
      * ================================ */
     INVITATION_ALREADY_MEMBER(HttpStatus.CONFLICT, "PI001", "이미 프로젝트 멤버입니다."),
     INVITATION_COOLDOWN(HttpStatus.TOO_MANY_REQUESTS, "PI002", "초대 재발송은 1시간 후에 가능합니다."),
+    INVITATION_NOT_FOUND(HttpStatus.NOT_FOUND, "PI003", "초대를 찾을 수 없습니다."),
+    INVITATION_EXPIRED(HttpStatus.BAD_REQUEST, "PI004", "만료된 초대입니다."),
+    INVITATION_ALREADY_RESPONDED(HttpStatus.BAD_REQUEST, "PI005", "이미 처리된 초대입니다."),
 
     /* ================================
      * File

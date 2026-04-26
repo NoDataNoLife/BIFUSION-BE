@@ -30,4 +30,13 @@ public class ProjectMember extends BaseEntity {
 
     @Column(name = "joined_at")
     private LocalDateTime joinedAt;
+
+    public static ProjectMember of(Project project, User user, String role) {
+        ProjectMember member = new ProjectMember();
+        member.project = project;
+        member.user = user;
+        member.role = role;
+        member.joinedAt = LocalDateTime.now();
+        return member;
+    }
 }
