@@ -1,17 +1,14 @@
 package com.nodatanolife.bifusion_be.domain.user.controller;
 
 import com.nodatanolife.bifusion_be.domain.user.dto.request.BioUpdateRequest;
-import com.nodatanolife.bifusion_be.domain.user.dto.response.BioUpdateResponse;
-import com.nodatanolife.bifusion_be.domain.user.dto.response.ProfileImageUpdateResponse;
+import com.nodatanolife.bifusion_be.domain.user.dto.response.*;
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotBlank;
 import org.springframework.web.multipart.MultipartFile;
 import com.nodatanolife.bifusion_be.domain.user.dto.request.WebsiteUpdateRequest;
-import com.nodatanolife.bifusion_be.domain.user.dto.response.WebsiteUpdateResponse;
 import com.nodatanolife.bifusion_be.domain.user.dto.request.LocationUpdateRequest;
 import com.nodatanolife.bifusion_be.domain.user.dto.request.NicknameUpdateRequest;
 import com.nodatanolife.bifusion_be.domain.user.dto.request.OnboardingRequest;
-import com.nodatanolife.bifusion_be.domain.user.dto.response.LocationUpdateResponse;
-import com.nodatanolife.bifusion_be.domain.user.dto.response.NicknameUpdateResponse;
-import com.nodatanolife.bifusion_be.domain.user.dto.response.UserResponse;
 import com.nodatanolife.bifusion_be.domain.user.service.UserService;
 import com.nodatanolife.bifusion_be.global.response.CommonResponse;
 import com.nodatanolife.bifusion_be.global.security.oauth2.CustomOAuth2User;
@@ -55,14 +52,14 @@ public class UserController {
         return CommonResponse.success(response);
     }
 
-   @PutMapping("/profile/introduction")
-public CommonResponse<BioUpdateResponse> updateBio(
-        @AuthenticationPrincipal CustomOAuth2User principal,
-        @RequestBody BioUpdateRequest request) {
-    BioUpdateResponse response = userService.updateBio(
-            principal.getUser().getUserId(), request.getBio());
-    return CommonResponse.success(response, "소개글이 수정되었습니다.");
-}
+    @PutMapping("/profile/introduction")
+    public CommonResponse<BioUpdateResponse> updateBio(
+            @AuthenticationPrincipal CustomOAuth2User principal,
+            @RequestBody BioUpdateRequest request) {
+        BioUpdateResponse response = userService.updateBio(
+                principal.getUser().getUserId(), request.getBio());
+        return CommonResponse.success(response, "소개글이 수정되었습니다.");
+    }
 
     /**
      * 위치 수정
@@ -76,6 +73,7 @@ public CommonResponse<BioUpdateResponse> updateBio(
                 principal.getUser().getUserId(), request.getLocation());
         return CommonResponse.success(response, "위치 수정 완료!");
     }
+
     /**
      * 웹사이트 수정
      * 인증된 유저의 웹사이트 변경
@@ -134,5 +132,17 @@ public CommonResponse<BioUpdateResponse> updateBio(
                 cookieUtil.expireCookie("refresh_token").toString());
 
         return CommonResponse.success(null, "회원 탈퇴 성공!");
+    }
+
+    /**
+     * 이메일로 유저 검색
+     * 이메일 기반으로 유저를 조회하며, 미가입 이메일인 경우 exists: false 반환
+     */
+    @GetMapping("/users/search")
+    public CommonResponse<UserSearchResponse> searchByEmail(
+            @RequestParam @Email @NotBlank String email
+    ) {
+        UserSearchResponse response = userService.searchByEmail(email);
+        return CommonResponse.success(response, "유저 이메일 검색 성공!");
     }
 }

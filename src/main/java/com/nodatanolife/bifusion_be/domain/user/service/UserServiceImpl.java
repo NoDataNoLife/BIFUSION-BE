@@ -1,11 +1,9 @@
 package com.nodatanolife.bifusion_be.domain.user.service;
 
 
-import com.nodatanolife.bifusion_be.domain.user.dto.response.BioUpdateResponse;
-import com.nodatanolife.bifusion_be.domain.user.dto.response.WebsiteUpdateResponse;
+import com.nodatanolife.bifusion_be.domain.user.dto.response.*;
 import com.nodatanolife.bifusion_be.domain.user.dto.response.WebsiteUpdateResponse;
 import com.nodatanolife.bifusion_be.domain.file.service.S3Service;
-import com.nodatanolife.bifusion_be.domain.user.dto.response.ProfileImageUpdateResponse;
 import org.springframework.web.multipart.MultipartFile;
 import java.util.UUID;
 import com.nodatanolife.bifusion_be.domain.activityLog.service.ActivityLogService;
@@ -21,10 +19,6 @@ import com.nodatanolife.bifusion_be.domain.qna.service.ExpertQnAService;
 import com.nodatanolife.bifusion_be.domain.recipe.service.RecipeService;
 import com.nodatanolife.bifusion_be.domain.recruitment.service.RecruitService;
 import com.nodatanolife.bifusion_be.domain.user.dto.request.OnboardingRequest;
-import com.nodatanolife.bifusion_be.domain.user.dto.response.LocationUpdateResponse;
-import com.nodatanolife.bifusion_be.domain.user.dto.response.NicknameUpdateResponse;
-import com.nodatanolife.bifusion_be.domain.user.dto.response.WebsiteUpdateResponse;
-import com.nodatanolife.bifusion_be.domain.user.dto.response.UserResponse;
 import com.nodatanolife.bifusion_be.domain.user.entity.User;
 import com.nodatanolife.bifusion_be.domain.user.repository.UserRepository;
 import com.nodatanolife.bifusion_be.global.exception.ErrorCode;
@@ -195,5 +189,15 @@ public class UserServiceImpl implements UserService {
 
         // 4. User hard delete
         userRepository.delete(user);
+    }
+
+    /**
+     * 이메일로 유저 검색
+     * 이메일 기반으로 유저를 조회하며, 미가입 이메일인 경우 exists: false 반환
+     */
+    public UserSearchResponse searchByEmail(String email) {
+        return userRepository.findByEmail(email)
+                .map(UserSearchResponse::found)
+                .orElseGet(() -> UserSearchResponse.notFound(email));
     }
 }
