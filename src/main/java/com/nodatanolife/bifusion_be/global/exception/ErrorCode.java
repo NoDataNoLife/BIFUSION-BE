@@ -5,7 +5,11 @@ import org.springframework.http.HttpStatus;
 
 @Getter
 public enum ErrorCode {
-
+    /* ================================
+     * 플랜변경 관련
+     * ================================ */
+    ALREADY_SUBSCRIBED_PLAN(HttpStatus.BAD_REQUEST, "U004", "이미 해당 플랜을 구독 중입니다."),
+    PLAN_CHANGE_NOT_ALLOWED(HttpStatus.BAD_REQUEST, "U005", "플랜 변경 가능 기간이 아닙니다."),
     /* ================================
      * Common
      * ================================ */

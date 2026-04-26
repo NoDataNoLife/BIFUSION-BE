@@ -1,6 +1,8 @@
 package com.nodatanolife.bifusion_be.domain.user.controller;
 
+import com.nodatanolife.bifusion_be.domain.user.entity.SubscriptionTier;
 import com.nodatanolife.bifusion_be.domain.user.dto.request.BioUpdateRequest;
+import com.nodatanolife.bifusion_be.domain.user.dto.request.PlanChangeRequest;
 import com.nodatanolife.bifusion_be.domain.user.dto.response.*;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
@@ -46,12 +48,17 @@ public class UserController {
     public CommonResponse<NicknameUpdateResponse> updateNickname(
             @AuthenticationPrincipal CustomOAuth2User principal,
             @RequestBody NicknameUpdateRequest request) {
-      
+
         NicknameUpdateResponse response = userService.updateNickname(
                 principal.getUser().getUserId(), request.getNickname());
         return CommonResponse.success(response);
     }
 
+
+
+    /**
+     * 소개글 수정
+     */
     @PutMapping("/profile/introduction")
     public CommonResponse<BioUpdateResponse> updateBio(
             @AuthenticationPrincipal CustomOAuth2User principal,
@@ -89,7 +96,7 @@ public class UserController {
 
     /**
      * 프로필사진 수정
-    */
+     */
     @PutMapping("/profile/image")
     public CommonResponse<ProfileImageUpdateResponse> updateProfileImage(
             @AuthenticationPrincipal CustomOAuth2User principal,
@@ -97,6 +104,17 @@ public class UserController {
         ProfileImageUpdateResponse response = userService.updateProfileImage(
                 principal.getUser().getUserId(), image);
         return CommonResponse.success(response, "프로필 사진이 수정되었습니다.");
+    }
+
+    @PutMapping("/users/me/plan")public CommonResponse<PlanChangeResponse> changePlan(
+
+            @AuthenticationPrincipal CustomOAuth2User principal,
+
+            @RequestBody PlanChangeRequest request) {
+
+        PlanChangeResponse response = userService.changePlan(principal.getUser().getUserId(), request.planType());
+
+        return CommonResponse.success(response);
     }
 
     /**

@@ -4,8 +4,12 @@ package com.nodatanolife.bifusion_be.domain.user.service;
 import com.nodatanolife.bifusion_be.domain.user.dto.response.*;
 import com.nodatanolife.bifusion_be.domain.user.dto.response.WebsiteUpdateResponse;
 import com.nodatanolife.bifusion_be.domain.file.service.S3Service;
+import com.nodatanolife.bifusion_be.domain.user.entity.SubscriptionTier;
+import com.nodatanolife.bifusion_be.domain.user.entity.Subscription;
+import com.nodatanolife.bifusion_be.domain.user.repository.SubscriptionRepository;
 import org.springframework.web.multipart.MultipartFile;
 import java.util.UUID;
+import java.time.LocalDate;
 import com.nodatanolife.bifusion_be.domain.activityLog.service.ActivityLogService;
 import com.nodatanolife.bifusion_be.domain.auth.service.AuthService;
 import com.nodatanolife.bifusion_be.domain.comment.service.CommentService;
@@ -36,6 +40,7 @@ public class UserServiceImpl implements UserService {
 
     private final UserRepository userRepository;
 
+    private final SubscriptionRepository subscriptionRepository;
     // 인증
     private final AuthService authService;
 
@@ -58,6 +63,7 @@ public class UserServiceImpl implements UserService {
     private final FileService fileService;
     // 프로필사진 변경 관련
     private final S3Service s3Service;
+
     @Value("${deleted-user.email:deleted@bifusion.com}")
     private String deletedUserEmail;
 
@@ -78,40 +84,42 @@ public class UserServiceImpl implements UserService {
      */
     @Override
     public NicknameUpdateResponse updateNickname(Long userId, String nickname) {
-        User user = userRepository.findById(userId)
-                .orElseThrow(UserNotFoundException::new);
+        User user = userRepository.findById(userId).orElseThrow(UserNotFoundException::new);
         user.updateNickname(nickname);
         return NicknameUpdateResponse.from(user);
     }
 
 
+    /**
+     * 소개글 수정
+     * 유저 마이페이지 소개글 변경 후 변경된 정보 반환
+     */
     @Override
     @Transactional
     public BioUpdateResponse updateBio(Long userId, String bio) {
-        User user = userRepository.findById(userId)
-                .orElseThrow(UserNotFoundException::new);
+        User user = userRepository.findById(userId).orElseThrow(UserNotFoundException::new);
         user.updateBio(bio);
         return BioUpdateResponse.from(user);
-}
+    }
+
     /**
      * 위치 수정
      * 유저 마이페이지 위치 변경 후 변경된 정보 반환
      */
     @Override
     public LocationUpdateResponse updateLocation(Long userId, String location) {
-        User user = userRepository.findById(userId)
-                .orElseThrow(UserNotFoundException::new);
+        User user = userRepository.findById(userId).orElseThrow(UserNotFoundException::new);
         user.updateLocation(location);
         return LocationUpdateResponse.from(user);
     }
+
     /**
      * 웹사이트 수정
      * 유저 마이페이지 웹사이트 변경 후 변경된 정보 반환
      */
     @Override
     public WebsiteUpdateResponse updateWebsiteUrl(Long userId, String websiteUrl) {
-        User user = userRepository.findById(userId)
-                .orElseThrow(UserNotFoundException::new);
+        User user = userRepository.findById(userId).orElseThrow(UserNotFoundException::new);
         user.updateWebsiteUrl(websiteUrl);
         return WebsiteUpdateResponse.from(user);
     }
@@ -119,16 +127,50 @@ public class UserServiceImpl implements UserService {
 
     /**
      * 프로필사진 수정
-    */
+     */
     @Override
     public ProfileImageUpdateResponse updateProfileImage(Long userId, MultipartFile image) {
-        User user = userRepository.findById(userId)
-                .orElseThrow(UserNotFoundException::new);
-
+        User user = userRepository.findById(userId).orElseThrow(UserNotFoundException::new);
         String filename = UUID.randomUUID() + "_" + image.getOriginalFilename();
         String imageUrl = s3Service.uploadFile(image, "profile", filename);
         user.updateProfileImageUrl(imageUrl);
         return ProfileImageUpdateResponse.from(user);
+    }
+
+    /**
+     * 플랜 변경
+     */
+    @Override // 추가
+    @Transactional
+    public PlanChangeResponse changePlan(Long userId, SubscriptionTier newTier) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
+
+        // 1. 동일 플랜 체크 (this.subscriptionTier -> this.planType)
+        if (user.getPlanType() == newTier) {
+            throw new BusinessException(ErrorCode.ALREADY_SUBSCRIBED_PLAN);
+        }
+
+        // 2. 다운그레이드 제한 (PRO -> BASIC 시 30일 체크)
+        if (user.getPlanType() == SubscriptionTier.PRO && newTier == SubscriptionTier.BASIC) {
+            if (user.getPlanStartDate() != null) {
+                LocalDate canDowngradeDate = user.getPlanStartDate().plusDays(30);
+                if (LocalDate.now().isBefore(canDowngradeDate)) {
+                    throw new BusinessException(ErrorCode.PLAN_CHANGE_NOT_ALLOWED);
+                }
+            }
+        }
+
+        // 3. 잔여 토큰 계산 (현재 잔여 + 새 한도 - 이전 한도)
+        int oldLimit = user.getPlanType().getMaxTokens();
+        int newLimit = newTier.getMaxTokens();
+        long updatedTokens = user.getRemainingTokens() + (newLimit - oldLimit);
+
+        Subscription history = user.changePlan(newTier);
+
+        subscriptionRepository.save(history);
+
+        return PlanChangeResponse.of(newTier, "플랜 변경이 완료되었습니다.");
     }
 
     /**
@@ -201,3 +243,5 @@ public class UserServiceImpl implements UserService {
                 .orElseGet(() -> UserSearchResponse.notFound(email));
     }
 }
+
+
