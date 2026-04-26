@@ -81,18 +81,14 @@ public class ProjectInvitationServiceImpl implements ProjectInvitationService {
                     throw new BusinessException(ErrorCode.INVITATION_ALREADY_MEMBER);
 
                 case PENDING -> {
-                    // 스케줄러가 EXPIRED로 전환하기 전 윈도우 — PENDING이지만 사실상 만료된 경우
-                    // 새 초대 row 생성 흐름으로 빠진다
-                    if (!latest.isExpired()) {
-                        // lastSentAt만 갱신해서 재발송으로 처리
-                        LocalDateTime cooldownUntil = latest.getLastSentAt()
-                                .plusHours(INVITATION_COOLDOWN_HOURS);
-                        if (LocalDateTime.now().isBefore(cooldownUntil)) {
-                            throw new BusinessException(ErrorCode.INVITATION_COOLDOWN);
-                        }
-                        latest.resend();
-                        return ProjectInvitationResponse.from(latest);
+                    // lastSentAt만 갱신해서 재발송으로 처리
+                    LocalDateTime cooldownUntil = latest.getLastSentAt()
+                            .plusHours(INVITATION_COOLDOWN_HOURS);
+                    if (LocalDateTime.now().isBefore(cooldownUntil)) {
+                        throw new BusinessException(ErrorCode.INVITATION_COOLDOWN);
                     }
+                    latest.resend();
+                    return ProjectInvitationResponse.from(latest);
                 }
 
                 case EXPIRED, REJECTED -> {
@@ -128,8 +124,8 @@ public class ProjectInvitationServiceImpl implements ProjectInvitationService {
             throw new BusinessException(ErrorCode.PROJECT_ACCESS_DENIED);
         }
 
-        // 3. 만료 검증 — INVITATION_EXPIRED (스케줄러 전환 전 윈도우 가드)
-        if (invitation.isExpired()) {
+        // 3. 만료 검증 — INVITATION_EXPIRED (스케줄러가 전환한 EXPIRED 상태)
+        if (invitation.getStatus() == InvitationStatus.EXPIRED) {
             throw new BusinessException(ErrorCode.INVITATION_EXPIRED);
         }
 
