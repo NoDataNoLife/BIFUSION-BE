@@ -14,6 +14,7 @@ import com.nodatanolife.bifusion_be.domain.user.entity.User;
 import com.nodatanolife.bifusion_be.domain.user.repository.UserRepository;
 import com.nodatanolife.bifusion_be.global.exception.ErrorCode;
 import com.nodatanolife.bifusion_be.global.exception.business.BusinessException;
+import com.nodatanolife.bifusion_be.global.mail.MailService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -35,6 +36,7 @@ public class ProjectInvitationServiceImpl implements ProjectInvitationService {
     private final ProjectRepository projectRepository;
     private final UserRepository userRepository;
     private final ProjectMemberRepository projectMemberRepository;
+    private final MailService mailService;
 
     /**
      * 프로젝트 초대 생성
@@ -88,6 +90,7 @@ public class ProjectInvitationServiceImpl implements ProjectInvitationService {
                         throw new BusinessException(ErrorCode.INVITATION_COOLDOWN);
                     }
                     latest.resend();
+                    mailService.sendInvitationMail(email, project.getTitle(), inviter.getName());
                     return ProjectInvitationResponse.from(latest);
                 }
 
@@ -102,6 +105,12 @@ public class ProjectInvitationServiceImpl implements ProjectInvitationService {
                 .orElseGet(() -> ProjectInvitation.ofUnregistered(project, inviter, email, DEFAULT_ROLE));
 
         ProjectInvitation saved = projectInvitationRepository.save(invitation);
+
+        if (inviteeOpt.isPresent()) {
+            mailService.sendInvitationMail(email, project.getTitle(), inviter.getName());
+        } else {
+            mailService.sendSignUpInvitationMail(email, project.getTitle(), inviter.getName());
+        }
         return ProjectInvitationResponse.from(saved);
     }
 
