@@ -98,4 +98,5 @@ public class GlobalExceptionHandler {
                         ErrorCode.INTERNAL_SERVER_ERROR.getMessage()
                 ));
     }
+
 }

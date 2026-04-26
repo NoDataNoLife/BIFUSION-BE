@@ -3,6 +3,7 @@ package com.nodatanolife.bifusion_be.domain.user.entity;
 import com.nodatanolife.bifusion_be.global.entity.BaseEntity;
 import jakarta.persistence.*;
 import lombok.*;
+import java.time.LocalDate;
 
 @Entity
 @Table(name = "users")
@@ -56,6 +57,13 @@ public class User extends BaseEntity {
 
     @Column(name = "reward_balance")
     private Integer rewardBalance;
+    @Enumerated(EnumType.STRING)
+    @Column(name = "plan_type", length = 10)
+    private SubscriptionTier planType;
+
+
+    @Column(name = "plan_start_date")
+    private LocalDate planStartDate;
 
     /**
      * 구글 소셜 로그인으로 처음 가입하는 신규 유저 생성
@@ -71,6 +79,8 @@ public class User extends BaseEntity {
         user.isOnboarded = false;
         user.remainingTokens = 0L;
         user.rewardBalance = 0;
+        user.planType = SubscriptionTier.BASIC;
+        user.planStartDate = null;
         return user;
     }
 
@@ -119,5 +129,19 @@ public class User extends BaseEntity {
     }
     public void updateProfileImageUrl(String profileImageUrl) {
         this.profileImageUrl = profileImageUrl;
+    }
+    /**
+     * 플랜 변경
+     */
+    public Subscription changePlan(SubscriptionTier newTier, long updatedTokens) {
+        this.remainingTokens = updatedTokens;
+        this.planType = newTier;
+        this.planStartDate = LocalDate.now();
+
+        return Subscription.builder()
+                .user(this)
+                .tier(newTier.name())
+                .startedAt(java.time.LocalDateTime.now())
+                .build();
     }
 }

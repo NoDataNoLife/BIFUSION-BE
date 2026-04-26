@@ -35,4 +35,13 @@ public class Subscription extends BaseCreatedEntity {
     @Column(name = "payment_method", length = 50)
     private String paymentMethod;
 
+    @Builder
+    public Subscription(User user, String tier, LocalDateTime startedAt, LocalDateTime expiresAt, Integer amount, String paymentMethod) {
+        this.user = user;
+        this.tier = tier;
+        this.startedAt = startedAt;
+        this.expiresAt = expiresAt;
+        this.amount = amount;
+        this.paymentMethod = paymentMethod;
+    }
 }
