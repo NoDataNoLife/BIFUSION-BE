@@ -140,36 +140,19 @@ public class UserServiceImpl implements UserService {
     /**
      * 플랜 변경
      */
-    @Override // 추가
+    @Override
     @Transactional
     public PlanChangeResponse changePlan(Long userId, SubscriptionTier newTier) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
 
-        // 1. 동일 플랜 체크 (this.subscriptionTier -> this.planType)
-        if (user.getPlanType() == newTier) {
-            throw new BusinessException(ErrorCode.ALREADY_SUBSCRIBED_PLAN);
-        }
-
-        // 2. 다운그레이드 제한 (PRO -> BASIC 시 30일 체크)
-        if (user.getPlanType() == SubscriptionTier.PRO && newTier == SubscriptionTier.BASIC) {
-            if (user.getPlanStartDate() != null) {
-                LocalDate canDowngradeDate = user.getPlanStartDate().plusDays(30);
-                if (LocalDate.now().isBefore(canDowngradeDate)) {
-                    throw new BusinessException(ErrorCode.PLAN_CHANGE_NOT_ALLOWED);
-                }
-            }
-        }
-
-        // 3. 잔여 토큰 계산 (현재 잔여 + 새 한도 - 이전 한도)
         int oldLimit = user.getPlanType().getMaxTokens();
         int newLimit = newTier.getMaxTokens();
         long updatedTokens = user.getRemainingTokens() + (newLimit - oldLimit);
 
-        Subscription history = user.changePlan(newTier);
+        Subscription history = user.changePlan(newTier, updatedTokens);
 
         subscriptionRepository.save(history);
-
         return PlanChangeResponse.of(newTier, "플랜 변경이 완료되었습니다.");
     }
 

@@ -133,21 +133,15 @@ public class User extends BaseEntity {
     /**
      * 플랜 변경
      */
-    public Subscription changePlan(SubscriptionTier newTier) {
-        // 1. 토큰 잔액 및 플랜 정보 업데이트
-        int oldLimit = this.planType.getMaxTokens();
-        int newLimit = newTier.getMaxTokens();
-        this.remainingTokens = this.remainingTokens + (newLimit - oldLimit);
-
+    public Subscription changePlan(SubscriptionTier newTier, long updatedTokens) {
+        this.remainingTokens = updatedTokens;
         this.planType = newTier;
         this.planStartDate = LocalDate.now();
 
-        // 2. 서비스에서 저장할 구독 이력(Subscription) 객체 생성 및 반환
         return Subscription.builder()
                 .user(this)
                 .tier(newTier.name())
                 .startedAt(java.time.LocalDateTime.now())
                 .build();
     }
-
 }

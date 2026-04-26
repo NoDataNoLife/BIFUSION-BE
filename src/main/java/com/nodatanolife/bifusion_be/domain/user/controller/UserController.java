@@ -106,17 +106,15 @@ public class UserController {
         return CommonResponse.success(response, "프로필 사진이 수정되었습니다.");
     }
 
-    @PutMapping("/users/me/plan")public CommonResponse<PlanChangeResponse> changePlan(
-
+    @PutMapping("/users/me/plan")
+    public CommonResponse<PlanChangeResponse> changePlan(
             @AuthenticationPrincipal CustomOAuth2User principal,
-
             @RequestBody PlanChangeRequest request) {
 
         PlanChangeResponse response = userService.changePlan(principal.getUser().getUserId(), request.planType());
 
         return CommonResponse.success(response);
     }
-
     /**
      * 온보딩 완료 처리
      * 최초 로그인 후 추가 정보 입력 시 호출
