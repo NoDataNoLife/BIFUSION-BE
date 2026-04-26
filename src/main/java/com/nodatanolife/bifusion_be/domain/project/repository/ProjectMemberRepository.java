@@ -6,4 +6,6 @@ import org.springframework.data.jpa.repository.JpaRepository;
 public interface ProjectMemberRepository extends JpaRepository<ProjectMember, Long> {
 
     void deleteByUser(User user);
+
+    boolean existsByProjectProjectIdAndUserUserId(Long projectId, Long userId);
 }

@@ -55,6 +55,12 @@ public enum ErrorCode {
     COLLABORATION_REQUEST_ALREADY_PROCESSED(HttpStatus.CONFLICT, "P006", "이미 처리된 협업 요청입니다."),
 
     /* ================================
+     * Invitation
+     * ================================ */
+    INVITATION_ALREADY_MEMBER(HttpStatus.CONFLICT, "PI001", "이미 프로젝트 멤버입니다."),
+    INVITATION_COOLDOWN(HttpStatus.TOO_MANY_REQUESTS, "PI002", "초대 재발송은 1시간 후에 가능합니다."),
+
+    /* ================================
      * File
      * ================================ */
     FILE_UPLOAD_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "F001", "파일 업로드 중 오류가 발생했습니다."),
