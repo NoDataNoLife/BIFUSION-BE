@@ -11,7 +11,6 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
-import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -56,7 +55,7 @@ public class FileServiceImpl implements FileService {
                 ? originalFilename.substring(0, originalFilename.lastIndexOf("."))
                 : originalFilename;
 
-        String filename = UUID.randomUUID() + "_" + originalFilename;
+        String filename = S3Service.buildUniqueFilename(originalFilename);
         String s3Key = "temp/" + filename;
         String url = s3Service.uploadFile(file, "temp", filename);
 

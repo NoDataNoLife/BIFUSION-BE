@@ -39,4 +39,25 @@ public class ExpertApplication extends BaseEntity {
 
     @Column(name = "reviewed_at")
     private LocalDateTime reviewedAt;
+
+    public static final String STATUS_PENDING = "PENDING";
+    public static final String STATUS_APPROVED = "APPROVED";
+    public static final String STATUS_REJECTED = "REJECTED";
+
+    public static ExpertApplication create(User user, String documentUrl) {
+        ExpertApplication application = new ExpertApplication();
+        application.user = user;
+        application.applicationDocumentUrl = documentUrl;
+        application.status = STATUS_PENDING;
+        application.appliedAt = LocalDateTime.now();
+        return application;
+    }
+
+    /**
+     * PENDING 상태 신청의 첨부 파일을 새 파일로 교체하고 신청 시각을 갱신한다.
+     */
+    public void replaceDocument(String documentUrl) {
+        this.applicationDocumentUrl = documentUrl;
+        this.appliedAt = LocalDateTime.now();
+    }
 }
