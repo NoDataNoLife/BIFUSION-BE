@@ -31,12 +31,24 @@ public class ProjectMember extends BaseEntity {
     @Column(name = "joined_at")
     private LocalDateTime joinedAt;
 
+    @Column(name = "is_public")
+    private Boolean isPublic;
+
     public static ProjectMember of(Project project, User user, String role) {
         ProjectMember member = new ProjectMember();
         member.project = project;
         member.user = user;
         member.role = role;
         member.joinedAt = LocalDateTime.now();
+        // 비공개 프로젝트는 무조건 비공개로 강제, 공개 프로젝트는 기본이 공개
+        member.isPublic = Boolean.TRUE.equals(project.getIsPublic());
         return member;
+    }
+
+    /**
+     * 마이페이지 공개 여부 변경
+     */
+    public void updateVisibility(boolean isPublic) {
+        this.isPublic = isPublic;
     }
 }

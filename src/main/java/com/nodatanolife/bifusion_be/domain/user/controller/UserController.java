@@ -1,9 +1,9 @@
 package com.nodatanolife.bifusion_be.domain.user.controller;
 
-import com.nodatanolife.bifusion_be.domain.user.entity.SubscriptionTier;
 import com.nodatanolife.bifusion_be.domain.user.dto.request.BioUpdateRequest;
 import com.nodatanolife.bifusion_be.domain.user.dto.request.PlanChangeRequest;
 import com.nodatanolife.bifusion_be.domain.user.dto.response.*;
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import org.springframework.web.multipart.MultipartFile;
@@ -13,6 +13,9 @@ import com.nodatanolife.bifusion_be.domain.user.dto.request.NicknameUpdateReques
 import com.nodatanolife.bifusion_be.domain.user.dto.request.OnboardingRequest;
 import com.nodatanolife.bifusion_be.domain.expert.dto.response.ExpertApplicationResponse;
 import com.nodatanolife.bifusion_be.domain.expert.service.ExpertService;
+import com.nodatanolife.bifusion_be.domain.project.dto.request.ProjectVisibilityUpdateRequest;
+import com.nodatanolife.bifusion_be.domain.project.dto.response.ProjectVisibilityUpdateResponse;
+import com.nodatanolife.bifusion_be.domain.project.service.ProjectService;
 import com.nodatanolife.bifusion_be.domain.user.service.UserService;
 import com.nodatanolife.bifusion_be.global.response.CommonResponse;
 import com.nodatanolife.bifusion_be.global.security.oauth2.CustomOAuth2User;
@@ -20,7 +23,6 @@ import com.nodatanolife.bifusion_be.global.security.util.CookieUtil;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpStatus;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
@@ -31,6 +33,7 @@ public class UserController {
 
     private final UserService userService;
     private final ExpertService expertService;
+    private final ProjectService projectService;
     private final CookieUtil cookieUtil;
 
     /**
@@ -179,5 +182,20 @@ public class UserController {
                 principal.getUser().getUserId(), certificationFile);
 
         return CommonResponse.success(response, "전문가 인증 신청이 완료되었습니다!");
+    }
+
+    /**
+     * 마이페이지에서 내가 참여한 프로젝트들의 공개 여부 일괄 변경
+     * 비공개 프로젝트는 공개로 변경 불가
+     */
+    @PutMapping("/users/me/projects/visibility")
+    public CommonResponse<ProjectVisibilityUpdateResponse> updateMyProjectVisibilities(
+            @AuthenticationPrincipal CustomOAuth2User principal,
+            @RequestBody @Valid ProjectVisibilityUpdateRequest request) {
+
+        ProjectVisibilityUpdateResponse response = projectService.updateMyProjectVisibilities(
+                principal.getUser().getUserId(), request);
+
+        return CommonResponse.success(response, "프로젝트 공개 설정을 변경했습니다.");
     }
 }
