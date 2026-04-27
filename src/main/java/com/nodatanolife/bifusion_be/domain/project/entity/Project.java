@@ -23,4 +23,7 @@ public class Project extends BaseEntity {
 
     @Column(name = "banner_image_url")
     private String bannerImageUrl;
+
+    @Column(name = "is_public")
+    private Boolean isPublic;
 }

@@ -1,12 +1,20 @@
 package com.nodatanolife.bifusion_be.domain.project.service;
 
+import com.nodatanolife.bifusion_be.domain.project.dto.request.ProjectVisibilityUpdateRequest;
+import com.nodatanolife.bifusion_be.domain.project.dto.response.ProjectVisibilityUpdateResponse;
+import com.nodatanolife.bifusion_be.domain.project.entity.ProjectMember;
 import com.nodatanolife.bifusion_be.domain.project.repository.ProjectFavoriteRepository;
 import com.nodatanolife.bifusion_be.domain.project.repository.ProjectInvitationRepository;
 import com.nodatanolife.bifusion_be.domain.project.repository.ProjectMemberRepository;
 import com.nodatanolife.bifusion_be.domain.user.entity.User;
+import com.nodatanolife.bifusion_be.global.exception.ErrorCode;
+import com.nodatanolife.bifusion_be.global.exception.business.BusinessException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.ArrayList;
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -26,5 +34,33 @@ public class ProjectServiceImpl implements ProjectService {
         projectFavoriteRepository.deleteByUser(user);
         projectMemberRepository.deleteByUser(user);
         projectInvitationRepository.deleteByInviterOrInvitee(user, user);
+    }
+
+    /**
+     * 마이페이지에서 자신이 참여한 여러 프로젝트의 공개 여부를 일괄 변경
+     */
+    @Override
+    public ProjectVisibilityUpdateResponse updateMyProjectVisibilities(
+            Long userId,
+            ProjectVisibilityUpdateRequest request
+    ) {
+        List<ProjectMember> updated = new ArrayList<>();
+
+        for (ProjectVisibilityUpdateRequest.Item item : request.items()) {
+            ProjectMember member = projectMemberRepository
+                    .findByProjectProjectIdAndUserUserId(item.projectId(), userId)
+                    .orElseThrow(() -> new BusinessException(ErrorCode.PROJECT_ACCESS_DENIED));
+
+            // 비공개 프로젝트를 공개로 변경 시도 차단
+            boolean projectIsPublic = Boolean.TRUE.equals(member.getProject().getIsPublic());
+            if (item.isPublic() && !projectIsPublic) {
+                throw new BusinessException(ErrorCode.PROJECT_VISIBILITY_PRIVATE_FORBIDDEN);
+            }
+
+            member.updateVisibility(item.isPublic());
+            updated.add(member);
+        }
+
+        return ProjectVisibilityUpdateResponse.from(updated);
     }
 }
