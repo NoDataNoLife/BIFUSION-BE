@@ -3,12 +3,10 @@ package com.nodatanolife.bifusion_be.domain.user.service;
 
 import com.nodatanolife.bifusion_be.domain.user.dto.response.*;
 import com.nodatanolife.bifusion_be.domain.user.dto.response.WebsiteUpdateResponse;
-import com.nodatanolife.bifusion_be.domain.file.service.S3Service;
 import com.nodatanolife.bifusion_be.domain.user.entity.SubscriptionTier;
 import com.nodatanolife.bifusion_be.domain.user.entity.Subscription;
 import com.nodatanolife.bifusion_be.domain.user.repository.SubscriptionRepository;
 import org.springframework.web.multipart.MultipartFile;
-import java.util.UUID;
 import java.time.LocalDate;
 import com.nodatanolife.bifusion_be.domain.activityLog.service.ActivityLogService;
 import com.nodatanolife.bifusion_be.domain.auth.service.AuthService;
@@ -16,6 +14,7 @@ import com.nodatanolife.bifusion_be.domain.comment.service.CommentService;
 import com.nodatanolife.bifusion_be.domain.dataset.service.DatasetService;
 import com.nodatanolife.bifusion_be.domain.expert.service.ExpertService;
 import com.nodatanolife.bifusion_be.domain.file.service.FileService;
+import com.nodatanolife.bifusion_be.domain.file.service.S3Service;
 import com.nodatanolife.bifusion_be.domain.job.service.JobService;
 import com.nodatanolife.bifusion_be.domain.notification.service.NotificationService;
 import com.nodatanolife.bifusion_be.domain.project.service.ProjectService;
@@ -61,7 +60,6 @@ public class UserServiceImpl implements UserService {
     private final JobService jobService;
     private final ActivityLogService activityLogService;
     private final FileService fileService;
-    // 프로필사진 변경 관련
     private final S3Service s3Service;
 
     @Value("${deleted-user.email:deleted@bifusion.com}")
@@ -131,8 +129,7 @@ public class UserServiceImpl implements UserService {
     @Override
     public ProfileImageUpdateResponse updateProfileImage(Long userId, MultipartFile image) {
         User user = userRepository.findById(userId).orElseThrow(UserNotFoundException::new);
-        String filename = UUID.randomUUID() + "_" + image.getOriginalFilename();
-        String imageUrl = s3Service.uploadFile(image, "profile", filename);
+        String imageUrl = s3Service.uploadFile(image, "profile");
         user.updateProfileImageUrl(imageUrl);
         return ProfileImageUpdateResponse.from(user);
     }

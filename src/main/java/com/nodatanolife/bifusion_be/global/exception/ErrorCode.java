@@ -6,11 +6,6 @@ import org.springframework.http.HttpStatus;
 @Getter
 public enum ErrorCode {
     /* ================================
-     * 플랜변경 관련
-     * ================================ */
-    ALREADY_SUBSCRIBED_PLAN(HttpStatus.BAD_REQUEST, "U004", "이미 해당 플랜을 구독 중입니다."),
-    PLAN_CHANGE_NOT_ALLOWED(HttpStatus.BAD_REQUEST, "U005", "플랜 변경 가능 기간이 아닙니다."),
-    /* ================================
      * Common
      * ================================ */
     INTERNAL_SERVER_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "C001", "서버 오류가 발생했습니다."),
@@ -72,7 +67,20 @@ public enum ErrorCode {
      * ================================ */
     FILE_UPLOAD_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "F001", "파일 업로드 중 오류가 발생했습니다."),
     FILE_READ_FAILED(HttpStatus.BAD_REQUEST, "F002", "파일을 읽을 수 없습니다."),
-    FILE_DOWNLOAD_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "F003", "파일 다운로드 중 오류가 발생했습니다.");
+    FILE_DOWNLOAD_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "F003", "파일 다운로드 중 오류가 발생했습니다."),
+
+    /* ================================
+     * Expert Verification
+     * ================================ */
+    EXPERT_FILE_INVALID(HttpStatus.BAD_REQUEST, "EX001", "허용되지 않은 파일 형식입니다."),
+    EXPERT_FILE_TOO_LARGE(HttpStatus.BAD_REQUEST, "EX002", "파일 용량이 허용 범위를 초과했습니다."),
+    EXPERT_ALREADY_APPROVED(HttpStatus.CONFLICT, "EX003", "이미 전문가 인증이 완료된 사용자입니다."),
+
+    /* ================================
+     * Plan
+     * ================================ */
+    ALREADY_SUBSCRIBED_PLAN(HttpStatus.BAD_REQUEST, "U004", "이미 해당 플랜을 구독 중입니다."),
+    PLAN_CHANGE_NOT_ALLOWED(HttpStatus.BAD_REQUEST, "U005", "플랜 변경 가능 기간이 아닙니다.");
 
     private final HttpStatus status;
     private final String code;
