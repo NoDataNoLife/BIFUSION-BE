@@ -1,5 +1,6 @@
 package com.nodatanolife.bifusion_be.global.security.oauth2;
 
+import com.nodatanolife.bifusion_be.domain.project.service.ProjectInvitationService;
 import com.nodatanolife.bifusion_be.domain.user.entity.OauthAccount;
 import com.nodatanolife.bifusion_be.domain.user.entity.User;
 import com.nodatanolife.bifusion_be.domain.user.repository.OauthAccountRepository;
@@ -23,6 +24,7 @@ public class CustomOAuth2UserService implements OAuth2UserService<OAuth2UserRequ
 
     private final UserRepository userRepository;
     private final OauthAccountRepository oauthAccountRepository;
+    private final ProjectInvitationService projectInvitationService;
 
     @Override
     public OAuth2User loadUser(OAuth2UserRequest request) throws OAuth2AuthenticationException {
@@ -37,14 +39,18 @@ public class CustomOAuth2UserService implements OAuth2UserService<OAuth2UserRequ
         OauthAccount oauthAccount = oauthAccountRepository
                 .findByProviderAndProviderId(provider, providerId)
                 .orElseGet(() -> {
-                    User newUser = userRepository.findByEmail(email)
-                            .orElseGet(() -> userRepository.save(
-                                    User.createOAuthUser(email, name)));
-
+                    User user = userRepository.findByEmail(email)
+                            .orElseGet(() -> createUserWithPendingInvitations(email, name));
                     return oauthAccountRepository.save(
-                            OauthAccount.create(newUser, provider, providerId));
+                            OauthAccount.create(user, provider, providerId));
                 });
 
         return new CustomOAuth2User(oauthAccount.getUser(), attributes);
+    }
+
+    private User createUserWithPendingInvitations(String email, String name) {
+        User newUser = userRepository.save(User.createOAuthUser(email, name));
+        projectInvitationService.linkPendingInvitationsTo(newUser);
+        return newUser;
     }
 }
