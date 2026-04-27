@@ -87,4 +87,8 @@ public class ProjectInvitation extends BaseEntity {
         this.status = InvitationStatus.REJECTED;
         this.respondedAt = LocalDateTime.now();
     }
+
+    public void linkInvitee(User user) {
+        this.invitee = user;
+    }
 }

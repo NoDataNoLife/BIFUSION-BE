@@ -1,5 +1,6 @@
 package com.nodatanolife.bifusion_be.domain.project.repository;
 
+import com.nodatanolife.bifusion_be.domain.project.entity.InvitationStatus;
 import com.nodatanolife.bifusion_be.domain.project.entity.ProjectInvitation;
 import com.nodatanolife.bifusion_be.domain.user.entity.User;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -8,6 +9,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 
 public interface ProjectInvitationRepository extends JpaRepository<ProjectInvitation, Long> {
@@ -27,4 +29,6 @@ public interface ProjectInvitationRepository extends JpaRepository<ProjectInvita
     AND p.createdAt < :expiredBefore
     """)
     int bulkExpire(@Param("expiredBefore") LocalDateTime expiredBefore);
+
+    List<ProjectInvitation> findAllByInviteeEmailAndStatus(String email, InvitationStatus status);
 }

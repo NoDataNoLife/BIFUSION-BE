@@ -160,4 +160,16 @@ public class ProjectInvitationServiceImpl implements ProjectInvitationService {
 
         return InvitationRespondResponse.from(invitation);
     }
+
+    /**
+     * 신규 가입자에게 미가입 시점에 도착해 있던 PENDING 초대를 연결한다.
+     */
+    @Override
+    public void linkPendingInvitationsTo(User user) {
+        String email = user.getEmail().toLowerCase();
+
+        projectInvitationRepository
+                .findAllByInviteeEmailAndStatus(email, InvitationStatus.PENDING)
+                .forEach(invitation -> invitation.linkInvitee(user));
+    }
 }
