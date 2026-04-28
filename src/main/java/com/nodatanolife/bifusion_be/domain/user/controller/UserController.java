@@ -48,6 +48,16 @@ public class UserController {
     }
 
     /**
+     * 마이페이지 기본 정보 조회
+     */
+    @GetMapping("/users/{userId}")
+    public CommonResponse<MyPageBasicResponse> getMyPageBasic(
+            @PathVariable Long userId) {
+        MyPageBasicResponse response = userService.getMyPageBasic(userId);
+        return CommonResponse.success(response, "마이페이지 조회 성공!");
+    }
+
+    /**
      * 닉네임 수정
      * 인증된 유저의 닉네임 변경
      */

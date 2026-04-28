@@ -7,7 +7,6 @@ import com.nodatanolife.bifusion_be.domain.user.entity.SubscriptionTier;
 import com.nodatanolife.bifusion_be.domain.user.entity.Subscription;
 import com.nodatanolife.bifusion_be.domain.user.repository.SubscriptionRepository;
 import org.springframework.web.multipart.MultipartFile;
-import java.time.LocalDate;
 import com.nodatanolife.bifusion_be.domain.activityLog.service.ActivityLogService;
 import com.nodatanolife.bifusion_be.domain.auth.service.AuthService;
 import com.nodatanolife.bifusion_be.domain.comment.service.CommentService;
@@ -74,6 +73,17 @@ public class UserServiceImpl implements UserService {
     public UserResponse getMe(Long userId) {
         User user = userRepository.findById(userId).orElseThrow(UserNotFoundException::new);
         return UserResponse.from(user);
+    }
+
+    /**
+     * 마이페이지 기본 정보 조회
+     * userId 로 유저의 프로필 기본 정보를 반환
+     */
+    @Override
+    @Transactional(readOnly = true)
+    public MyPageBasicResponse getMyPageBasic(Long userId) {
+        User user = userRepository.findById(userId).orElseThrow(UserNotFoundException::new);
+        return MyPageBasicResponse.from(user);
     }
 
     /**
