@@ -99,5 +99,14 @@ public class ProjectController {
         String email = oAuth2User.getUser().getEmail();
         MemberRoleUpdateResponse response = projectService.updateMemberRole(projectId, userId, request, email);
         return CommonResponse.success(response, "프로젝트 멤버 역할 수정 성공!");
+
+    }
+        /**
+         * 관리/참여 중인 프로젝트 목록 조회
+         */
+    @GetMapping
+    public CommonResponse<MyProjectDashboardResponse> getMyProjects(@AuthenticationPrincipal CustomOAuth2User principal) {
+        MyProjectDashboardResponse response = projectService.getMyProjectDashboard(principal.getUser().getUserId());
+        return CommonResponse.success(response, "프로젝트 목록 조회 성공!");
     }
 }

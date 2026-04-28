@@ -14,6 +14,13 @@ import java.util.List;
 
 public interface ProjectMemberRepository extends JpaRepository<ProjectMember, Long> {
 
+    @Query("SELECT DISTINCT pm FROM ProjectMember pm " +
+            "JOIN FETCH pm.project p " +
+            "JOIN FETCH p.projectMembers m " +
+            "JOIN FETCH m.user " +
+            "WHERE pm.user.userId = :userId")
+    List<ProjectMember> findAllByUserIdWithProjectAndMembers(@Param("userId") Long userId);
+
     long countByProjectProjectIdAndRole(Long projectId, ProjectRole role);
 
     void deleteByUser(User user);

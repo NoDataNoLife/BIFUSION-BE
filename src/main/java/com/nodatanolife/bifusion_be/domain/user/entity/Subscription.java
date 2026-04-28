@@ -8,8 +8,6 @@ import java.time.LocalDateTime;
 @Entity
 @Table(name = "subscription")
 @Getter
-@Builder
-@AllArgsConstructor
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class Subscription extends BaseCreatedEntity {
 

@@ -6,7 +6,6 @@ import lombok.NoArgsConstructor;
 import java.util.List;
 
 @Getter
-@NoArgsConstructor
 @AllArgsConstructor(staticName = "of")
 public class MyProjectDashboardResponse {
     private List<ProjectDetailResponse> managingProjects;

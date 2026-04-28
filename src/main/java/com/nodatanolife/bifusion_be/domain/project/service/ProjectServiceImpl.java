@@ -213,15 +213,6 @@ public class ProjectServiceImpl implements ProjectService {
         projectMemberRepository.delete(targetMember);
     }
 
-    /**
-     * 관리/참여 중인 프로젝트 목록 조회 (develop 머지 반영)
-     */
-
-    @Override
-    @Transactional(readOnly = true)
-    public MyProjectDashboardResponse findAllProjectsByUserId(Long userId) {
-        return getMyProjectDashboard(userId);
-    }
 
     /**
      * 회원 탈퇴 시 프로젝트 관련 데이터 삭제
@@ -302,16 +293,13 @@ public class ProjectServiceImpl implements ProjectService {
     @Override
     @Transactional(readOnly = true)
     public MyProjectDashboardResponse getMyProjectDashboard(Long userId) {
-        List<ProjectMember> memberships = projectMemberRepository.findAllByUser_UserId(userId);
-
+        List<ProjectMember> memberships = projectMemberRepository.findAllByUserIdWithProjectAndMembers(userId);
         List<ProjectDetailResponse> managingProjects = memberships.stream()
-                .filter(m -> "MANAGER".equals(m.getRole()))
-                .map(this::convertToDetailResponse)
+                .filter(m -> m.getRole() == ProjectRole.MANAGER)                .map(this::convertToDetailResponse)
                 .collect(Collectors.toList());
 
         List<ProjectDetailResponse> participatingProjects = memberships.stream()
-                .filter(m -> "MEMBER".equals(m.getRole()))
-                .map(this::convertToDetailResponse)
+                .filter(m -> m.getRole() == ProjectRole.MEMBER)                .map(this::convertToDetailResponse)
                 .collect(Collectors.toList());
 
         return MyProjectDashboardResponse.of(managingProjects, participatingProjects);
@@ -323,10 +311,7 @@ public class ProjectServiceImpl implements ProjectService {
     private ProjectDetailResponse convertToDetailResponse(ProjectMember membership) {
         Project project = membership.getProject();
 
-        List<ProjectMember> allMembersInProject = projectMemberRepository.findAllByProject(project);
-
-        List<ProjectMemberResponse> memberResponses = allMembersInProject.stream()
-                .map(pm -> new ProjectMemberResponse(
+        List<ProjectMemberResponse> memberResponses = project.getProjectMembers().stream()                .map(pm -> new ProjectMemberResponse(
                         pm.getUser().getUserId(),
                         pm.getUser().getNickname(),
                         pm.getUser().getProfileImageUrl()

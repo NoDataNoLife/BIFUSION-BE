@@ -34,6 +34,5 @@ public interface ProjectService {
 
     MyProjectDashboardResponse getMyProjectDashboard(Long userId);
 
-    MyProjectDashboardResponse findAllProjectsByUserId(Long userId);
 }
 
