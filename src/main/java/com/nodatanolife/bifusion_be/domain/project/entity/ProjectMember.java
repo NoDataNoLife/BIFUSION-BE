@@ -25,8 +25,9 @@ public class ProjectMember extends BaseEntity {
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
+    @Enumerated(EnumType.STRING)
     @Column(name = "role", length = 20)
-    private String role;
+    private ProjectRole role;
 
     @Column(name = "joined_at")
     private LocalDateTime joinedAt;
@@ -34,7 +35,7 @@ public class ProjectMember extends BaseEntity {
     @Column(name = "is_public")
     private Boolean isPublic;
 
-    public static ProjectMember of(Project project, User user, String role) {
+    public static ProjectMember of(Project project, User user, ProjectRole role) {
         ProjectMember member = new ProjectMember();
         member.project = project;
         member.user = user;
