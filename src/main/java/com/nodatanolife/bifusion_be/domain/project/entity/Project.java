@@ -26,4 +26,14 @@ public class Project extends BaseEntity {
 
     @Column(name = "is_public")
     private Boolean isPublic;
+
+    private Project(String title, String description, Boolean isPublic) {
+        this.title = title;
+        this.description = description;
+        this.isPublic = (isPublic != null) ? isPublic : true;
+    }
+
+    public static Project of(String title, String description, Boolean isPublic) {
+        return new Project(title, description, isPublic);
+    }
 }

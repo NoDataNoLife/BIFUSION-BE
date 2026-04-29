@@ -1,5 +1,6 @@
 package com.nodatanolife.bifusion_be.domain.project.service;
 
+import com.nodatanolife.bifusion_be.domain.project.entity.ProjectRole;
 import com.nodatanolife.bifusion_be.domain.project.dto.response.InvitationRespondResponse;
 import com.nodatanolife.bifusion_be.domain.project.dto.response.ProjectInvitationResponse;
 import com.nodatanolife.bifusion_be.domain.project.entity.InvitationAction;
@@ -30,7 +31,7 @@ public class ProjectInvitationServiceImpl implements ProjectInvitationService {
     // 동일 PENDING 초대에 대한 재발송 쿨다운 (시간 단위).
     private static final int INVITATION_COOLDOWN_HOURS = 1;
 
-    private static final String DEFAULT_ROLE = "MEMBER";
+    private static final ProjectRole DEFAULT_ROLE = ProjectRole.MEMBER;
 
     private final ProjectInvitationRepository projectInvitationRepository;
     private final ProjectRepository projectRepository;

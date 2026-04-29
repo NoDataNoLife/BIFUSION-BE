@@ -32,8 +32,9 @@ public class ProjectInvitation extends BaseEntity {
     @Column(name = "invitee_email", length = 255)
     private String inviteeEmail;
 
+    @Enumerated(EnumType.STRING)
     @Column(name = "role", length = 20)
-    private String role;
+    private ProjectRole role;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "status", length = 20)
@@ -49,7 +50,7 @@ public class ProjectInvitation extends BaseEntity {
     private Boolean isPublic;
 
     // 가입자 초대
-    public static ProjectInvitation ofRegistered(Project project, User inviter, User invitee, String role) {
+    public static ProjectInvitation ofRegistered(Project project, User inviter, User invitee, ProjectRole role) {
         ProjectInvitation invitation = new ProjectInvitation();
         invitation.project = project;
         invitation.inviter = inviter;
@@ -62,7 +63,7 @@ public class ProjectInvitation extends BaseEntity {
     }
 
     // 미가입자 초대
-    public static ProjectInvitation ofUnregistered(Project project, User inviter, String email, String role) {
+    public static ProjectInvitation ofUnregistered(Project project, User inviter, String email, ProjectRole role) {
         ProjectInvitation invitation = new ProjectInvitation();
         invitation.project = project;
         invitation.inviter = inviter;
