@@ -1,5 +1,6 @@
 package com.nodatanolife.bifusion_be.domain.project.controller;
 
+import com.nodatanolife.bifusion_be.domain.project.dto.response.ProjectInfoResponse;
 import com.nodatanolife.bifusion_be.domain.project.dto.request.ProjectCreateRequest;
 import com.nodatanolife.bifusion_be.domain.project.dto.response.ProjectCreateResponse;
 import com.nodatanolife.bifusion_be.domain.project.service.ProjectService;
@@ -27,4 +28,14 @@ public class ProjectController {
 
         return ResponseEntity.ok(response);
     }
+    @GetMapping("/{projectId}")
+    public ResponseEntity<ProjectInfoResponse> getProjectInfo(
+            @PathVariable Long projectId,
+            @AuthenticationPrincipal CustomOAuth2User oAuth2User
+    ) {
+        String email = oAuth2User.getUser().getEmail();
+        ProjectInfoResponse response = projectService.getProjectInfo(projectId, email);
+        return ResponseEntity.ok(response);
+    }
+
 }

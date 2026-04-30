@@ -1,5 +1,6 @@
 package com.nodatanolife.bifusion_be.domain.project.service;
 
+import com.nodatanolife.bifusion_be.domain.project.dto.response.ProjectInfoResponse;
 import com.nodatanolife.bifusion_be.domain.project.entity.ProjectRole;
 import com.nodatanolife.bifusion_be.domain.user.repository.UserRepository;
 import com.nodatanolife.bifusion_be.domain.project.repository.ProjectRepository;
@@ -122,5 +123,26 @@ public class ProjectServiceImpl implements ProjectService {
         }
 
         return ProjectVisibilityUpdateResponse.from(updated);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public ProjectInfoResponse getProjectInfo(Long projectId, String email) {
+        Project project = projectRepository.findById(projectId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.PROJECT_NOT_FOUND));
+
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
+
+        boolean isMember = projectMemberRepository
+                .existsByProjectProjectIdAndUserUserId(projectId, user.getUserId());
+        if (!isMember) {
+            throw new BusinessException(ErrorCode.PROJECT_ACCESS_DENIED);
+        }
+
+        List<ProjectMember> members = projectMemberRepository
+                .findByProjectProjectId(projectId);
+
+        return ProjectInfoResponse.of(project, members);
     }
 }
