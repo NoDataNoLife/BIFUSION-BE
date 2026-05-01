@@ -8,6 +8,8 @@ import java.util.Optional;
 
 public interface ProjectMemberRepository extends JpaRepository<ProjectMember, Long> {
 
+    long countByProjectProjectIdAndRole(Long projectId, String role);
+
     void deleteByUser(User user);
 
     boolean existsByProjectProjectIdAndUserUserId(Long projectId, Long userId);

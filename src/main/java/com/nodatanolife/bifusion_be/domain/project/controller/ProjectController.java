@@ -6,7 +6,6 @@ import com.nodatanolife.bifusion_be.domain.project.dto.response.ProjectCreateRes
 import com.nodatanolife.bifusion_be.domain.project.service.ProjectService;
 import com.nodatanolife.bifusion_be.global.response.CommonResponse;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import com.nodatanolife.bifusion_be.global.security.oauth2.CustomOAuth2User;
 import org.springframework.web.bind.annotation.*;
@@ -28,5 +27,16 @@ public class ProjectController {
         ProjectCreateResponse response = projectService.createProject(request, email);
 
         return CommonResponse.success(response);
+    }
+
+    @DeleteMapping("/{projectId}/members/{userId}")
+    public CommonResponse<Void> deleteMember(
+            @PathVariable Long projectId,
+            @PathVariable Long userId,
+            @AuthenticationPrincipal CustomOAuth2User oAuth2User) {
+        String email = oAuth2User.getUser().getEmail();
+        projectService.deleteMember(projectId, userId, email);
+        return CommonResponse.success(null, "프로젝트 멤버가 삭제되었습니다.");
+
     }
 }

@@ -7,7 +7,12 @@ import com.nodatanolife.bifusion_be.domain.project.dto.response.ProjectVisibilit
 import com.nodatanolife.bifusion_be.domain.user.entity.User;
 
 public interface ProjectService {
+
+
+    void deleteMember(Long projectId, Long targetUserId, String email);
+
     void deleteByUser(User user);
+
     ProjectVisibilityUpdateResponse updateMyProjectVisibilities(Long userId, ProjectVisibilityUpdateRequest request);
 
     ProjectCreateResponse createProject(ProjectCreateRequest request, String email);
