@@ -53,6 +53,8 @@ public enum ErrorCode {
     COLLABORATION_REQUEST_NOT_FOUND(HttpStatus.NOT_FOUND, "P005", "협업 요청을 찾을 수 없습니다."),
     COLLABORATION_REQUEST_ALREADY_PROCESSED(HttpStatus.CONFLICT, "P006", "이미 처리된 협업 요청입니다."),
     PROJECT_VISIBILITY_PRIVATE_FORBIDDEN(HttpStatus.BAD_REQUEST, "P007", "비공개 프로젝트는 마이페이지에 공개로 설정할 수 없습니다."),
+    PROJECT_SAME_ROLE(HttpStatus.BAD_REQUEST, "P009", "이미 동일한 역할입니다."),
+
 
     /* ================================
      * Invitation

@@ -35,7 +35,12 @@ public class ProjectMember extends BaseEntity {
     @Column(name = "is_public")
     private Boolean isPublic;
 
+    public void updateRole(ProjectRole role) {
+        this.role = role;
+    }
+
     public static ProjectMember of(Project project, User user, ProjectRole role) {
+
         ProjectMember member = new ProjectMember();
         member.project = project;
         member.user = user;

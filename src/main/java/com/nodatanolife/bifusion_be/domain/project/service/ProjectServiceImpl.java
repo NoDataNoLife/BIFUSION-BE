@@ -6,6 +6,8 @@ import com.nodatanolife.bifusion_be.domain.project.repository.ProjectRepository;
 import com.nodatanolife.bifusion_be.domain.project.entity.Project;
 import com.nodatanolife.bifusion_be.domain.project.dto.response.ProjectCreateResponse;
 import com.nodatanolife.bifusion_be.domain.project.dto.request.ProjectCreateRequest;
+import com.nodatanolife.bifusion_be.domain.project.dto.request.MemberRoleUpdateRequest;
+import com.nodatanolife.bifusion_be.domain.project.dto.response.MemberRoleUpdateResponse;
 import com.nodatanolife.bifusion_be.domain.project.dto.request.ProjectVisibilityUpdateRequest;
 import com.nodatanolife.bifusion_be.domain.project.dto.response.ProjectVisibilityUpdateResponse;
 import com.nodatanolife.bifusion_be.domain.project.entity.ProjectMember;
@@ -90,5 +92,35 @@ public class ProjectServiceImpl implements ProjectService {
         }
 
         return ProjectVisibilityUpdateResponse.from(updated);
+    }
+
+    @Override
+    @Transactional
+    public MemberRoleUpdateResponse updateMemberRole(Long projectId, Long targetUserId, MemberRoleUpdateRequest request, String email) {
+        User requester = userRepository.findByEmail(email)
+                .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
+
+        // 요청자가 MANAGER인지 확인
+        ProjectMember requesterMember = projectMemberRepository
+                .findByProjectProjectIdAndUserUserId(projectId, requester.getUserId())
+                .orElseThrow(() -> new BusinessException(ErrorCode.PROJECT_ACCESS_DENIED));
+
+        if (!"MANAGER".equals(requesterMember.getRole())) {
+            throw new BusinessException(ErrorCode.PROJECT_ACCESS_DENIED);
+        }
+
+        // 대상 멤버 확인
+        ProjectMember targetMember = projectMemberRepository
+                .findByProjectProjectIdAndUserUserId(projectId, targetUserId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.PROJECT_MEMBER_NOT_FOUND));
+
+        // 이미 동일한 역할인 경우
+        if (targetMember.getRole().equals(request.role())) {
+            throw new BusinessException(ErrorCode.PROJECT_SAME_ROLE);
+        }
+
+        targetMember.updateRole(request.role());
+
+        return MemberRoleUpdateResponse.of(targetMember);
     }
 }
