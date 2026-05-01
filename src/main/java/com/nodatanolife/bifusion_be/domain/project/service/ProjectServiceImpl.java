@@ -1,11 +1,13 @@
 package com.nodatanolife.bifusion_be.domain.project.service;
 
+import com.nodatanolife.bifusion_be.domain.project.entity.Project;
 import com.nodatanolife.bifusion_be.domain.project.entity.ProjectRole;
 import com.nodatanolife.bifusion_be.domain.user.repository.UserRepository;
 import com.nodatanolife.bifusion_be.domain.project.repository.ProjectRepository;
-import com.nodatanolife.bifusion_be.domain.project.entity.Project;
 import com.nodatanolife.bifusion_be.domain.project.dto.response.ProjectCreateResponse;
 import com.nodatanolife.bifusion_be.domain.project.dto.request.ProjectCreateRequest;
+import com.nodatanolife.bifusion_be.domain.project.dto.response.ProjectUpdateResponse;
+import com.nodatanolife.bifusion_be.domain.project.dto.request.ProjectUpdateRequest;
 import com.nodatanolife.bifusion_be.domain.project.dto.request.ProjectVisibilityUpdateRequest;
 import com.nodatanolife.bifusion_be.domain.project.dto.response.ProjectVisibilityUpdateResponse;
 import com.nodatanolife.bifusion_be.domain.project.entity.ProjectMember;
@@ -52,7 +54,33 @@ public class ProjectServiceImpl implements ProjectService {
         ProjectMember manager = ProjectMember.of(savedProject, owner, ProjectRole.MANAGER);
         projectMemberRepository.save(manager);
 
-        return ProjectCreateResponse.of(savedProject, List.of(ProjectCreateResponse.MemberResponse.from(manager)));    }
+        return ProjectCreateResponse.of(savedProject, List.of(ProjectCreateResponse.MemberResponse.from(manager)));
+    }
+
+    /**
+     * 프로젝트 기본정보 수정
+     */
+    @Override
+    @Transactional
+    public ProjectUpdateResponse updateProject(Long projectId, ProjectUpdateRequest request, String email) {
+        Project project = projectRepository.findById(projectId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.PROJECT_NOT_FOUND));
+
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
+
+        ProjectMember member = projectMemberRepository
+                .findByProjectProjectIdAndUserUserId(projectId, user.getUserId())
+                .orElseThrow(() -> new BusinessException(ErrorCode.PROJECT_ACCESS_DENIED));
+
+        if (member.getRole() != ProjectRole.MANAGER) {
+            throw new BusinessException(ErrorCode.PROJECT_ACCESS_DENIED);
+        }
+
+        project.update(request.title(), request.description(), request.bannerImageUrl());
+
+        return ProjectUpdateResponse.of(project);
+    }
     /**
      * 회원 탈퇴 시 프로젝트 관련 데이터 삭제
      * 즐겨찾기, 멤버, 초대 내역 삭제
