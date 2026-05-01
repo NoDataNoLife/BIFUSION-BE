@@ -39,6 +39,17 @@ public class Comment extends BaseEntity {
     @Column(name = "is_accepted")
     private Boolean isAccepted;
 
+    public static Comment create(User user, Long targetId, String targetType, String content) {
+        Comment comment = new Comment();
+        comment.user = user;
+        comment.targetId = targetId;
+        comment.targetType = targetType;
+        comment.content = content;
+        comment.isExpertReply = false;
+        comment.isAccepted = false;
+        return comment;
+    }
+
     public void anonymize(User deletedUser) {
         this.user = deletedUser;
     }
