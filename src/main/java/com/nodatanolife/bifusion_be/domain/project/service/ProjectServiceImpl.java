@@ -6,6 +6,7 @@ import com.nodatanolife.bifusion_be.domain.project.repository.ProjectRepository;
 import com.nodatanolife.bifusion_be.domain.project.entity.Project;
 import com.nodatanolife.bifusion_be.domain.project.dto.response.ProjectCreateResponse;
 import com.nodatanolife.bifusion_be.domain.project.dto.request.ProjectCreateRequest;
+import com.nodatanolife.bifusion_be.domain.project.dto.response.ProjectInfoResponse;
 import com.nodatanolife.bifusion_be.domain.project.dto.request.ProjectVisibilityUpdateRequest;
 import com.nodatanolife.bifusion_be.domain.project.dto.response.ProjectVisibilityUpdateResponse;
 import com.nodatanolife.bifusion_be.domain.project.entity.ProjectMember;
@@ -53,6 +54,31 @@ public class ProjectServiceImpl implements ProjectService {
         projectMemberRepository.save(manager);
 
         return ProjectCreateResponse.of(savedProject, List.of(ProjectCreateResponse.MemberResponse.from(manager)));    }
+
+    /**
+     * 프로젝트 기본 정보 조회 
+     */
+    @Override
+    @Transactional(readOnly = true)
+    public ProjectInfoResponse getProjectInfo(Long projectId, String email) {
+        Project project = projectRepository.findById(projectId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.PROJECT_NOT_FOUND));
+
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
+
+        boolean isMember = projectMemberRepository
+                .existsByProjectProjectIdAndUserUserId(projectId, user.getUserId());
+        if (!isMember) {
+            throw new BusinessException(ErrorCode.PROJECT_ACCESS_DENIED);
+        }
+
+        List<ProjectMember> members = projectMemberRepository
+                .findByProjectProjectId(projectId);
+
+        return ProjectInfoResponse.of(project, members);
+    }
+    
     /**
      * 회원 탈퇴 시 프로젝트 관련 데이터 삭제
      * 즐겨찾기, 멤버, 초대 내역 삭제
