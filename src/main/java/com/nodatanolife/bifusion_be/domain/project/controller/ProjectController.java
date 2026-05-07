@@ -1,5 +1,6 @@
 package com.nodatanolife.bifusion_be.domain.project.controller;
 
+import jakarta.validation.Valid;
 import com.nodatanolife.bifusion_be.domain.project.dto.request.ProjectCreateRequest;
 import com.nodatanolife.bifusion_be.domain.project.dto.response.ProjectCreateResponse;
 import com.nodatanolife.bifusion_be.domain.project.service.ProjectService;
@@ -18,13 +19,14 @@ public class ProjectController {
     private final ProjectService projectService;
 
     @PostMapping
-    public ResponseEntity<CommonResponse<ProjectCreateResponse>> createProject(
-            @RequestBody ProjectCreateRequest request,
+    public CommonResponse<ProjectCreateResponse> createProject(
+            @Valid @RequestBody ProjectCreateRequest request,
             @AuthenticationPrincipal CustomOAuth2User oAuth2User
     ) {
         String email = oAuth2User.getUser().getEmail();
 
         ProjectCreateResponse response = projectService.createProject(request, email);
 
-        return ResponseEntity.ok(CommonResponse.success(response));    }
+        return CommonResponse.success(response);
+    }
 }

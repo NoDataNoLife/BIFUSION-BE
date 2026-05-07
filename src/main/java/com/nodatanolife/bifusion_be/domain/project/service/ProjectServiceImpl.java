@@ -38,7 +38,6 @@ public class ProjectServiceImpl implements ProjectService {
      * 프로젝트 생성
      */
     @Override
-    @Transactional
     public ProjectCreateResponse createProject(ProjectCreateRequest request, String email) {
         User owner = userRepository.findByEmail(email)
                 .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
