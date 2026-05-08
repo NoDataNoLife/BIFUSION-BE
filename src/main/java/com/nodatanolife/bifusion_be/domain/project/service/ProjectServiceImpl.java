@@ -1,5 +1,11 @@
 package com.nodatanolife.bifusion_be.domain.project.service;
 
+import com.nodatanolife.bifusion_be.domain.project.entity.ProjectRole;
+import com.nodatanolife.bifusion_be.domain.user.repository.UserRepository;
+import com.nodatanolife.bifusion_be.domain.project.repository.ProjectRepository;
+import com.nodatanolife.bifusion_be.domain.project.entity.Project;
+import com.nodatanolife.bifusion_be.domain.project.dto.response.ProjectCreateResponse;
+import com.nodatanolife.bifusion_be.domain.project.dto.request.ProjectCreateRequest;
 import com.nodatanolife.bifusion_be.domain.project.dto.request.ProjectVisibilityUpdateRequest;
 import com.nodatanolife.bifusion_be.domain.project.dto.response.ProjectVisibilityUpdateResponse;
 import com.nodatanolife.bifusion_be.domain.project.entity.ProjectMember;
@@ -21,10 +27,32 @@ import java.util.List;
 @Transactional
 public class ProjectServiceImpl implements ProjectService {
 
+    private final ProjectRepository projectRepository;
     private final ProjectFavoriteRepository projectFavoriteRepository;
     private final ProjectMemberRepository projectMemberRepository;
+    private final UserRepository userRepository;
     private final ProjectInvitationRepository projectInvitationRepository;
 
+
+    /**
+     * 프로젝트 생성
+     */
+    @Override
+    public ProjectCreateResponse createProject(ProjectCreateRequest request, String email) {
+        User owner = userRepository.findByEmail(email)
+                .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
+
+        Project project = Project.of(
+                request.title(),
+                request.description(),
+                request.isPublic()
+        );
+        Project savedProject = projectRepository.save(project);
+
+        ProjectMember manager = ProjectMember.of(savedProject, owner, ProjectRole.MANAGER);
+        projectMemberRepository.save(manager);
+
+        return ProjectCreateResponse.of(savedProject, List.of(ProjectCreateResponse.MemberResponse.from(manager)));    }
     /**
      * 회원 탈퇴 시 프로젝트 관련 데이터 삭제
      * 즐겨찾기, 멤버, 초대 내역 삭제
