@@ -10,6 +10,8 @@ import com.nodatanolife.bifusion_be.global.response.CommonResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import com.nodatanolife.bifusion_be.global.security.oauth2.CustomOAuth2User;
+import com.nodatanolife.bifusion_be.domain.project.dto.request.MemberRoleUpdateRequest;
+import com.nodatanolife.bifusion_be.domain.project.dto.response.MemberRoleUpdateResponse;
 import com.nodatanolife.bifusion_be.domain.project.dto.response.ProjectInfoResponse;
 import org.springframework.web.bind.annotation.*;
 
@@ -74,5 +76,16 @@ public class ProjectController {
         projectService.deleteMember(projectId, userId, email);
         return CommonResponse.success(null, "프로젝트 멤버가 삭제되었습니다.");
 
+    }
+
+    @PutMapping("/{projectId}/members/{userId}")
+    public CommonResponse<MemberRoleUpdateResponse> updateMemberRole(
+            @PathVariable Long projectId,
+            @PathVariable Long userId,
+            @RequestBody MemberRoleUpdateRequest request,
+            @AuthenticationPrincipal CustomOAuth2User oAuth2User) {
+        String email = oAuth2User.getUser().getEmail();
+        MemberRoleUpdateResponse response = projectService.updateMemberRole(projectId, userId, request, email);
+        return CommonResponse.success(response, "프로젝트 멤버 역할이 성공적으로 수정되었습니다.");
     }
 }
