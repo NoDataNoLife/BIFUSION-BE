@@ -5,6 +5,7 @@ import com.nodatanolife.bifusion_be.domain.user.entity.User;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.Optional;
+import java.util.List;
 
 public interface ProjectMemberRepository extends JpaRepository<ProjectMember, Long> {
 
@@ -15,4 +16,7 @@ public interface ProjectMemberRepository extends JpaRepository<ProjectMember, Lo
     boolean existsByProjectProjectIdAndUserUserId(Long projectId, Long userId);
 
     Optional<ProjectMember> findByProjectProjectIdAndUserUserId(Long projectId, Long userId);
+
+    List<ProjectMember> findByProjectProjectId(Long projectId);
+
 }
