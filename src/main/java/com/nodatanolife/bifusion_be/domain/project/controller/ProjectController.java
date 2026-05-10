@@ -56,13 +56,16 @@ public class ProjectController {
   
     /**
      * 내가 참여한 프로젝트 목록 조회 (MANAGER / MEMBER 모두 포함)
+     * 커서 기반 페이지네이션, 기본 4개
      */
     @GetMapping("/me")
     public CommonResponse<MyProjectsResponse> getMyProjects(
+            @RequestParam(required = false) String cursor,
+            @RequestParam(defaultValue = "4") int size,
             @AuthenticationPrincipal CustomOAuth2User oAuth2User
     ) {
         String email = oAuth2User.getUser().getEmail();
-        MyProjectsResponse response = projectService.getMyProjects(email);
+        MyProjectsResponse response = projectService.getMyProjects(email, cursor, size);
 
         return CommonResponse.success(response, "참여한 프로젝트 목록 조회 성공!");
     }

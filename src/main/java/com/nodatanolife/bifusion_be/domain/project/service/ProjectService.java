@@ -20,7 +20,7 @@ public interface ProjectService {
 
     ProjectInfoResponse getProjectInfo(Long projectId, String email);
 
-    MyProjectsResponse getMyProjects(String email);
+    MyProjectsResponse getMyProjects(String email, String cursor, int size);
 
     void deleteByUser(User user);
 
