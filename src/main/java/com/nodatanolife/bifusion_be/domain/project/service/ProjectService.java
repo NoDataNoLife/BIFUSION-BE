@@ -4,12 +4,14 @@ import com.nodatanolife.bifusion_be.domain.project.dto.request.ProjectCreateRequ
 import com.nodatanolife.bifusion_be.domain.project.dto.response.ProjectCreateResponse;
 import com.nodatanolife.bifusion_be.domain.project.dto.request.ProjectUpdateRequest;
 import com.nodatanolife.bifusion_be.domain.project.dto.response.ProjectUpdateResponse;
+import com.nodatanolife.bifusion_be.domain.project.dto.response.ProjectInfoResponse;
 import com.nodatanolife.bifusion_be.domain.project.dto.request.ProjectVisibilityUpdateRequest;
 import com.nodatanolife.bifusion_be.domain.project.dto.response.ProjectVisibilityUpdateResponse;
 import com.nodatanolife.bifusion_be.domain.user.entity.User;
 
-public interface ProjectService
-{
+public interface ProjectService {
+
+    ProjectInfoResponse getProjectInfo(Long projectId, String email);
 
     void deleteByUser(User user);
 
