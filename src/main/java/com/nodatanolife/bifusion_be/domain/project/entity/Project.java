@@ -36,4 +36,10 @@ public class Project extends BaseEntity {
     public static Project of(String title, String description, Boolean isPublic) {
         return new Project(title, description, isPublic);
     }
+
+    public void update(String title, String description, String bannerImageUrl) {
+        this.title = title;
+        this.description = description;
+        this.bannerImageUrl = bannerImageUrl;
+    }
 }
