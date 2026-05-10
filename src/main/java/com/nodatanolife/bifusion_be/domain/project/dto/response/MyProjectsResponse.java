@@ -5,7 +5,10 @@ import com.nodatanolife.bifusion_be.domain.project.entity.ProjectMember;
 import java.util.List;
 
 public record MyProjectsResponse(
-        List<Item> items
+        List<Item> items,
+        String nextCursor,
+        boolean hasNext,
+        long totalCount
 ) {
     public record Item(
             Long projectId,
@@ -15,7 +18,12 @@ public record MyProjectsResponse(
             String role
     ) {}
 
-    public static MyProjectsResponse from(List<ProjectMember> members) {
+    public static MyProjectsResponse of(
+            List<ProjectMember> members,
+            String nextCursor,
+            boolean hasNext,
+            long totalCount
+    ) {
         List<Item> items = members.stream()
                 .map(m -> new Item(
                         m.getProject().getProjectId(),
@@ -26,6 +34,6 @@ public record MyProjectsResponse(
                 ))
                 .toList();
 
-        return new MyProjectsResponse(items);
+        return new MyProjectsResponse(items, nextCursor, hasNext, totalCount);
     }
 }

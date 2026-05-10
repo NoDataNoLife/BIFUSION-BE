@@ -3,10 +3,12 @@ package com.nodatanolife.bifusion_be.domain.project.repository;
 import com.nodatanolife.bifusion_be.domain.project.entity.ProjectMember;
 import com.nodatanolife.bifusion_be.domain.project.entity.ProjectRole;
 import com.nodatanolife.bifusion_be.domain.user.entity.User;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.time.LocalDateTime;
 import java.util.Optional;
 import java.util.List;
 
@@ -22,7 +24,34 @@ public interface ProjectMemberRepository extends JpaRepository<ProjectMember, Lo
 
     List<ProjectMember> findByProjectProjectId(Long projectId);
 
-    @Query("select pm from ProjectMember pm join fetch pm.project where pm.user.userId = :userId")
-    List<ProjectMember> findAllByUserIdWithProject(@Param("userId") Long userId);
+    long countByUserUserId(Long userId);
+
+    @Query("""
+            select pm from ProjectMember pm
+            join fetch pm.project
+            where pm.user.userId = :userId
+            order by pm.joinedAt desc, pm.projectMemberId desc
+            """)
+    List<ProjectMember> findMyProjectsFirstPage(
+            @Param("userId") Long userId,
+            Pageable pageable
+    );
+
+    @Query("""
+            select pm from ProjectMember pm
+            join fetch pm.project
+            where pm.user.userId = :userId
+              and (
+                pm.joinedAt < :cursorJoinedAt
+                or (pm.joinedAt = :cursorJoinedAt and pm.projectMemberId < :cursorMemberId)
+              )
+            order by pm.joinedAt desc, pm.projectMemberId desc
+            """)
+    List<ProjectMember> findMyProjectsByCursor(
+            @Param("userId") Long userId,
+            @Param("cursorJoinedAt") LocalDateTime cursorJoinedAt,
+            @Param("cursorMemberId") Long cursorMemberId,
+            Pageable pageable
+    );
 
 }

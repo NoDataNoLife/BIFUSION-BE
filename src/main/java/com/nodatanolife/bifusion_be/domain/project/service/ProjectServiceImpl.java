@@ -22,10 +22,16 @@ import com.nodatanolife.bifusion_be.domain.user.entity.User;
 import com.nodatanolife.bifusion_be.global.exception.ErrorCode;
 import com.nodatanolife.bifusion_be.global.exception.business.BusinessException;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.nio.charset.StandardCharsets;
+import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.List;
 
 @Service
@@ -113,19 +119,72 @@ public class ProjectServiceImpl implements ProjectService {
 
 
     /**
-     * 내가 참여한 프로젝트 목록 조회
+     * 내가 참여한 프로젝트 목록 조회 (커서 기반, 기본 4개)
      * MANAGER / MEMBER 역할 모두 포함
+     * 정렬: joinedAt DESC, projectMemberId DESC (tiebreaker)
      */
     @Override
     @Transactional(readOnly = true)
-    public MyProjectsResponse getMyProjects(String email) {
+    public MyProjectsResponse getMyProjects(String email, String cursor, int size) {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
 
-        List<ProjectMember> members = projectMemberRepository
-                .findAllByUserIdWithProject(user.getUserId());
+        int pageSize = Math.max(1, Math.min(size, 50));
 
-        return MyProjectsResponse.from(members);
+        LocalDateTime cursorJoinedAt = null;
+        Long cursorMemberId = null;
+        if (cursor != null && !cursor.isBlank()) {
+            try {
+                String decoded = new String(
+                        Base64.getUrlDecoder().decode(cursor),
+                        StandardCharsets.UTF_8
+                );
+                String[] parts = decoded.split(":");
+                if (parts.length != 2) {
+                    throw new BusinessException(ErrorCode.INVALID_REQUEST);
+                }
+                cursorJoinedAt = LocalDateTime.ofInstant(
+                        Instant.ofEpochMilli(Long.parseLong(parts[0])),
+                        ZoneOffset.UTC
+                );
+                cursorMemberId = Long.parseLong(parts[1]);
+            } catch (BusinessException e) {
+                throw e;
+            } catch (Exception e) {
+                throw new BusinessException(ErrorCode.INVALID_REQUEST);
+            }
+        }
+
+        List<ProjectMember> rows;
+        if (cursorJoinedAt == null) {
+            rows = projectMemberRepository.findMyProjectsFirstPage(
+                    user.getUserId(),
+                    PageRequest.of(0, pageSize + 1)
+            );
+        } else {
+            rows = projectMemberRepository.findMyProjectsByCursor(
+                    user.getUserId(),
+                    cursorJoinedAt,
+                    cursorMemberId,
+                    PageRequest.of(0, pageSize + 1)
+            );
+        }
+
+        boolean hasNext = rows.size() > pageSize;
+        List<ProjectMember> page = hasNext ? rows.subList(0, pageSize) : rows;
+
+        String nextCursor = null;
+        if (hasNext && !page.isEmpty()) {
+            ProjectMember last = page.getLast();
+            long epochMilli = last.getJoinedAt().toInstant(ZoneOffset.UTC).toEpochMilli();
+            String raw = epochMilli + ":" + last.getProjectMemberId();
+            nextCursor = Base64.getUrlEncoder().withoutPadding()
+                    .encodeToString(raw.getBytes(StandardCharsets.UTF_8));
+        }
+
+        long totalCount = projectMemberRepository.countByUserUserId(user.getUserId());
+
+        return MyProjectsResponse.of(page, nextCursor, hasNext, totalCount);
     }
 
 

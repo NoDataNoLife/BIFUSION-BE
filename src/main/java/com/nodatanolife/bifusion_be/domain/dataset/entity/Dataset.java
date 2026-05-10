@@ -53,6 +53,9 @@ public class Dataset extends BaseEntity {
     @Column(name = "is_public")
     private Boolean isPublic;
 
+    @Column(name = "is_mypage_visible")
+    private Boolean isMyPageVisible;
+
     @Column(name = "is_expert_verified")
     private Boolean isExpertVerified;
 
@@ -73,5 +76,12 @@ public class Dataset extends BaseEntity {
 
     public void anonymize(User deletedUser) {
         this.user = deletedUser;
+    }
+
+    /**
+     * 마이페이지 활동 공개 여부 변경
+     */
+    public void updateMyPageVisibility(boolean visible) {
+        this.isMyPageVisible = visible;
     }
 }
