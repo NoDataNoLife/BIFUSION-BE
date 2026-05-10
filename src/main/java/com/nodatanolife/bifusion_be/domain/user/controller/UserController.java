@@ -16,6 +16,9 @@ import com.nodatanolife.bifusion_be.domain.expert.service.ExpertService;
 import com.nodatanolife.bifusion_be.domain.project.dto.request.ProjectVisibilityUpdateRequest;
 import com.nodatanolife.bifusion_be.domain.project.dto.response.ProjectVisibilityUpdateResponse;
 import com.nodatanolife.bifusion_be.domain.project.service.ProjectService;
+import com.nodatanolife.bifusion_be.domain.user.dto.request.ActivityVisibilityUpdateRequest;
+import com.nodatanolife.bifusion_be.domain.user.dto.response.ActivityVisibilityUpdateResponse;
+import com.nodatanolife.bifusion_be.domain.user.service.MyActivityVisibilityService;
 import com.nodatanolife.bifusion_be.domain.user.service.UserService;
 import com.nodatanolife.bifusion_be.global.response.CommonResponse;
 import com.nodatanolife.bifusion_be.global.security.oauth2.CustomOAuth2User;
@@ -34,6 +37,7 @@ public class UserController {
     private final UserService userService;
     private final ExpertService expertService;
     private final ProjectService projectService;
+    private final MyActivityVisibilityService myActivityVisibilityService;
     private final CookieUtil cookieUtil;
 
     /**
@@ -207,5 +211,22 @@ public class UserController {
                 principal.getUser().getUserId(), request);
 
         return CommonResponse.success(response, "프로젝트 공개 설정을 변경했습니다.");
+    }
+
+    /**
+     * 마이페이지 커뮤니티 활동(Recipe / Dataset / Q&A / Recruitment) 공개 여부 일괄 변경
+     * - 항목별 type + id + isPublic 로 한 번에 처리 (단건/다건 모두 지원)
+     * - 콘텐츠 자체가 비공개면 마이페이지에도 강제 비공개로 저장
+     * - 본인 소유가 아닌 항목이 있으면 전체 롤백
+     */
+    @PatchMapping("/users/me/activities/visibility")
+    public CommonResponse<ActivityVisibilityUpdateResponse> updateMyActivityVisibilities(
+            @AuthenticationPrincipal CustomOAuth2User principal,
+            @RequestBody @Valid ActivityVisibilityUpdateRequest request) {
+
+        ActivityVisibilityUpdateResponse response = myActivityVisibilityService.updateVisibilities(
+                principal.getUser().getUserId(), request);
+
+        return CommonResponse.success(response, "활동 공개 설정 변경 성공!");
     }
 }
