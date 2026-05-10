@@ -11,6 +11,7 @@ import com.nodatanolife.bifusion_be.domain.project.dto.response.MemberRoleUpdate
 import com.nodatanolife.bifusion_be.domain.project.dto.response.ProjectUpdateResponse;
 import com.nodatanolife.bifusion_be.domain.project.dto.request.ProjectUpdateRequest;
 import com.nodatanolife.bifusion_be.domain.project.dto.response.ProjectInfoResponse;
+import com.nodatanolife.bifusion_be.domain.project.dto.response.MyProjectsResponse;
 import com.nodatanolife.bifusion_be.domain.project.dto.request.ProjectVisibilityUpdateRequest;
 import com.nodatanolife.bifusion_be.domain.project.dto.response.ProjectVisibilityUpdateResponse;
 import com.nodatanolife.bifusion_be.domain.project.entity.ProjectMember;
@@ -110,9 +111,26 @@ public class ProjectServiceImpl implements ProjectService {
         return ProjectInfoResponse.of(project, members);
     }
 
-   
+
     /**
-     * 프로젝트 멤버 삭제 
+     * 내가 참여한 프로젝트 목록 조회
+     * MANAGER / MEMBER 역할 모두 포함
+     */
+    @Override
+    @Transactional(readOnly = true)
+    public MyProjectsResponse getMyProjects(String email) {
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
+
+        List<ProjectMember> members = projectMemberRepository
+                .findAllByUserIdWithProject(user.getUserId());
+
+        return MyProjectsResponse.from(members);
+    }
+
+
+    /**
+     * 프로젝트 멤버 삭제
      * 관리자가 본인을 삭제하는 경우 다른 관리자가 1명 이상 있어야 한다.
      */
     @Override
@@ -126,7 +144,7 @@ public class ProjectServiceImpl implements ProjectService {
                 .findByProjectProjectIdAndUserUserId(projectId, requester.getUserId())
                 .orElseThrow(() -> new BusinessException(ErrorCode.PROJECT_ACCESS_DENIED));
 
-        if (!"MANAGER".equals(requesterMember.getRole())) {
+        if (requesterMember.getRole() != ProjectRole.MANAGER) {
             throw new BusinessException(ErrorCode.PROJECT_ACCESS_DENIED);
         }
 
@@ -136,9 +154,9 @@ public class ProjectServiceImpl implements ProjectService {
                 .orElseThrow(() -> new BusinessException(ErrorCode.PROJECT_MEMBER_NOT_FOUND));
 
         // 관리자가 본인을 삭제하는 경우 다른 관리자가 1명 이상 있어야 함
-        if ("MANAGER".equals(targetMember.getRole())) {
+        if (targetMember.getRole() == ProjectRole.MANAGER) {
             long managerCount = projectMemberRepository
-                    .countByProjectProjectIdAndRole(projectId, "MANAGER");
+                    .countByProjectProjectIdAndRole(projectId, ProjectRole.MANAGER);
             if (managerCount <= 1) {
                 throw new BusinessException(ErrorCode.PROJECT_LAST_MANAGER);
             }
@@ -159,9 +177,10 @@ public class ProjectServiceImpl implements ProjectService {
         projectInvitationRepository.deleteByInviterOrInvitee(user, user);
     }
 
-  
+
     /**
-     * 마이페이지에서 자신이 참여한 여러 프로젝트의 공개 여부를 일괄 변경
+     * 마이페이지에서 내가 참여한 프로젝트들의 공개 여부 일괄 변경
+     * 비공개 프로젝트는 공개로 변경 불가
      */
     @Override
     public ProjectVisibilityUpdateResponse updateMyProjectVisibilities(
@@ -188,6 +207,10 @@ public class ProjectServiceImpl implements ProjectService {
         return ProjectVisibilityUpdateResponse.from(updated);
     }
 
+
+    /**
+     * 프로젝트 역할 변경
+     */
     @Override
     public MemberRoleUpdateResponse updateMemberRole(Long projectId, Long targetUserId, MemberRoleUpdateRequest request, String email) {
         User requester = userRepository.findByEmail(email)
@@ -198,7 +221,7 @@ public class ProjectServiceImpl implements ProjectService {
                 .findByProjectProjectIdAndUserUserId(projectId, requester.getUserId())
                 .orElseThrow(() -> new BusinessException(ErrorCode.PROJECT_ACCESS_DENIED));
 
-        if (!"MANAGER".equals(requesterMember.getRole())) {
+        if (requesterMember.getRole() != ProjectRole.MANAGER) {
             throw new BusinessException(ErrorCode.PROJECT_ACCESS_DENIED);
         }
 

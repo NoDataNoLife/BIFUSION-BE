@@ -7,6 +7,7 @@ import com.nodatanolife.bifusion_be.domain.project.dto.response.MemberRoleUpdate
 import com.nodatanolife.bifusion_be.domain.project.dto.request.ProjectUpdateRequest;
 import com.nodatanolife.bifusion_be.domain.project.dto.response.ProjectUpdateResponse;
 import com.nodatanolife.bifusion_be.domain.project.dto.response.ProjectInfoResponse;
+import com.nodatanolife.bifusion_be.domain.project.dto.response.MyProjectsResponse;
 import com.nodatanolife.bifusion_be.domain.project.dto.request.ProjectVisibilityUpdateRequest;
 import com.nodatanolife.bifusion_be.domain.project.dto.response.ProjectVisibilityUpdateResponse;
 import com.nodatanolife.bifusion_be.domain.user.entity.User;
@@ -16,8 +17,10 @@ public interface ProjectService {
     MemberRoleUpdateResponse updateMemberRole(Long projectId, Long targetUserId, MemberRoleUpdateRequest request, String email);
 
     void deleteMember(Long projectId, Long targetUserId, String email);
-  
+
     ProjectInfoResponse getProjectInfo(Long projectId, String email);
+
+    MyProjectsResponse getMyProjects(String email);
 
     void deleteByUser(User user);
 
