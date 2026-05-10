@@ -81,6 +81,9 @@ public class ProjectController {
         return CommonResponse.success(response, "프로젝트 상세 정보 조회 성공!");   
     }
 
+    /**
+     * 프로젝트 멤버 삭제
+     */
     @DeleteMapping("/{projectId}/members/{userId}")
     public CommonResponse<Void> deleteMember(
             @PathVariable Long projectId,
@@ -92,6 +95,9 @@ public class ProjectController {
 
     }
 
+    /**
+     * 프로젝트 역할 수정
+     */
     @PutMapping("/{projectId}/members/{userId}")
     public CommonResponse<MemberRoleUpdateResponse> updateMemberRole(
             @PathVariable Long projectId,
