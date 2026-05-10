@@ -11,6 +11,7 @@ import com.nodatanolife.bifusion_be.domain.project.dto.response.MemberRoleUpdate
 import com.nodatanolife.bifusion_be.domain.project.dto.response.ProjectUpdateResponse;
 import com.nodatanolife.bifusion_be.domain.project.dto.request.ProjectUpdateRequest;
 import com.nodatanolife.bifusion_be.domain.project.dto.response.ProjectInfoResponse;
+import com.nodatanolife.bifusion_be.domain.project.dto.response.MyProjectsResponse;
 import com.nodatanolife.bifusion_be.domain.project.dto.request.ProjectVisibilityUpdateRequest;
 import com.nodatanolife.bifusion_be.domain.project.dto.response.ProjectVisibilityUpdateResponse;
 import com.nodatanolife.bifusion_be.domain.project.entity.ProjectMember;
@@ -110,9 +111,26 @@ public class ProjectServiceImpl implements ProjectService {
         return ProjectInfoResponse.of(project, members);
     }
 
-   
+
     /**
-     * 프로젝트 멤버 삭제 
+     * 내가 참여한 프로젝트 목록 조회
+     * MANAGER / MEMBER 역할 모두 포함
+     */
+    @Override
+    @Transactional(readOnly = true)
+    public MyProjectsResponse getMyProjects(String email) {
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
+
+        List<ProjectMember> members = projectMemberRepository
+                .findAllByUserIdWithProject(user.getUserId());
+
+        return MyProjectsResponse.from(members);
+    }
+
+
+    /**
+     * 프로젝트 멤버 삭제
      * 관리자가 본인을 삭제하는 경우 다른 관리자가 1명 이상 있어야 한다.
      */
     @Override

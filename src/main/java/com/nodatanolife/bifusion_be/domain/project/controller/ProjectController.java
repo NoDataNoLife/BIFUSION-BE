@@ -13,6 +13,7 @@ import com.nodatanolife.bifusion_be.global.security.oauth2.CustomOAuth2User;
 import com.nodatanolife.bifusion_be.domain.project.dto.request.MemberRoleUpdateRequest;
 import com.nodatanolife.bifusion_be.domain.project.dto.response.MemberRoleUpdateResponse;
 import com.nodatanolife.bifusion_be.domain.project.dto.response.ProjectInfoResponse;
+import com.nodatanolife.bifusion_be.domain.project.dto.response.MyProjectsResponse;
 import org.springframework.web.bind.annotation.*;
 
 
@@ -50,9 +51,22 @@ public class ProjectController {
         String email = oAuth2User.getUser().getEmail();
         ProjectUpdateResponse response = projectService.updateProject(projectId, request, email);
 
-        return CommonResponse.success(response, "프로젝트 정보가 수정되었습니다.");
+        return CommonResponse.success(response, "프로젝트 정보 수정 성공!");
     }
   
+    /**
+     * 내가 참여한 프로젝트 목록 조회 (MANAGER / MEMBER 모두 포함)
+     */
+    @GetMapping("/me")
+    public CommonResponse<MyProjectsResponse> getMyProjects(
+            @AuthenticationPrincipal CustomOAuth2User oAuth2User
+    ) {
+        String email = oAuth2User.getUser().getEmail();
+        MyProjectsResponse response = projectService.getMyProjects(email);
+
+        return CommonResponse.success(response, "참여한 프로젝트 목록 조회 성공!");
+    }
+
     /**
      * 프로젝트 기본 정보 조회
      */
@@ -74,7 +88,7 @@ public class ProjectController {
             @AuthenticationPrincipal CustomOAuth2User oAuth2User) {
         String email = oAuth2User.getUser().getEmail();
         projectService.deleteMember(projectId, userId, email);
-        return CommonResponse.success(null, "프로젝트 멤버가 삭제되었습니다.");
+        return CommonResponse.success(null, "프로젝트 멤버 삭제 성공!");
 
     }
 
@@ -86,6 +100,6 @@ public class ProjectController {
             @AuthenticationPrincipal CustomOAuth2User oAuth2User) {
         String email = oAuth2User.getUser().getEmail();
         MemberRoleUpdateResponse response = projectService.updateMemberRole(projectId, userId, request, email);
-        return CommonResponse.success(response, "프로젝트 멤버 역할이 성공적으로 수정되었습니다.");
+        return CommonResponse.success(response, "프로젝트 멤버 역할 수정 성공!");
     }
 }
