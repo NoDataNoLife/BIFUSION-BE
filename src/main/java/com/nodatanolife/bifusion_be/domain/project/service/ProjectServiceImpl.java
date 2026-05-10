@@ -31,9 +31,9 @@ import java.util.List;
 public class ProjectServiceImpl implements ProjectService {
 
     private final ProjectRepository projectRepository;
+    private final UserRepository userRepository;
     private final ProjectFavoriteRepository projectFavoriteRepository;
     private final ProjectMemberRepository projectMemberRepository;
-    private final UserRepository userRepository;
     private final ProjectInvitationRepository projectInvitationRepository;
 
 
@@ -64,8 +64,6 @@ public class ProjectServiceImpl implements ProjectService {
     @Override
     @Transactional
     public ProjectUpdateResponse updateProject(Long projectId, ProjectUpdateRequest request, String email) {
-        return ProjectCreateResponse.of(savedProject, List.of(ProjectCreateResponse.MemberResponse.from(manager)));    }
-
     
         ProjectMember member = projectMemberRepository
                 .findByProjectProjectIdAndUserUserId(projectId, user.getUserId())
@@ -105,7 +103,45 @@ public class ProjectServiceImpl implements ProjectService {
         return ProjectInfoResponse.of(project, members);
     }
 
-    
+   
+    /**
+     * 프로젝트 멤버 삭제 
+     * 관리자가 본인을 삭제하는 경우 다른 관리자가 1명 이상 있어야 한다.
+     */
+    @Override
+    @Transactional
+    public void deleteMember(Long projectId, Long targetUserId, String email) {
+        // 요청자 확인
+        User requester = userRepository.findByEmail(email)
+                .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
+
+        // 요청자가 MANAGER인지 확인
+        ProjectMember requesterMember = projectMemberRepository
+                .findByProjectProjectIdAndUserUserId(projectId, requester.getUserId())
+                .orElseThrow(() -> new BusinessException(ErrorCode.PROJECT_ACCESS_DENIED));
+
+        if (!"MANAGER".equals(requesterMember.getRole())) {
+            throw new BusinessException(ErrorCode.PROJECT_ACCESS_DENIED);
+        }
+
+        // 삭제 대상 멤버 확인
+        ProjectMember targetMember = projectMemberRepository
+                .findByProjectProjectIdAndUserUserId(projectId, targetUserId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.PROJECT_MEMBER_NOT_FOUND));
+
+        // 관리자가 본인을 삭제하는 경우 다른 관리자가 1명 이상 있어야 함
+        if ("MANAGER".equals(targetMember.getRole())) {
+            long managerCount = projectMemberRepository
+                    .countByProjectProjectIdAndRole(projectId, "MANAGER");
+            if (managerCount <= 1) {
+                throw new BusinessException(ErrorCode.PROJECT_LAST_MANAGER);
+            }
+        }
+
+        projectMemberRepository.delete(targetMember);
+    }
+
+  
     /**
      * 회원 탈퇴 시 프로젝트 관련 데이터 삭제
      * 즐겨찾기, 멤버, 초대 내역 삭제

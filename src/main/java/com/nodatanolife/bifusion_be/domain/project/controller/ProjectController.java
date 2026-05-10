@@ -64,4 +64,15 @@ public class ProjectController {
       
         return CommonResponse.success(response, "프로젝트 상세 정보 조회 성공!");   
     }
+
+    @DeleteMapping("/{projectId}/members/{userId}")
+    public CommonResponse<Void> deleteMember(
+            @PathVariable Long projectId,
+            @PathVariable Long userId,
+            @AuthenticationPrincipal CustomOAuth2User oAuth2User) {
+        String email = oAuth2User.getUser().getEmail();
+        projectService.deleteMember(projectId, userId, email);
+        return CommonResponse.success(null, "프로젝트 멤버가 삭제되었습니다.");
+
+    }
 }

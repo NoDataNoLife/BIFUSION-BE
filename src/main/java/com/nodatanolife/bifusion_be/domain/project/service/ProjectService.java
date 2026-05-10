@@ -11,6 +11,9 @@ import com.nodatanolife.bifusion_be.domain.user.entity.User;
 
 public interface ProjectService {
 
+
+    void deleteMember(Long projectId, Long targetUserId, String email);
+  
     ProjectInfoResponse getProjectInfo(Long projectId, String email);
 
     void deleteByUser(User user);
