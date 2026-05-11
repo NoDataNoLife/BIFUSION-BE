@@ -7,11 +7,14 @@ import com.nodatanolife.bifusion_be.domain.project.dto.response.ProjectInvitatio
 import com.nodatanolife.bifusion_be.domain.project.service.ProjectInvitationService;
 import com.nodatanolife.bifusion_be.global.response.CommonResponse;
 import com.nodatanolife.bifusion_be.global.security.oauth2.CustomOAuth2User;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
+@Tag(name = "Project Invitation", description = "프로젝트 초대 API")
 @RestController
 @RequestMapping("/api/v1/projects/{projectId}/invitations")
 @RequiredArgsConstructor
@@ -19,14 +22,10 @@ public class ProjectInvitationController {
 
     private final ProjectInvitationService projectInvitationService;
 
-    /**
-     * 프로젝트 초대 생성 API.
-     *
-     * @param projectId 초대를 생성할 프로젝트 ID (path)
-     * @param request   초대 대상 이메일을 담은 요청 DTO (이메일 형식 검증)
-     * @param principal 현재 인증된 사용자 — 초대자(inviter)로 사용
-     * @return 생성/재발송된 초대 정보
-     */
+    @Operation(
+            summary = "프로젝트 초대 생성",
+            description = "이메일로 프로젝트 초대를 생성하거나 재발송합니다. 인증된 사용자가 초대자(inviter)로 사용됩니다."
+    )
     @PostMapping
     public CommonResponse<ProjectInvitationResponse> invite(
             @PathVariable Long projectId,
@@ -38,17 +37,13 @@ public class ProjectInvitationController {
         ProjectInvitationResponse response =
                 projectInvitationService.invite(projectId, inviterUserId, request.email());
 
-        return CommonResponse.success(response, "초대 생성 완료!");
+        return CommonResponse.success(response, "초대 생성 성공!");
     }
 
-    /**
-     * 프로젝트 초대 수락/거절 API.
-     *
-     * @param invitationId 응답할 초대 ID (path)
-     * @param request      수락/거절 액션을 담은 요청 DTO (ACCEPT or REJECT)
-     * @param principal    현재 인증된 사용자 — 초대 받은 사람(invitee) 본인 검증에 사용
-     * @return 응답 처리된 초대 정보 (status 갱신)
-     */
+    @Operation(
+            summary = "프로젝트 초대 수락/거절",
+            description = "초대받은 사용자 본인만 응답할 수 있으며, ACCEPT 또는 REJECT 액션으로 status가 갱신됩니다."
+    )
     @PatchMapping("/{invitationId}")
     public CommonResponse<InvitationRespondResponse> respond(
             @PathVariable Long projectId,
@@ -59,6 +54,6 @@ public class ProjectInvitationController {
         Long userId = principal.getUser().getUserId();
         InvitationRespondResponse response =
                 projectInvitationService.respond(projectId, invitationId, userId, request.action());
-        return CommonResponse.success(response);
+        return CommonResponse.success(response, "프로젝트 초대 응답 성공!");
     }
 }

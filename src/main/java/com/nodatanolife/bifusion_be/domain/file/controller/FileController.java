@@ -21,17 +21,16 @@ public class FileController {
 
     private final FileService fileService;
 
-    /**
-     * 임시 파일 다건 업로드
-     * 게시글 작성 시 임시로 파일을 업로드하고 fileId 반환
-     */
-    @Operation(summary = "임시 파일 업로드", description = "게시글 작성 시 임시로 파일을 업로드합니다")
+    @Operation(
+            summary = "임시 파일 다건 업로드",
+            description = "게시글 작성 시 임시로 파일을 업로드하고 fileId를 반환합니다."
+    )
     @PostMapping("files/temp")
     public CommonResponse<List<TempFileUploadResponse>> uploadTempFiles(
             @AuthenticationPrincipal CustomOAuth2User principal,
             @RequestPart List<MultipartFile> files) {
         List<TempFileUploadResponse> response = fileService.uploadTempFiles(
                 principal.getUser().getUserId(), files);
-        return CommonResponse.success(response, "파일 업로드 성공");
+        return CommonResponse.success(response, "파일 업로드 성공!");
     }
 }
