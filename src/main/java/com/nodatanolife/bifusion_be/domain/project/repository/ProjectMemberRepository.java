@@ -1,6 +1,5 @@
 package com.nodatanolife.bifusion_be.domain.project.repository;
 
-import com.nodatanolife.bifusion_be.domain.project.entity.Project;
 import com.nodatanolife.bifusion_be.domain.project.entity.ProjectMember;
 import com.nodatanolife.bifusion_be.domain.project.entity.ProjectRole;
 import com.nodatanolife.bifusion_be.domain.user.entity.User;
@@ -19,6 +18,7 @@ public interface ProjectMemberRepository extends JpaRepository<ProjectMember, Lo
             "JOIN FETCH p.projectMembers m " +
             "JOIN FETCH m.user " +
             "WHERE pm.user.userId = :userId")
+
     List<ProjectMember> findAllByUserIdWithProjectAndMembers(@Param("userId") Long userId);
 
     long countByProjectProjectIdAndRole(Long projectId, ProjectRole role);
@@ -28,8 +28,6 @@ public interface ProjectMemberRepository extends JpaRepository<ProjectMember, Lo
     boolean existsByProjectProjectIdAndUserUserId(Long projectId, Long userId);
 
     Optional<ProjectMember> findByProjectProjectIdAndUserUserId(Long projectId, Long userId);
-
-    List<ProjectMember> findByProjectProjectId(Long projectId);
 
     long countByUserUserId(Long userId);
 
@@ -61,6 +59,4 @@ public interface ProjectMemberRepository extends JpaRepository<ProjectMember, Lo
             Pageable pageable
     );
 
-    List<ProjectMember> findAllByUser_UserId(Long userId);
-    List<ProjectMember> findAllByProject(Project project);
 }

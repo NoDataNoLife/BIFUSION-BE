@@ -101,9 +101,11 @@ public class ProjectController {
         return CommonResponse.success(response, "프로젝트 멤버 역할 수정 성공!");
 
     }
-        /**
-         * 관리/참여 중인 프로젝트 목록 조회
-         */
+
+    @Operation(
+            summary = "관리/참여 중인 프로젝트 목록 조회",
+            description = "사용자가 관리자(MANAGER) 또는 일반 멤버(MEMBER)로 관리/참여 중인 모든 프로젝트 리스트를 조회합니다."
+    )
     @GetMapping
     public CommonResponse<MyProjectDashboardResponse> getMyProjects(@AuthenticationPrincipal CustomOAuth2User principal) {
         MyProjectDashboardResponse response = projectService.getMyProjectDashboard(principal.getUser().getUserId());

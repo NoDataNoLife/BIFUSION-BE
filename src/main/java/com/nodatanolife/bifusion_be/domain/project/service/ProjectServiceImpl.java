@@ -100,10 +100,7 @@ public class ProjectServiceImpl implements ProjectService {
             throw new BusinessException(ErrorCode.PROJECT_ACCESS_DENIED);
         }
 
-        List<ProjectMember> members = projectMemberRepository
-                .findByProjectProjectId(projectId);
-
-        return ProjectInfoResponse.of(project, members);
+        return ProjectInfoResponse.of(project, project.getProjectMembers());
     }
 
 
@@ -295,39 +292,14 @@ public class ProjectServiceImpl implements ProjectService {
     public MyProjectDashboardResponse getMyProjectDashboard(Long userId) {
         List<ProjectMember> memberships = projectMemberRepository.findAllByUserIdWithProjectAndMembers(userId);
         List<ProjectDetailResponse> managingProjects = memberships.stream()
-                .filter(m -> m.getRole() == ProjectRole.MANAGER)                .map(this::convertToDetailResponse)
+                .filter(m -> m.getRole() == ProjectRole.MANAGER)                .map(ProjectDetailResponse::from)
                 .collect(Collectors.toList());
 
         List<ProjectDetailResponse> participatingProjects = memberships.stream()
-                .filter(m -> m.getRole() == ProjectRole.MEMBER)                .map(this::convertToDetailResponse)
+                .filter(m -> m.getRole() == ProjectRole.MEMBER)                .map(ProjectDetailResponse::from)
                 .collect(Collectors.toList());
 
         return MyProjectDashboardResponse.of(managingProjects, participatingProjects);
     }
 
-    /**
-     * ProjectMember 엔티티를 ProjectDetailResponse DTO로 변환
-     */
-    private ProjectDetailResponse convertToDetailResponse(ProjectMember membership) {
-        Project project = membership.getProject();
-
-        List<ProjectMemberResponse> memberResponses = project.getProjectMembers().stream()                .map(pm -> new ProjectMemberResponse(
-                        pm.getUser().getUserId(),
-                        pm.getUser().getNickname(),
-                        pm.getUser().getProfileImageUrl()
-                ))
-                .toList();
-
-        return new ProjectDetailResponse(
-                project.getProjectId(),
-                project.getTitle(),
-                project.getDescription(),
-                membership.getRole(),
-                project.getBannerImageUrl(),
-                false,
-                memberResponses.size(),
-                memberResponses,
-                project.getUpdatedAt()
-        );
-    }
 }

@@ -4,20 +4,42 @@ package com.nodatanolife.bifusion_be.domain.project.dto.response;
 import com.nodatanolife.bifusion_be.domain.project.entity.ProjectRole;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
-import lombok.NoArgsConstructor;
 import java.time.LocalDateTime;
 import java.util.List;
+import com.nodatanolife.bifusion_be.domain.project.entity.Project;
+import com.nodatanolife.bifusion_be.domain.project.entity.ProjectMember;
 
-@Getter
-@AllArgsConstructor
-public class ProjectDetailResponse {
-    private Long projectId;
-    private String title;
-    private String description;
-    private ProjectRole role;
-    private String bannerImageUrl;
-    private Boolean isFavorited;
-    private Integer memberCount;
-    private List<ProjectMemberResponse> members;
-    private LocalDateTime lastActivityAt;
+
+public record ProjectDetailResponse(
+        Long projectId,
+        String title,
+        String description,
+        ProjectRole role,
+        String bannerImageUrl,
+        Boolean isFavorited,
+        Integer memberCount,
+        List<ProjectMemberResponse> members,
+        LocalDateTime lastActivityAt
+) {
+    public static ProjectDetailResponse from(ProjectMember membership) {
+        Project project = membership.getProject();
+        List<ProjectMemberResponse> memberResponses = project.getProjectMembers().stream()
+                .map(pm -> new ProjectMemberResponse(
+                        pm.getUser().getUserId(),
+                        pm.getUser().getNickname(),
+                        pm.getUser().getProfileImageUrl()
+                ))
+                .toList();
+        return new ProjectDetailResponse(
+                project.getProjectId(),
+                project.getTitle(),
+                project.getDescription(),
+                membership.getRole(),
+                project.getBannerImageUrl(),
+                false,
+                memberResponses.size(),
+                memberResponses,
+                project.getUpdatedAt()
+        );
+    }
 }
