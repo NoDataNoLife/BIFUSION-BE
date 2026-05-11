@@ -6,6 +6,8 @@ import com.nodatanolife.bifusion_be.global.exception.ErrorCode;
 import com.nodatanolife.bifusion_be.global.exception.business.BusinessException;
 import com.nodatanolife.bifusion_be.global.response.CommonResponse;
 import com.nodatanolife.bifusion_be.global.security.util.CookieUtil;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -18,6 +20,7 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.Arrays;
 import java.util.Optional;
 
+@Tag(name = "Auth", description = "인증/토큰 관리 API")
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/auth")
@@ -26,10 +29,10 @@ public class AuthController {
     private final AuthService authService;
     private final CookieUtil cookieUtil;
 
-    /**
-     * 토큰 갱신
-     * Refresh Token Rotation으로 새 Access/Refresh Token 쌍 발급
-     */
+    @Operation(
+            summary = "토큰 갱신",
+            description = "Refresh Token Rotation으로 새로운 Access/Refresh Token 쌍을 발급합니다."
+    )
     @PostMapping("/refresh")
     public CommonResponse<Void> refresh(HttpServletRequest request,
                                         HttpServletResponse response) {
@@ -50,10 +53,10 @@ public class AuthController {
         return CommonResponse.success(null);
     }
 
-    /**
-     * 로그아웃
-     * Refresh Token DB에서 삭제 및 쿠키 만료 처리
-     */
+    @Operation(
+            summary = "로그아웃",
+            description = "DB에서 Refresh Token을 삭제하고 인증 쿠키를 만료시킵니다."
+    )
     @PostMapping("/logout")
     public CommonResponse<Void> logout(HttpServletRequest request,
                                        HttpServletResponse response) {

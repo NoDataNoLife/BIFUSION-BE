@@ -3,6 +3,8 @@ package com.nodatanolife.bifusion_be.domain.user.controller;
 import com.nodatanolife.bifusion_be.domain.user.dto.request.BioUpdateRequest;
 import com.nodatanolife.bifusion_be.domain.user.dto.request.PlanChangeRequest;
 import com.nodatanolife.bifusion_be.domain.user.dto.response.*;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
@@ -29,6 +31,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
+@Tag(name = "User", description = "유저 API")
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api/v1")
@@ -40,20 +43,28 @@ public class UserController {
     private final MyActivityVisibilityService myActivityVisibilityService;
     private final CookieUtil cookieUtil;
 
-    /**
-     * 내 정보 조회
-     * JWT 쿠키로 인증된 유저 본인의 프로필 정보 반환
-     */
+    @Operation(
+            summary = "내 정보 조회",
+            description = """
+                    JWT 쿠키로 인증된 본인의 계정 정보를 반환합니다.
+                    이메일, 연락처 등 민감 정보를 포함하므로 본인만 조회 가능합니다.
+                    앱 진입 시 호출해 로그인 상태와 본인 식별 정보를 확인하는 용도로 사용합니다.
+                    다른 유저의 공개 프로필이 필요하면 GET /users/{userId} 를 사용하세요."""
+    )
     @GetMapping("/users/me")
     public CommonResponse<UserResponse> getMe(
             @AuthenticationPrincipal CustomOAuth2User principal) {
         UserResponse response = userService.getMe(principal.getUser().getUserId());
-        return CommonResponse.success(response);
+        return CommonResponse.success(response, "내 정보 조회 성공!");
     }
 
-    /**
-     * 마이페이지 기본 정보 조회
-     */
+    @Operation(
+            summary = "마이페이지 기본 정보 조회",
+            description = """
+                    임의의 유저의 공개 프로필 정보를 반환합니다.
+                    다른 유저의 마이페이지 방문 시 사용하며, 이메일/연락처 같은 민감 정보는 포함되지 않습니다.
+                    본인 계정 정보가 필요하면 GET /users/me 를 사용하세요."""
+    )
     @GetMapping("/users/{userId}")
     public CommonResponse<MyPageBasicResponse> getMyPageBasic(
             @PathVariable Long userId) {
@@ -61,10 +72,10 @@ public class UserController {
         return CommonResponse.success(response, "마이페이지 조회 성공!");
     }
 
-    /**
-     * 닉네임 수정
-     * 인증된 유저의 닉네임 변경
-     */
+    @Operation(
+            summary = "닉네임 수정",
+            description = "인증된 유저의 닉네임을 변경합니다."
+    )
     @PutMapping("/profile/nickname")
     public CommonResponse<NicknameUpdateResponse> updateNickname(
             @AuthenticationPrincipal CustomOAuth2User principal,
@@ -72,27 +83,23 @@ public class UserController {
 
         NicknameUpdateResponse response = userService.updateNickname(
                 principal.getUser().getUserId(), request.getNickname());
-        return CommonResponse.success(response);
+        return CommonResponse.success(response, "닉네임 수정 성공!");
     }
 
-
-
-    /**
-     * 소개글 수정
-     */
+    @Operation(summary = "소개글 수정")
     @PutMapping("/profile/introduction")
     public CommonResponse<BioUpdateResponse> updateBio(
             @AuthenticationPrincipal CustomOAuth2User principal,
             @RequestBody BioUpdateRequest request) {
         BioUpdateResponse response = userService.updateBio(
                 principal.getUser().getUserId(), request.getBio());
-        return CommonResponse.success(response, "소개글이 수정되었습니다.");
+        return CommonResponse.success(response, "소개글 수정 성공!");
     }
 
-    /**
-     * 위치 수정
-     * 인증된 유저의 위치 변경
-     */
+    @Operation(
+            summary = "위치 수정",
+            description = "인증된 유저의 위치를 변경합니다."
+    )
     @PutMapping("/profile/location")
     public CommonResponse<LocationUpdateResponse> updateLocation(
             @AuthenticationPrincipal CustomOAuth2User principal,
@@ -102,31 +109,30 @@ public class UserController {
         return CommonResponse.success(response, "위치 수정 완료!");
     }
 
-    /**
-     * 웹사이트 수정
-     * 인증된 유저의 웹사이트 변경
-     */
+    @Operation(
+            summary = "웹사이트 수정",
+            description = "인증된 유저의 웹사이트를 변경합니다."
+    )
     @PutMapping("/profile/website")
     public CommonResponse<WebsiteUpdateResponse> updateWebsiteUrl(
             @AuthenticationPrincipal CustomOAuth2User principal,
             @RequestBody WebsiteUpdateRequest request) {
         WebsiteUpdateResponse response = userService.updateWebsiteUrl(
                 principal.getUser().getUserId(), request.getWebsiteUrl());
-        return CommonResponse.success(response, "웹사이트가 수정되었습니다.");
+        return CommonResponse.success(response, "웹사이트 수정 성공!");
     }
 
-    /**
-     * 프로필사진 수정
-     */
+    @Operation(summary = "프로필 사진 수정")
     @PutMapping("/profile/image")
     public CommonResponse<ProfileImageUpdateResponse> updateProfileImage(
             @AuthenticationPrincipal CustomOAuth2User principal,
             @RequestPart MultipartFile image) {
         ProfileImageUpdateResponse response = userService.updateProfileImage(
                 principal.getUser().getUserId(), image);
-        return CommonResponse.success(response, "프로필 사진이 수정되었습니다.");
+        return CommonResponse.success(response, "프로필 사진 수정 성공!");
     }
 
+    @Operation(summary = "BASIC/PRO 플랜 변경")
     @PutMapping("/users/me/plan")
     public CommonResponse<PlanChangeResponse> changePlan(
             @AuthenticationPrincipal CustomOAuth2User principal,
@@ -134,12 +140,13 @@ public class UserController {
 
         PlanChangeResponse response = userService.changePlan(principal.getUser().getUserId(), request.planType());
 
-        return CommonResponse.success(response);
+        return CommonResponse.success(response, "BASIC/PRO 플랜 변경 성공!");
     }
-    /**
-     * 온보딩 완료 처리
-     * 최초 로그인 후 추가 정보 입력 시 호출
-     */
+
+    @Operation(
+            summary = "온보딩 완료 처리",
+            description = "최초 로그인 후 추가 정보 입력 시 호출합니다."
+    )
     @PostMapping("/onboarding")
     public CommonResponse<UserResponse> onboarding(
             @AuthenticationPrincipal CustomOAuth2User principal,
@@ -151,10 +158,10 @@ public class UserController {
         return CommonResponse.success(response, "회원가입 성공!");
     }
 
-    /**
-     * 회원 탈퇴
-     * 인증 정보 삭제 → 개인 기록 삭제 → 공개 콘텐츠 익명화 → User 삭제
-     */
+    @Operation(
+            summary = "회원 탈퇴",
+            description = "인증 정보 삭제 → 개인 기록 삭제 → 공개 콘텐츠 익명화 → User 삭제 순으로 처리합니다."
+    )
     @DeleteMapping("/users/me")
     public CommonResponse<Void> withdraw(
             @AuthenticationPrincipal CustomOAuth2User principal,
@@ -162,7 +169,6 @@ public class UserController {
 
         userService.withdraw(principal.getUser().getUserId());
 
-        // 쿠키 만료 처리
         response.addHeader(HttpHeaders.SET_COOKIE,
                 cookieUtil.expireCookie("access_token").toString());
         response.addHeader(HttpHeaders.SET_COOKIE,
@@ -171,10 +177,10 @@ public class UserController {
         return CommonResponse.success(null, "회원 탈퇴 성공!");
     }
 
-    /**
-     * 이메일로 유저 검색
-     * 이메일 기반으로 유저를 조회하며, 미가입 이메일인 경우 exists: false 반환
-     */
+    @Operation(
+            summary = "이메일로 유저 검색",
+            description = "이메일 기반으로 유저를 조회합니다. 미가입 이메일인 경우 exists: false 로 응답합니다."
+    )
     @GetMapping("/users/search")
     public CommonResponse<UserSearchResponse> searchByEmail(
             @RequestParam @Email @NotBlank String email
@@ -183,10 +189,10 @@ public class UserController {
         return CommonResponse.success(response, "유저 이메일 검색 성공!");
     }
 
-    /**
-     * 전문가 인증 신청
-     * 의료 면허증 또는 학위 증명서를 업로드해 PENDING 상태로 신청을 등록
-     */
+    @Operation(
+            summary = "전문가 인증 신청",
+            description = "의료 면허증 또는 학위 증명서를 업로드해 PENDING 상태로 신청을 등록합니다."
+    )
     @PostMapping("/users/me/expert")
     public CommonResponse<ExpertApplicationResponse> applyExpert(
             @AuthenticationPrincipal CustomOAuth2User principal,
@@ -195,13 +201,13 @@ public class UserController {
         ExpertApplicationResponse response = expertService.apply(
                 principal.getUser().getUserId(), certificationFile);
 
-        return CommonResponse.success(response, "전문가 인증 신청이 완료되었습니다!");
+        return CommonResponse.success(response, "전문가 인증 신청 성공!");
     }
 
-    /**
-     * 마이페이지에서 내가 참여한 프로젝트들의 공개 여부 일괄 변경
-     * 비공개 프로젝트는 공개로 변경 불가
-     */
+    @Operation(
+            summary = "내 프로젝트 공개 여부 일괄 변경",
+            description = "마이페이지에서 내가 참여한 프로젝트들의 공개 여부를 일괄 변경합니다. 비공개 프로젝트는 공개로 변경할 수 없습니다."
+    )
     @PutMapping("/users/me/projects/visibility")
     public CommonResponse<ProjectVisibilityUpdateResponse> updateMyProjectVisibilities(
             @AuthenticationPrincipal CustomOAuth2User principal,
@@ -210,15 +216,13 @@ public class UserController {
         ProjectVisibilityUpdateResponse response = projectService.updateMyProjectVisibilities(
                 principal.getUser().getUserId(), request);
 
-        return CommonResponse.success(response, "프로젝트 공개 설정을 변경했습니다.");
+        return CommonResponse.success(response, "프로젝트 공개여부 변경 성공!");
     }
 
-    /**
-     * 마이페이지 커뮤니티 활동(Recipe / Dataset / Q&A / Recruitment) 공개 여부 일괄 변경
-     * - 항목별 type + id + isPublic 로 한 번에 처리 (단건/다건 모두 지원)
-     * - 콘텐츠 자체가 비공개면 마이페이지에도 강제 비공개로 저장
-     * - 본인 소유가 아닌 항목이 있으면 전체 롤백
-     */
+    @Operation(
+            summary = "마이페이지 활동 공개 여부 일괄 변경",
+            description = "Recipe / Dataset / Q&A / Recruitment 항목의 공개 여부를 한 번에 처리합니다. " +
+                    "콘텐츠 자체가 비공개면 마이페이지에도 강제 비공개로 저장되며, 본인 소유가 아닌 항목이 포함되면 전체 롤백됩니다.")
     @PatchMapping("/users/me/activities/visibility")
     public CommonResponse<ActivityVisibilityUpdateResponse> updateMyActivityVisibilities(
             @AuthenticationPrincipal CustomOAuth2User principal,
@@ -227,6 +231,6 @@ public class UserController {
         ActivityVisibilityUpdateResponse response = myActivityVisibilityService.updateVisibilities(
                 principal.getUser().getUserId(), request);
 
-        return CommonResponse.success(response, "활동 공개 설정 변경 성공!");
+        return CommonResponse.success(response, "활동 공개여부 변경 성공!");
     }
 }

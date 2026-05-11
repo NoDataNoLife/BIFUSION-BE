@@ -2,6 +2,8 @@ package com.nodatanolife.bifusion_be.domain.project.controller;
 
 import com.nodatanolife.bifusion_be.domain.project.dto.request.ProjectUpdateRequest;
 import com.nodatanolife.bifusion_be.domain.project.dto.response.ProjectUpdateResponse;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import com.nodatanolife.bifusion_be.domain.project.dto.request.ProjectCreateRequest;
 import com.nodatanolife.bifusion_be.domain.project.dto.response.ProjectCreateResponse;
@@ -17,17 +19,15 @@ import com.nodatanolife.bifusion_be.domain.project.dto.response.MyProjectsRespon
 import org.springframework.web.bind.annotation.*;
 
 
+@Tag(name = "Project", description = "프로젝트 관리 API")
 @RestController
 @RequestMapping("/api/v1/projects")
 @RequiredArgsConstructor
-
 public class ProjectController {
 
     private final ProjectService projectService;
 
-    /**
-     * 프로젝트 생성
-     */
+    @Operation(summary = "프로젝트 생성")
     @PostMapping
     public CommonResponse<ProjectCreateResponse> createProject(
             @Valid @RequestBody ProjectCreateRequest request,
@@ -39,9 +39,7 @@ public class ProjectController {
         return CommonResponse.success(response, "프로젝트 생성 성공!");
     }
 
-    /**
-     * 프로젝트 기본 정보 수정
-     */
+    @Operation(summary = "프로젝트 기본 정보 수정")
     @PutMapping("/{projectId}")
     public CommonResponse<ProjectUpdateResponse> updateProject(
             @PathVariable Long projectId,
@@ -53,11 +51,11 @@ public class ProjectController {
 
         return CommonResponse.success(response, "프로젝트 정보 수정 성공!");
     }
-  
-    /**
-     * 내가 참여한 프로젝트 목록 조회 (MANAGER / MEMBER 모두 포함)
-     * 커서 기반 페이지네이션, 기본 4개
-     */
+
+    @Operation(
+            summary = "내가 참여한 프로젝트 목록 조회",
+            description = "MANAGER / MEMBER 모두 포함합니다. 커서 기반 페이지네이션이며 기본 size는 4입니다."
+    )
     @GetMapping("/me")
     public CommonResponse<MyProjectsResponse> getMyProjects(
             @RequestParam(required = false) String cursor,
@@ -70,9 +68,7 @@ public class ProjectController {
         return CommonResponse.success(response, "참여한 프로젝트 목록 조회 성공!");
     }
 
-    /**
-     * 프로젝트 기본 정보 조회
-     */
+    @Operation(summary = "프로젝트 기본 정보 조회")
     @GetMapping("/{projectId}")
     public CommonResponse<ProjectInfoResponse> getProjectInfo(
             @PathVariable Long projectId,
@@ -80,13 +76,11 @@ public class ProjectController {
     ) {
         String email = oAuth2User.getUser().getEmail();
         ProjectInfoResponse response = projectService.getProjectInfo(projectId, email);
-      
-        return CommonResponse.success(response, "프로젝트 상세 정보 조회 성공!");   
+
+        return CommonResponse.success(response, "프로젝트 상세 정보 조회 성공!");
     }
 
-    /**
-     * 프로젝트 멤버 삭제
-     */
+    @Operation(summary = "프로젝트 멤버 삭제")
     @DeleteMapping("/{projectId}/members/{userId}")
     public CommonResponse<Void> deleteMember(
             @PathVariable Long projectId,
@@ -98,9 +92,7 @@ public class ProjectController {
 
     }
 
-    /**
-     * 프로젝트 역할 수정
-     */
+    @Operation(summary = "프로젝트 멤버 역할 수정")
     @PutMapping("/{projectId}/members/{userId}")
     public CommonResponse<MemberRoleUpdateResponse> updateMemberRole(
             @PathVariable Long projectId,
