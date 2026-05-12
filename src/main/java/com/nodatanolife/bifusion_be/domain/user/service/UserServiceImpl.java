@@ -9,7 +9,6 @@ import com.nodatanolife.bifusion_be.domain.user.repository.SubscriptionRepositor
 import org.springframework.web.multipart.MultipartFile;
 import com.nodatanolife.bifusion_be.domain.activityLog.service.ActivityLogService;
 import com.nodatanolife.bifusion_be.domain.auth.service.AuthService;
-import com.nodatanolife.bifusion_be.domain.comment.service.CommentService;
 import com.nodatanolife.bifusion_be.domain.dataset.service.DatasetService;
 import com.nodatanolife.bifusion_be.domain.expert.service.ExpertService;
 import com.nodatanolife.bifusion_be.domain.file.service.FileService;
@@ -30,6 +29,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.nodatanolife.bifusion_be.domain.job.service.JobCommentService;
 
 @Service
 @RequiredArgsConstructor
@@ -53,7 +53,6 @@ public class UserServiceImpl implements UserService {
     // 익명화 대상 서비스
     private final RecipeService recipeService;
     private final DatasetService datasetService;
-    private final CommentService commentService;
     private final ExpertQnAService expertQnAService;
     private final RecruitService recruitService;
     private final JobService jobService;
@@ -211,7 +210,6 @@ public class UserServiceImpl implements UserService {
         // 3. 공개 콘텐츠 익명화
         recipeService.anonymizeByUser(user, deletedUser);
         datasetService.anonymizeByUser(user, deletedUser);
-        commentService.anonymizeByUser(user, deletedUser);
         expertQnAService.anonymizeByUser(user, deletedUser);
         recruitService.anonymizeByUser(user, deletedUser);
         jobService.anonymizeByUser(user, deletedUser);

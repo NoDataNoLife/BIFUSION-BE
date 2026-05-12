@@ -1,9 +1,9 @@
-package com.nodatanolife.bifusion_be.domain.comment.dto.response;
+package com.nodatanolife.bifusion_be.domain.job.dto.response;
 
-import com.nodatanolife.bifusion_be.domain.comment.entity.Comment;
+import com.nodatanolife.bifusion_be.domain.job.entity.JobComment;
 import java.time.LocalDateTime;
 
-public record CommentCreateResponse(
+public record JobCommentResponse(
         Long commentId,
         Long userId,
         String author,
@@ -11,9 +11,9 @@ public record CommentCreateResponse(
         String content,
         LocalDateTime createdAt
 ) {
-    public static CommentCreateResponse of(Comment comment) {
-        return new CommentCreateResponse(
-                comment.getCommentId(),
+    public static JobCommentResponse from(JobComment comment) {
+        return new JobCommentResponse(
+                comment.getId(),
                 comment.getUser().getUserId(),
                 comment.getUser().getNickname(),
                 comment.getUser().getProfileImageUrl(),
