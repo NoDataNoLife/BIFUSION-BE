@@ -1,17 +1,18 @@
 package com.nodatanolife.bifusion_be.domain.job.entity;
 
+import com.nodatanolife.bifusion_be.global.entity.BaseEntity;
+import lombok.AccessLevel;
+import lombok.Builder;
+import lombok.NoArgsConstructor;
 import com.nodatanolife.bifusion_be.domain.user.entity.User;
 import jakarta.persistence.*;
 import lombok.Getter;
-import org.springframework.data.annotation.CreatedDate;
-import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
-import java.time.LocalDateTime;
 
 @Entity
 @Getter
-@EntityListeners(AuditingEntityListener.class)
-public class JobComment {
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+public class JobComment extends BaseEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -28,13 +29,8 @@ public class JobComment {
     @JoinColumn(name = "user_id")
     private User user;
 
-    @CreatedDate
-    @Column(updatable = false)
-    private LocalDateTime createdAt;
 
-    protected JobComment() {}
-
-
+    @Builder
     private JobComment(User user, Job job, String content) {
         this.user = user;
         this.job = job;
@@ -43,9 +39,12 @@ public class JobComment {
 
 
     public static JobComment create(User user, Job job, String content) {
-        return new JobComment(user, job, content);
+        return JobComment.builder()
+                .user(user)
+                .job(job)
+                .content(content)
+                .build();
     }
-
     public void updateUser(User newUser) {
         this.user = newUser;
     }

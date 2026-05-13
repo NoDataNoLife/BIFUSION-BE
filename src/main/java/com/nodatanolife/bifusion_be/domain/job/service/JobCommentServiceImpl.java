@@ -17,6 +17,7 @@ import java.util.List;
 
 @Service
 @RequiredArgsConstructor
+@Transactional
 public class JobCommentServiceImpl implements JobCommentService {
 
     private final JobCommentRepository jobCommentRepository;
@@ -24,7 +25,6 @@ public class JobCommentServiceImpl implements JobCommentService {
     private final ProjectMemberRepository projectMemberRepository;
 
     @Override
-    @Transactional
     public JobCommentResponse createJobComment(User user, Long projectId, Long jobId, String content) {
         boolean isMember = projectMemberRepository.existsByProjectProjectIdAndUserUserId(projectId, user.getUserId());
         if (!isMember) {
@@ -41,7 +41,6 @@ public class JobCommentServiceImpl implements JobCommentService {
     }
 
     @Override
-    @Transactional
     public void anonymizeByUser(User user, User deletedUser) {
         List<Job> jobs = jobRepository.findAllByUser(user);
         jobs.forEach(job -> job.updateUser(deletedUser));
