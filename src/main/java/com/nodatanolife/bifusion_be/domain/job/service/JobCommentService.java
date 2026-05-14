@@ -7,5 +7,8 @@ public interface JobCommentService {
 
     JobCommentResponse createJobComment(User user, Long projectId, Long jobId, String content);
 
+
+    JobCommentResponse updateJobComment(User user, Long commentId, String content);
+
     void anonymizeByUser(User user, User deletedUser);
 }

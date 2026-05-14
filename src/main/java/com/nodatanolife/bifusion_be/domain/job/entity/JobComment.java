@@ -49,5 +49,7 @@ public class JobComment extends BaseEntity {
         this.user = newUser;
     }
 
-
+    public void updateContent(String content) {
+        this.content = content;
+    }
 }
