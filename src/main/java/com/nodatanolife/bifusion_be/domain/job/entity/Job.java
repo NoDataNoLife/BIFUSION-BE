@@ -40,6 +40,10 @@ public class Job extends BaseEntity {
     @Column(name = "seed_number", length = 20)
     private String seedNumber;
 
+    public void updateUser(User newUser) {
+        this.user = newUser;
+    }
+
     public void anonymize(User deletedUser) {
         this.user = deletedUser;
     }
