@@ -3,6 +3,8 @@ package com.nodatanolife.bifusion_be.domain.project.entity;
 import com.nodatanolife.bifusion_be.global.entity.BaseEntity;
 import jakarta.persistence.*;
 import lombok.*;
+import java.util.List;
+import java.util.ArrayList;
 
 @Entity
 @Table(name = "project")
@@ -42,4 +44,7 @@ public class Project extends BaseEntity {
         this.description = description;
         this.bannerImageUrl = bannerImageUrl;
     }
+
+    @OneToMany(mappedBy = "project", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<ProjectMember> projectMembers = new ArrayList<>();
 }

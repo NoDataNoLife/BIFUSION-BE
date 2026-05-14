@@ -7,12 +7,19 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
-
 import java.time.LocalDateTime;
 import java.util.Optional;
 import java.util.List;
 
 public interface ProjectMemberRepository extends JpaRepository<ProjectMember, Long> {
+
+    @Query("SELECT DISTINCT pm FROM ProjectMember pm " +
+            "JOIN FETCH pm.project p " +
+            "JOIN FETCH p.projectMembers m " +
+            "JOIN FETCH m.user " +
+            "WHERE pm.user.userId = :userId")
+
+    List<ProjectMember> findAllByUserIdWithProjectAndMembers(@Param("userId") Long userId);
 
     long countByProjectProjectIdAndRole(Long projectId, ProjectRole role);
 
@@ -21,8 +28,6 @@ public interface ProjectMemberRepository extends JpaRepository<ProjectMember, Lo
     boolean existsByProjectProjectIdAndUserUserId(Long projectId, Long userId);
 
     Optional<ProjectMember> findByProjectProjectIdAndUserUserId(Long projectId, Long userId);
-
-    List<ProjectMember> findByProjectProjectId(Long projectId);
 
     long countByUserUserId(Long userId);
 

@@ -7,22 +7,20 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import com.nodatanolife.bifusion_be.domain.project.dto.request.ProjectCreateRequest;
 import com.nodatanolife.bifusion_be.domain.project.dto.response.ProjectCreateResponse;
+import com.nodatanolife.bifusion_be.domain.project.dto.request.*;
+import com.nodatanolife.bifusion_be.domain.project.dto.response.*;
 import com.nodatanolife.bifusion_be.domain.project.service.ProjectService;
 import com.nodatanolife.bifusion_be.global.response.CommonResponse;
+import com.nodatanolife.bifusion_be.global.security.oauth2.CustomOAuth2User;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import com.nodatanolife.bifusion_be.global.security.oauth2.CustomOAuth2User;
-import com.nodatanolife.bifusion_be.domain.project.dto.request.MemberRoleUpdateRequest;
-import com.nodatanolife.bifusion_be.domain.project.dto.response.MemberRoleUpdateResponse;
-import com.nodatanolife.bifusion_be.domain.project.dto.response.ProjectInfoResponse;
-import com.nodatanolife.bifusion_be.domain.project.dto.response.MyProjectsResponse;
 import org.springframework.web.bind.annotation.*;
 
 
 @Tag(name = "Project", description = "프로젝트 관리 API")
 @RestController
-@RequestMapping("/api/v1/projects")
 @RequiredArgsConstructor
+@RequestMapping("/api/v1/projects")
 public class ProjectController {
 
     private final ProjectService projectService;
@@ -35,7 +33,6 @@ public class ProjectController {
     ) {
         String email = oAuth2User.getUser().getEmail();
         ProjectCreateResponse response = projectService.createProject(request, email);
-
         return CommonResponse.success(response, "프로젝트 생성 성공!");
     }
 
@@ -102,5 +99,16 @@ public class ProjectController {
         String email = oAuth2User.getUser().getEmail();
         MemberRoleUpdateResponse response = projectService.updateMemberRole(projectId, userId, request, email);
         return CommonResponse.success(response, "프로젝트 멤버 역할 수정 성공!");
+
+    }
+
+    @Operation(
+            summary = "관리/참여 중인 프로젝트 목록 조회",
+            description = "사용자가 관리자(MANAGER) 또는 일반 멤버(MEMBER)로 관리/참여 중인 모든 프로젝트 리스트를 조회합니다."
+    )
+    @GetMapping
+    public CommonResponse<MyProjectDashboardResponse> getMyProjects(@AuthenticationPrincipal CustomOAuth2User principal) {
+        MyProjectDashboardResponse response = projectService.getMyProjectDashboard(principal.getUser().getUserId());
+        return CommonResponse.success(response, "프로젝트 목록 조회 성공!");
     }
 }
