@@ -50,6 +50,15 @@ public class JobCommentServiceImpl implements JobCommentService {
     }
 
     @Override
+    public void deleteJobComment(User user, Long projectId, Long commentId) {
+        boolean isMember = projectMemberRepository.existsByProjectProjectIdAndUserUserId(projectId, user.getUserId());
+        if (!isMember) {
+            throw new BusinessException(ErrorCode.PROJECT_ACCESS_DENIED);
+        }
+        jobCommentRepository.delete(comment);
+    }
+  
+    @Override
     public JobCommentResponse updateJobComment(User user, Long commentId, String content) {
         JobComment comment = jobCommentRepository.findById(commentId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.RESOURCE_NOT_FOUND));
@@ -57,7 +66,6 @@ public class JobCommentServiceImpl implements JobCommentService {
         if (!comment.getUser().getUserId().equals(user.getUserId())) {
             throw new BusinessException(ErrorCode.PROJECT_ACCESS_DENIED);
         }
-
         comment.updateContent(content);
 
         return JobCommentResponse.from(comment);
