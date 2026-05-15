@@ -47,6 +47,21 @@ public class JobController {
         User user = customOAuth2User.getUser();
         jobCommentService.deleteJobComment(user, projectId, commentId);
         return CommonResponse.success(null, "댓글이 성공적으로 삭제되었습니다.");
+    
+    }
+    
+    @Operation(summary = "Job comment 수정", description = "특정 Job의 댓글을 수정합니다.")
+    @PutMapping("/{jobId}/comments/{commentId}")
+    public CommonResponse<JobCommentResponse> updateComment(
+            @PathVariable Long projectId,
+            @PathVariable Long jobId,
+            @PathVariable Long commentId,
+            @Valid @RequestBody JobCommentRequest request,
+            @AuthenticationPrincipal CustomOAuth2User customOAuth2User
+    ) {
+        User user = customOAuth2User.getUser();
+        JobCommentResponse response = jobCommentService.updateJobComment(user, commentId, request.getContent());
+        return CommonResponse.success(response, "댓글이 성공적으로 수정되었습니다.");
     }
 }
 

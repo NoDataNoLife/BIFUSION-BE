@@ -9,5 +9,7 @@ public interface JobCommentService {
 
     void deleteJobComment(User user, Long projectId, Long commentId);
 
+    JobCommentResponse updateJobComment(User user, Long commentId, String content);
+
     void anonymizeByUser(User user, User deletedUser);
 }
