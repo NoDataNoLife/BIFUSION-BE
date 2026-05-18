@@ -1,4 +1,4 @@
-package com.nodatanolife.bifusion_be.domain.tag.entity;
+package com.nodatanolife.bifusion_be.domain.tag;
 
 import com.nodatanolife.bifusion_be.global.entity.BaseEntity;
 import jakarta.persistence.*;
@@ -28,4 +28,19 @@ public class TagMapping extends BaseEntity {
 
     @Column(name = "target_type", length = 50)
     private String targetType;
+
+    @Builder
+    private TagMapping(Tag tag, Long targetId, String targetType) {
+        this.tag = tag;
+        this.targetId = targetId;
+        this.targetType = targetType;
+    }
+
+    public static TagMapping create(Tag tag, Long targetId, String targetType) {
+        return TagMapping.builder()
+                .tag(tag)
+                .targetId(targetId)
+                .targetType(targetType)
+                .build();
+    }
 }
