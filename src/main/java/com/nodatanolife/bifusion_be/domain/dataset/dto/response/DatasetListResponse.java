@@ -1,0 +1,49 @@
+package com.nodatanolife.bifusion_be.domain.dataset.dto.response;
+
+import com.nodatanolife.bifusion_be.domain.dataset.entity.Dataset;
+
+import java.time.LocalDateTime;
+import java.util.List;
+
+public record DatasetListResponse(
+        Long datasetId,
+        String title,
+        String description,
+        boolean isExpertVerified,
+        List<String> tags,
+        String fileSize,
+        Integer fileCount,
+        Integer downloadCount,
+        AuthorInfo author,
+        String license,
+        LocalDateTime createdAt
+) {
+    public record AuthorInfo(Long userId, String nickname) {}
+
+    public static DatasetListResponse from(Dataset dataset, List<String> tags) {
+        return new DatasetListResponse(
+                dataset.getDatasetId(),
+                dataset.getTitle(),
+                dataset.getDescription(),
+                dataset.getIsExpertVerified(),
+                tags,
+                formatFileSize(dataset.getFile() != null ? dataset.getFile().getFileSize() : null),
+                dataset.getFileCount(),
+                dataset.getDownloadCount(),
+                new AuthorInfo(
+                        dataset.getUser().getUserId(),
+                        dataset.getUser().getNickname()
+                ),
+                dataset.getLicense(),
+                dataset.getCreatedAt()
+        );
+    }
+
+    private static String formatFileSize(Long bytes) {
+        if (bytes == null) return null;
+        if (bytes >= 1024L * 1024 * 1024) return String.format("%.1f GB", bytes / (1024.0 * 1024 * 1024));
+        if (bytes >= 1024L * 1024)        return String.format("%.1f MB", bytes / (1024.0 * 1024));
+        if (bytes >= 1024L)               return String.format("%.1f KB", bytes / 1024.0);
+        return bytes + " B";
+    }
+}

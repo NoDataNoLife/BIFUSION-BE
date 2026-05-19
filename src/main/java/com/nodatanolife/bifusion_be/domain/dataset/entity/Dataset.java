@@ -4,6 +4,7 @@ package com.nodatanolife.bifusion_be.domain.dataset.entity;
 import com.nodatanolife.bifusion_be.domain.dataset.dto.request.DatasetCreateRequest;
 import com.nodatanolife.bifusion_be.domain.user.entity.User;
 import com.nodatanolife.bifusion_be.global.entity.BaseEntity;
+import com.nodatanolife.bifusion_be.domain.file.entity.File;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -79,10 +80,16 @@ public class Dataset extends BaseEntity {
     @Column(name = "citation")
     private String citation;
 
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "file_id")
+    private File file;
+
+
     @Builder
     private Dataset(User user, String title, String description, String category,
                     String license, String format, String imageType, String resolution,
-                    String classes, String usageExample, String fileUrl) {
+                    String classes, String usageExample, File file) {
         this.user = user;
         this.title = title;
         this.description = description;
@@ -93,7 +100,8 @@ public class Dataset extends BaseEntity {
         this.resolution = resolution;
         this.classes = classes;
         this.usageExample = usageExample;
-        this.fileUrl = fileUrl;
+        this.file = file;
+        this.fileUrl = file.getFileUrl();
         this.isPublic = true;
         this.isMyPageVisible = true;
         this.isExpertVerified = false;
@@ -103,7 +111,7 @@ public class Dataset extends BaseEntity {
         this.viewCount = 0;
     }
 
-    public static Dataset create(User user, DatasetCreateRequest request, String fileUrl) {
+    public static Dataset create(User user, DatasetCreateRequest request,  File file) {
         return Dataset.builder()
                 .user(user)
                 .title(request.getTitle())
@@ -115,7 +123,7 @@ public class Dataset extends BaseEntity {
                 .resolution(request.getResolution())
                 .classes(request.getClasses())
                 .usageExample(request.getUsageExample())
-                .fileUrl(fileUrl)
+                .file(file)
                 .build();
     }
 

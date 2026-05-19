@@ -1,4 +1,4 @@
-package com.nodatanolife.bifusion_be.domain.tag;
+package com.nodatanolife.bifusion_be.domain.tag.entity;
 
 import com.nodatanolife.bifusion_be.global.entity.BaseEntity;
 import jakarta.persistence.*;

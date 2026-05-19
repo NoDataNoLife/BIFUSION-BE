@@ -43,18 +43,22 @@ public class File extends BaseCreatedEntity {
     @Column(name = "s3_key")
     private String s3Key;
 
+    @Column(name = "file_size")
+    private Long fileSize;
+
     public void anonymize(User deletedUser) {
         this.user = deletedUser;
     }
 
     // 정적 팩토리 메서드
-    public static File createTemp(User user, String fileUrl, String s3Key, String fileName, String fileType) {
+    public static File createTemp(User user, String fileUrl, String s3Key, String fileName, String fileType, Long fileSize) {
         return File.builder()
                 .user(user)
                 .fileUrl(fileUrl)
                 .s3Key(s3Key)
                 .fileName(fileName)
                 .fileType(fileType)
+                .fileSize(fileSize)
                 .isTemp(true)
                 .build();
     }

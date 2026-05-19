@@ -59,7 +59,7 @@ public class FileServiceImpl implements FileService {
         String s3Key = "temp/" + filename;
         String url = s3Service.uploadFile(file, "temp", filename);
 
-        File tempFile = File.createTemp(user, url, s3Key, nameWithoutExt, file.getContentType());
+        File tempFile = File.createTemp(user, url, s3Key, nameWithoutExt, file.getContentType(), file.getSize());
         fileRepository.save(tempFile);
 
         return TempFileUploadResponse.from(tempFile);
