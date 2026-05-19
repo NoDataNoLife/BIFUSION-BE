@@ -58,4 +58,8 @@ public class File extends BaseCreatedEntity {
                 .isTemp(true)
                 .build();
     }
+
+    public void markAsPermanent() {
+        this.isTemp = false;
+    }
 }

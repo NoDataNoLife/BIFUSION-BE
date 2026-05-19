@@ -1,4 +1,4 @@
-package com.nodatanolife.bifusion_be.domain.tag.entity;
+package com.nodatanolife.bifusion_be.domain.tag;
 
 import com.nodatanolife.bifusion_be.global.entity.BaseEntity;
 import jakarta.persistence.*;
@@ -17,4 +17,15 @@ public class Tag extends BaseEntity {
 
     @Column(name = "name", length = 50)
     private String name;
+
+    @Builder
+    private Tag(String name) {
+        this.name = name;
+    }
+
+    public static Tag create(String name) {
+        return Tag.builder()
+                .name(name)
+                .build();
+    }
 }
