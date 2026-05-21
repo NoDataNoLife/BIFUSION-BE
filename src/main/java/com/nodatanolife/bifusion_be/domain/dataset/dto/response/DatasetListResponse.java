@@ -18,7 +18,7 @@ public record DatasetListResponse(
         String license,
         LocalDateTime createdAt
 ) {
-    public record AuthorInfo(Long userId, String nickname) {}
+    public record AuthorInfo(Long userId, String nickname, String profileImageUrl) {}
 
     public static DatasetListResponse from(Dataset dataset, List<String> tags) {
         return new DatasetListResponse(
@@ -32,7 +32,8 @@ public record DatasetListResponse(
                 dataset.getDownloadCount(),
                 new AuthorInfo(
                         dataset.getUser().getUserId(),
-                        dataset.getUser().getNickname()
+                        dataset.getUser().getNickname(),
+                        dataset.getUser().getProfileImageUrl()
                 ),
                 dataset.getLicense(),
                 dataset.getCreatedAt()

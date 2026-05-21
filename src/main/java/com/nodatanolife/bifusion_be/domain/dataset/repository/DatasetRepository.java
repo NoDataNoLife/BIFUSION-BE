@@ -14,12 +14,10 @@ public interface DatasetRepository extends JpaRepository<Dataset, Long> {
 
     List<Dataset> findAllByUser(User user);
 
-    @Query("""
-            SELECT d FROM Dataset d
-            JOIN FETCH d.user
-            WHERE d.isPublic = true
-              AND (:keyword IS NULL OR d.title LIKE %:keyword%)
-            """)
+    @Query(
+            value = "SELECT d FROM Dataset d JOIN FETCH d.user WHERE d.isPublic = true AND (:keyword IS NULL OR d.title LIKE %:keyword%)",
+            countQuery = "SELECT COUNT(d) FROM Dataset d WHERE d.isPublic = true AND (:keyword IS NULL OR d.title LIKE %:keyword%)"
+    )
     Page<Dataset> findAllByCondition(
             @Param("keyword") String keyword,
             Pageable pageable
