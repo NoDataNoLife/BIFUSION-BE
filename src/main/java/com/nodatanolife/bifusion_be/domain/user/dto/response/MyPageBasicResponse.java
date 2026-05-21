@@ -1,5 +1,6 @@
 package com.nodatanolife.bifusion_be.domain.user.dto.response;
 
+import com.nodatanolife.bifusion_be.domain.user.entity.SubscriptionTier;
 import com.nodatanolife.bifusion_be.domain.user.entity.User;
 
 import java.time.LocalDateTime;
@@ -12,7 +13,9 @@ public record MyPageBasicResponse(
         String location,
         String website,
         String createdAt,
-        Boolean isExpert
+        Boolean isExpert,
+        SubscriptionTier planType,
+        String profileImageUrl
 ) {
     public static MyPageBasicResponse from(User user) {
         return new MyPageBasicResponse(
@@ -23,7 +26,9 @@ public record MyPageBasicResponse(
                 user.getLocation(),
                 user.getWebsiteUrl(),
                 formatJoinedAt(user.getCreatedAt()),
-                user.getIsExpert()
+                user.getIsExpert(),
+                user.getPlanType(),
+                user.getProfileImageUrl()
         );
     }
 
