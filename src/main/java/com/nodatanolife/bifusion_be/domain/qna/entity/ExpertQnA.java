@@ -51,4 +51,24 @@ public class ExpertQnA extends BaseEntity {
     public void updateMyPageVisibility(boolean visible) {
         this.isMyPageVisible = visible;
     }
+
+    @Builder
+    private ExpertQnA(User user, String title, String content) {
+        this.user = user;
+        this.title = title;
+        this.content = content;
+        this.status = "OPEN";
+        this.hasExpertReply = false;
+        this.answerCount = 0;
+        this.isPublic = true;
+        this.isMyPageVisible = true;
+    }
+
+    public static ExpertQnA create(User user, String title, String content) {
+        return ExpertQnA.builder()
+                .user(user)
+                .title(title)
+                .content(content)
+                .build();
+    }
 }
