@@ -42,6 +42,7 @@ public enum ErrorCode {
     COMMENT_NOT_FOUND(HttpStatus.NOT_FOUND, "CM002", "댓글을 찾을 수 없습니다."),
     COMMENT_ACCESS_DENIED(HttpStatus.FORBIDDEN, "CM003", "댓글에 대한 권한이 없습니다."),
     POST_ACCESS_DENIED(HttpStatus.FORBIDDEN, "CM004", "게시글에 대한 권한이 없습니다."),
+    EXPERT_ONLY(HttpStatus.FORBIDDEN, "QNA001", "전문가만 답변할 수 있습니다."),
 
     /* ================================
      * Collaboration / Project
