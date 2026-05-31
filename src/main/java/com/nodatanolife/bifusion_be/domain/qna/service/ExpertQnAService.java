@@ -5,6 +5,8 @@ import com.nodatanolife.bifusion_be.domain.qna.dto.response.ExpertQnAAnswerRespo
 import com.nodatanolife.bifusion_be.domain.qna.dto.request.ExpertQnaRequest;
 import com.nodatanolife.bifusion_be.domain.qna.dto.response.ExpertQnaResponse;
 import com.nodatanolife.bifusion_be.domain.user.entity.User;
+import com.nodatanolife.bifusion_be.domain.qna.dto.response.ExpertQnAListResponse;
+import org.springframework.data.domain.Page;
 
 public interface ExpertQnAService {
 
@@ -13,5 +15,8 @@ public interface ExpertQnAService {
     ExpertQnAAnswerResponse createAnswer(Long userId, Long qnaId, ExpertQnAAnswerRequest request);
 
     ExpertQnaResponse createQna(Long userId, ExpertQnaRequest request);
+
+    Page<ExpertQnAListResponse> getQnaList(String sort, String keyword, int page, int size);
+
 
 }

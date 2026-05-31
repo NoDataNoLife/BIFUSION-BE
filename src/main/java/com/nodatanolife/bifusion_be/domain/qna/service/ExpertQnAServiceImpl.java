@@ -19,7 +19,14 @@ import com.nodatanolife.bifusion_be.global.exception.business.BusinessException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.nodatanolife.bifusion_be.domain.qna.dto.response.ExpertQnAListResponse;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 
+import java.util.Map;
+import java.util.stream.Collectors;
 import java.util.List;
 
 @Service
@@ -81,5 +88,41 @@ public class ExpertQnAServiceImpl implements ExpertQnAService {
         });
 
         return ExpertQnaResponse.from(qna, tags);
+    }
+
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<ExpertQnAListResponse> getQnaList(String sort, String keyword, int page, int size) {
+        Sort sorting = switch (sort) {
+            case "LATEST" -> Sort.by(Sort.Direction.DESC, "createdAt");
+            case "POPULAR" -> Sort.by(Sort.Direction.DESC, "answerCount");
+            case "ANSWERED_FIRST" -> Sort.by(
+                    Sort.Order.desc("hasExpertReply"),
+                    Sort.Order.desc("createdAt")
+            );            default -> throw new BusinessException(ErrorCode.INVALID_REQUEST);
+        };
+
+        Pageable pageable = PageRequest.of(page, size, sorting);
+        String kw = (keyword == null || keyword.isBlank()) ? null : keyword;
+
+        Page<ExpertQnA> qnaPage = expertQnARepository.findAllByCondition(kw, pageable);
+
+        List<Long> ids = qnaPage.getContent()
+                .stream()
+                .map(ExpertQnA::getExpertQnAId)
+                .toList();
+
+        Map<Long, List<String>> tagMap = tagMappingRepository
+                .findAllByTargetTypeAndTargetIdIn("EXPERT_QNA", ids)
+                .stream()
+                .collect(Collectors.groupingBy(
+                        TagMapping::getTargetId,
+                        Collectors.mapping(tm -> tm.getTag().getName(), Collectors.toList())
+                ));
+
+        return qnaPage.map(qna ->
+                ExpertQnAListResponse.from(qna, tagMap.getOrDefault(qna.getExpertQnAId(), List.of()))
+        );
     }
 }
