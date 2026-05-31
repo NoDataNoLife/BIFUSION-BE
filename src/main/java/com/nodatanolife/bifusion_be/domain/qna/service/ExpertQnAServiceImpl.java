@@ -5,14 +5,22 @@ import com.nodatanolife.bifusion_be.domain.qna.dto.response.ExpertQnAAnswerRespo
 import com.nodatanolife.bifusion_be.domain.qna.entity.ExpertQnA;
 import com.nodatanolife.bifusion_be.domain.qna.entity.ExpertQnAAnswer;
 import com.nodatanolife.bifusion_be.domain.qna.repository.ExpertQnAAnswerRepository;
+import com.nodatanolife.bifusion_be.domain.qna.dto.request.ExpertQnaRequest;
+import com.nodatanolife.bifusion_be.domain.qna.dto.response.ExpertQnaResponse;
+import com.nodatanolife.bifusion_be.domain.tag.entity.Tag;
+import com.nodatanolife.bifusion_be.domain.tag.entity.TagMapping;
+import com.nodatanolife.bifusion_be.domain.tag.repository.TagMappingRepository;
+import com.nodatanolife.bifusion_be.domain.tag.repository.TagRepository;
+import com.nodatanolife.bifusion_be.domain.user.repository.UserRepository;
 import com.nodatanolife.bifusion_be.domain.qna.repository.ExpertQnARepository;
 import com.nodatanolife.bifusion_be.domain.user.entity.User;
-import com.nodatanolife.bifusion_be.domain.user.repository.UserRepository;
 import com.nodatanolife.bifusion_be.global.exception.ErrorCode;
 import com.nodatanolife.bifusion_be.global.exception.business.BusinessException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -21,6 +29,8 @@ public class ExpertQnAServiceImpl implements ExpertQnAService {
 
     private final ExpertQnARepository expertQnARepository;
     private final ExpertQnAAnswerRepository expertQnAAnswerRepository;
+    private final TagRepository tagRepository;
+    private final TagMappingRepository tagMappingRepository;
     private final UserRepository userRepository;
 
     /**
@@ -51,4 +61,25 @@ public class ExpertQnAServiceImpl implements ExpertQnAService {
         return ExpertQnAAnswerResponse.from(answer);
     }
 
+    @Override
+    public ExpertQnaResponse createQna(Long userId, ExpertQnaRequest request) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
+
+        ExpertQnA qna = ExpertQnA.create(user, request.getTitle(), request.getContent());
+        expertQnARepository.save(qna);
+
+        List<String> tags = request.getTags() != null ? request.getTags() : List.of();
+
+        tags.forEach(tagName -> {
+            Tag tag = tagRepository.findByName(tagName)
+                    .orElseGet(() -> tagRepository.save(Tag.create(tagName)));
+
+            tagMappingRepository.save(
+                    TagMapping.create(tag, qna.getExpertQnAId(), "EXPERT_QNA")
+            );
+        });
+
+        return ExpertQnaResponse.from(qna, tags);
+    }
 }
