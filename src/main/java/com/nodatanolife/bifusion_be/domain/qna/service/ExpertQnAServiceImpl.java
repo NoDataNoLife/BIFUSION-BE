@@ -65,6 +65,8 @@ public class ExpertQnAServiceImpl implements ExpertQnAService {
         ExpertQnAAnswer answer = ExpertQnAAnswer.create(qna, user, request.getContent());
         expertQnAAnswerRepository.save(answer);
 
+        qna.addExpertReply();
+
         return ExpertQnAAnswerResponse.from(answer);
     }
 
