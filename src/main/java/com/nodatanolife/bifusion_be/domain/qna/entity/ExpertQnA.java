@@ -26,8 +26,9 @@ public class ExpertQnA extends BaseEntity {
     @Column(name = "content")
     private String content;
 
+    @Enumerated(EnumType.STRING)
     @Column(name = "status", length = 20)
-    private String status;
+    private ExpertQnAStatus status;
 
     @Column(name = "has_expert_reply")
     private Boolean hasExpertReply;
@@ -57,7 +58,7 @@ public class ExpertQnA extends BaseEntity {
         this.user = user;
         this.title = title;
         this.content = content;
-        this.status = "OPEN";
+        this.status = ExpertQnAStatus.OPEN;
         this.hasExpertReply = false;
         this.answerCount = 0;
         this.isPublic = true;
@@ -70,5 +71,10 @@ public class ExpertQnA extends BaseEntity {
                 .title(title)
                 .content(content)
                 .build();
+    }
+
+    public void addExpertReply() {
+        this.hasExpertReply = true;
+        this.answerCount += 1;
     }
 }
