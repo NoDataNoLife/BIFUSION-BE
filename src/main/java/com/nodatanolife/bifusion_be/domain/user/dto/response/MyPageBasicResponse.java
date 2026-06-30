@@ -1,5 +1,6 @@
 package com.nodatanolife.bifusion_be.domain.user.dto.response;
 
+import com.nodatanolife.bifusion_be.domain.file.presign.PresignedUrl;
 import com.nodatanolife.bifusion_be.domain.user.entity.SubscriptionTier;
 import com.nodatanolife.bifusion_be.domain.user.entity.User;
 
@@ -15,7 +16,7 @@ public record MyPageBasicResponse(
         String createdAt,
         Boolean isExpert,
         SubscriptionTier planType,
-        String profileImageUrl
+        @PresignedUrl String profileImageUrl
 ) {
     public static MyPageBasicResponse from(User user) {
         return new MyPageBasicResponse(
