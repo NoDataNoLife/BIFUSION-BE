@@ -1,71 +1,112 @@
 # BIFUSION-BE
+의료 데이터 부족 문제를 해결하는 **AI 증강·학습·추론 올인원 플랫폼**
 
-NoDataNoLife 팀의 BIFUSION 백엔드 프로젝트입니다.
+<br/>
 
 ## 기술 스택
 
-- Java 21
-- Spring Boot 3.x
-- PostgreSQL 16
-- Gradle
-- Docker
+| 구분 | 내용 |
+| --- | --- |
+| Language | Java 21 |
+| Framework | Spring Boot 3.5 |
+| Persistence | Spring Data JPA |
+| Database | PostgreSQL 16 |
+| Security | Spring Security · JWT (jjwt 0.12) · OAuth2 (Google) |
+| Storage | AWS S3 (Spring Cloud AWS · Presigned URL) |
+| Mail | Spring Mail (SMTP) |
+| API Docs | SpringDoc (Swagger UI) |
+| Build | Gradle |
 
----
+<br/>
 
 ## 프로젝트 구조
 
 ```
-BIFUSION-BE/
-├── src/
-│   ├── main/
-│   │   ├── java/          # Java 소스 코드
-│   │   └── resources/
-│   │       └── application.yaml  # Spring 설정
-│   └── test/              # 테스트 코드
-├── docker-compose.yml     # PostgreSQL 컨테이너 설정
-├── build.gradle           # Gradle 빌드 설정
-├── .env                   # 환경변수 (git 제외)
-└── .env.example           # 환경변수 템플릿
+src/main/java/com/nodatanolife/bifusion_be
+├── BifusionBeApplication.java
+├── domain/                      # 도메인별 패키지 (entity · dto · repository · service · controller)
+│   ├── auth/                    # 인증 · 로그인
+│   ├── user/                    # 회원
+│   ├── project/                 # 프로젝트
+│   ├── dataset/                 # 데이터셋
+│   ├── recipe/                  # 레시피
+│   ├── recruitment/             # 팀원 모집
+│   ├── qna/                     # 전문가 Q&A
+│   ├── expert/                  # 전문가
+│   ├── job/                     # 채용
+│   ├── tag/                     # 태그
+│   ├── notification/            # 알림
+│   ├── activityLog/             # 활동 로그
+│   └── file/                    # 파일 업로드 · Presigned URL
+└── global/                      # 공통 인프라
+    ├── config/                  # SecurityConfig · 공통 설정
+    ├── security/                # JWT · OAuth2 · 인증 유틸
+    ├── entity/                  # BaseEntity (Auditing)
+    ├── exception/               # ErrorCode · GlobalExceptionHandler · BusinessException
+    ├── response/                # CommonResponse
+    ├── converter/               # 공통 컨버터
+    └── mail/                    # 메일 발송
+
+src/main/resources
+├── application.yml              # 공통 설정
+└── application-local.yml        # 로컬 프로필 (DB · JPA · AWS)
 ```
 
----
-## 개발 환경 설정
+<br/>
 
-### 1. 프로젝트 클론
+## 로컬 개발 환경 셋팅
 
-```bash
-git clone https://github.com/NoDataNoLife/BIFUSION-BE.git
-cd BIFUSION-BE
-```
+### 사전 준비
 
-### 2. 환경변수 설정
+- **Docker Desktop** 설치
+- **Java 21** 설치
 
-`.env.example` 파일을 복사해서 `.env` 파일을 만듭니다.
+### 실행 방법
 
+1. **레포 clone**
 
-### 3. Docker로 PostgreSQL 실행
+   ```bash
+   git clone https://github.com/NoDataNoLife/BIFUSION-BE.git
+   cd BIFUSION-BE
+   ```
 
-Docker Desktop이 실행 중인지 확인 후:
+2. **환경변수 파일 준비** — `.env.example`을 복사한 뒤 `.env` 파일을 생성해 값을 채웁니다.
 
-```bash
-docker-compose up -d
-```
+   ```bash
+   cp .env.example .env
+   ```
 
-정상 실행 확인:
-```bash
-docker ps
-```
+   | 변수 | 설명 |
+   | --- | --- |
+   | `DB_USERNAME` / `DB_PASSWORD` | PostgreSQL 계정 |
+   | `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` | S3 접근 키 (로컬 전용) |
+   | `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | Google OAuth2 |
+   | `JWT_SECRET` | JWT 서명 시크릿 |
+   | `MAIL_USERNAME` / `MAIL_PASSWORD` | 메일 발송 계정 |
 
-아래와 같이 `bifusion-db`가 보이면 성공:
-```
-CONTAINER ID   IMAGE         ...   NAMES
-xxxxxxxxxxxx   postgres:16   ...   bifusion-db
-```
+3. **DB 실행** — docker compose로 PostgreSQL 컨테이너를 띄웁니다.
 
+   ```bash
+   docker compose up -d
+   ```
 
-## 실행 확인
+   > 호스트 `5432` 포트로 노출됩니다. `docker ps`에 `bifusion-db`가 보이면 정상입니다.
 
-| 항목 | 주소 |
-|------|------|
-| 백엔드 API | http://localhost:8080 |
+4. **애플리케이션 실행**
+
+   ```bash
+   ./gradlew bootRun
+   ```
+
+   > `local` 프로필이 기본 활성화되며, JPA `ddl-auto: update`로 스키마가 자동 반영됩니다.
+
+<br/>
+
+### 접속 정보
+
+| 항목 | URL |
+| --- | --- |
+| 애플리케이션 | http://localhost:8080 |
+| Swagger UI | http://localhost:8080/swagger-ui.html |
+| OpenAPI 문서 | http://localhost:8080/api-docs |
 | PostgreSQL | localhost:5432 |
