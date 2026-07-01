@@ -1,5 +1,6 @@
 package com.nodatanolife.bifusion_be.domain.qna.dto.response;
 
+import com.nodatanolife.bifusion_be.domain.file.presign.PresignedUrl;
 import com.nodatanolife.bifusion_be.domain.qna.entity.ExpertQnAAnswer;
 import java.time.LocalDateTime;
 
@@ -14,7 +15,7 @@ public record ExpertQnAAnswerResponse(
     public record AuthorInfo(
             Long userId,
             String nickname,
-            String profileImageUrl,
+            @PresignedUrl String profileImageUrl,
             Boolean isExpert
     ) {}
 

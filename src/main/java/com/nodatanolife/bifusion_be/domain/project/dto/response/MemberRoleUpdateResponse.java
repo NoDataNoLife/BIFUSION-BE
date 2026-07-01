@@ -1,11 +1,12 @@
 package com.nodatanolife.bifusion_be.domain.project.dto.response;
 
+import com.nodatanolife.bifusion_be.domain.file.presign.PresignedUrl;
 import com.nodatanolife.bifusion_be.domain.project.entity.ProjectMember;
 
 public record MemberRoleUpdateResponse(
         Long userId,
         String nickname,
-        String profileImageUrl,
+        @PresignedUrl String profileImageUrl,
         String role
 ) {
     public static MemberRoleUpdateResponse of(ProjectMember member) {

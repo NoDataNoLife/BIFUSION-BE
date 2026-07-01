@@ -1,5 +1,6 @@
 package com.nodatanolife.bifusion_be.domain.user.dto.response;
 
+import com.nodatanolife.bifusion_be.domain.file.presign.PresignedUrl;
 import com.nodatanolife.bifusion_be.domain.user.entity.User;
 import lombok.Builder;
 import lombok.Getter;
@@ -12,6 +13,7 @@ public class UserSearchResponse {
     private Long userId;
     private String email;
     private String nickname;
+    @PresignedUrl
     private String profileImage;
 
     public static UserSearchResponse found(User user) {

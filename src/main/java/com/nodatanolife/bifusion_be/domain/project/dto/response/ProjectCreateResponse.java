@@ -1,7 +1,7 @@
 package com.nodatanolife.bifusion_be.domain.project.dto.response;
 
+import com.nodatanolife.bifusion_be.domain.file.presign.PresignedUrl;
 import com.nodatanolife.bifusion_be.domain.project.entity.ProjectMember;
-import com.nodatanolife.bifusion_be.domain.user.entity.User;
 import com.nodatanolife.bifusion_be.domain.project.entity.Project;
 
 import java.util.List;
@@ -14,7 +14,7 @@ public record ProjectCreateResponse(
     public record MemberResponse(
             Long userId,
             String nickname,
-            String profileImageUrl,
+            @PresignedUrl String profileImageUrl,
             String role
     ) {
         public static MemberResponse from(ProjectMember member) {

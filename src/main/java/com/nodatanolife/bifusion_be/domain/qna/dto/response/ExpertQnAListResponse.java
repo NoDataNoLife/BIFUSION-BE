@@ -1,5 +1,6 @@
 package com.nodatanolife.bifusion_be.domain.qna.dto.response;
 
+import com.nodatanolife.bifusion_be.domain.file.presign.PresignedUrl;
 import com.nodatanolife.bifusion_be.domain.qna.entity.ExpertQnA;
 import com.nodatanolife.bifusion_be.domain.qna.entity.ExpertQnAStatus;
 
@@ -16,7 +17,7 @@ public record ExpertQnAListResponse(
         Integer answerCount,
         LocalDateTime createdAt
 ) {
-    public record AuthorInfo(Long userId, String nickname, String profileImageUrl) {}
+    public record AuthorInfo(Long userId, String nickname, @PresignedUrl String profileImageUrl) {}
 
     public static ExpertQnAListResponse from(ExpertQnA qna, List<String> tags) {
         return new ExpertQnAListResponse(
