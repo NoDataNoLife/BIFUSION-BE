@@ -1,6 +1,7 @@
 package com.nodatanolife.bifusion_be.domain.dataset.dto.response;
 
 import com.nodatanolife.bifusion_be.domain.dataset.entity.Dataset;
+import com.nodatanolife.bifusion_be.domain.file.presign.PresignedUrl;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -18,7 +19,7 @@ public record DatasetListResponse(
         String license,
         LocalDateTime createdAt
 ) {
-    public record AuthorInfo(Long userId, String nickname, String profileImageUrl) {}
+    public record AuthorInfo(Long userId, String nickname, @PresignedUrl String profileImageUrl) {}
 
     public static DatasetListResponse from(Dataset dataset, List<String> tags) {
         return new DatasetListResponse(

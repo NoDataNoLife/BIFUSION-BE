@@ -1,5 +1,6 @@
 package com.nodatanolife.bifusion_be.domain.project.dto.response;
 
+import com.nodatanolife.bifusion_be.domain.file.presign.PresignedUrl;
 import com.nodatanolife.bifusion_be.domain.project.entity.Project;
 import com.nodatanolife.bifusion_be.domain.project.entity.ProjectMember;
 import java.util.List;
@@ -8,14 +9,14 @@ public record ProjectInfoResponse(
         Long projectId,
         String title,
         String description,
-        String bannerImageUrl,
+        @PresignedUrl String bannerImageUrl,
         List<MemberResponse> members
 ) {
     public record MemberResponse(
             Long userId,
             String nickname,
             String email,
-            String profileImageUrl,
+            @PresignedUrl String profileImageUrl,
             String role
     ) {}
 

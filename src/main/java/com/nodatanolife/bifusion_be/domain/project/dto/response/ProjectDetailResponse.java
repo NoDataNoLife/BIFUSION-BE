@@ -1,6 +1,7 @@
 package com.nodatanolife.bifusion_be.domain.project.dto.response;
 
 
+import com.nodatanolife.bifusion_be.domain.file.presign.PresignedUrl;
 import com.nodatanolife.bifusion_be.domain.project.entity.ProjectRole;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -13,7 +14,7 @@ public record ProjectDetailResponse(
         String title,
         String description,
         ProjectRole role,
-        String bannerImageUrl,
+        @PresignedUrl String bannerImageUrl,
         Boolean isPublic,
         Boolean isFavorited,
         Integer memberCount,

@@ -14,7 +14,10 @@ import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
 import software.amazon.awssdk.services.s3.model.GetObjectRequest;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
+import software.amazon.awssdk.services.s3.presigner.S3Presigner;
+import software.amazon.awssdk.services.s3.presigner.model.GetObjectPresignRequest;
 
+import java.time.Duration;
 import java.util.UUID;
 
 @Slf4j
@@ -25,12 +28,16 @@ public class S3Service {
     private static final String S3_HOST_MARKER = ".amazonaws.com/";
 
     private final S3Client s3Client;
+    private final S3Presigner s3Presigner;
 
     @Value("${spring.cloud.aws.s3.bucket}")
     private String bucketName;
 
     @Value("${spring.cloud.aws.region.static}")
     private String region;
+
+    @Value("${spring.cloud.aws.s3.presign-duration-minutes:10}")
+    private long presignDurationMinutes;
 
     /**
      * 파일명 충돌을 막는 UUID prefix를 붙여 고유 파일명을 만든다.
@@ -47,6 +54,49 @@ public class S3Service {
         if (url == null) return null;
         int idx = url.indexOf(S3_HOST_MARKER);
         return idx < 0 ? null : url.substring(idx + S3_HOST_MARKER.length());
+    }
+
+    /**
+     * DB에 저장된 값(S3 공개 URL 또는 raw key)을 만료 시간이 있는 presigned GET URL로 변환한다.
+     * 버킷은 private 상태이므로 응답 시점에 이 메서드로 접근 가능한 URL을 발급한다.
+     * 입력이 비어있거나 key를 추출할 수 없으면 원본을 그대로 반환한다(외부 URL 등).
+     */
+    public String toPresignedUrl(String storedUrlOrKey) {
+        if (storedUrlOrKey == null || storedUrlOrKey.isBlank()) {
+            return storedUrlOrKey;
+        }
+
+        String key;
+        if (storedUrlOrKey.contains(S3_HOST_MARKER)) {
+            // 우리 S3 공개 URL → key 추출 후 presign
+            key = extractKeyFromUrl(storedUrlOrKey);
+        } else if (storedUrlOrKey.startsWith("http://") || storedUrlOrKey.startsWith("https://")) {
+            // S3가 아닌 외부 URL(예: OAuth 제공자 프로필 이미지) → 그대로 노출
+            return storedUrlOrKey;
+        } else {
+            // scheme 없는 값 → raw S3 key로 간주
+            key = storedUrlOrKey;
+        }
+        if (key == null || key.isBlank()) {
+            return storedUrlOrKey;
+        }
+
+        try {
+            GetObjectRequest getObjectRequest = GetObjectRequest.builder()
+                    .bucket(bucketName)
+                    .key(key)
+                    .build();
+
+            GetObjectPresignRequest presignRequest = GetObjectPresignRequest.builder()
+                    .signatureDuration(Duration.ofMinutes(presignDurationMinutes))
+                    .getObjectRequest(getObjectRequest)
+                    .build();
+
+            return s3Presigner.presignGetObject(presignRequest).url().toString();
+        } catch (Exception e) {
+            log.warn("Presigned URL 생성 실패, 원본 반환: key={}, err={}", key, e.getMessage());
+            return storedUrlOrKey;
+        }
     }
 
     /**
