@@ -30,7 +30,7 @@ public record MyProjectsResponse(
                         m.getProject().getProjectId(),
                         m.getProject().getTitle(),
                         m.getProject().getBannerImageUrl(),
-                        m.getProject().getIsPublic(),
+                        m.getIsPublic(),
                         m.getRole().name()
                 ))
                 .toList();
