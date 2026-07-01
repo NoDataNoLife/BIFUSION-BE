@@ -22,7 +22,7 @@ public interface ProjectService {
 
     ProjectInfoResponse getProjectInfo(Long projectId, String email);
 
-    MyProjectsResponse getMyProjects(String email, String cursor, int size);
+    MyProjectsResponse getMyProjects(String email, String cursor, int size, Boolean isPublic);
 
     void deleteByUser(User user);
 

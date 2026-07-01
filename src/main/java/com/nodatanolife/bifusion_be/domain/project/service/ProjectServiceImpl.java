@@ -111,7 +111,7 @@ public class ProjectServiceImpl implements ProjectService {
      */
     @Override
     @Transactional(readOnly = true)
-    public MyProjectsResponse getMyProjects(String email, String cursor, int size) {
+    public MyProjectsResponse getMyProjects(String email, String cursor, int size, Boolean isPublic) {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
 
@@ -145,11 +145,13 @@ public class ProjectServiceImpl implements ProjectService {
         if (cursorJoinedAt == null) {
             rows = projectMemberRepository.findMyProjectsFirstPage(
                     user.getUserId(),
+                    isPublic,
                     PageRequest.of(0, pageSize + 1)
             );
         } else {
             rows = projectMemberRepository.findMyProjectsByCursor(
                     user.getUserId(),
+                    isPublic,
                     cursorJoinedAt,
                     cursorMemberId,
                     PageRequest.of(0, pageSize + 1)
@@ -168,7 +170,7 @@ public class ProjectServiceImpl implements ProjectService {
                     .encodeToString(raw.getBytes(StandardCharsets.UTF_8));
         }
 
-        long totalCount = projectMemberRepository.countByUserUserId(user.getUserId());
+        long totalCount = projectMemberRepository.countMyProjects(user.getUserId(), isPublic);
 
         return MyProjectsResponse.of(page, nextCursor, hasNext, totalCount);
     }
