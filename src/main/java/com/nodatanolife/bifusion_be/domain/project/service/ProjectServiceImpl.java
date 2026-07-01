@@ -14,6 +14,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.nodatanolife.bifusion_be.domain.file.service.S3Service;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
@@ -27,13 +29,14 @@ import java.util.stream.Collectors;
 @Service
 @RequiredArgsConstructor
 @Transactional
-public class ProjectServiceImpl implements ProjectService {
+public class  ProjectServiceImpl implements ProjectService {
 
     private final ProjectRepository projectRepository;
     private final UserRepository userRepository;
     private final ProjectFavoriteRepository projectFavoriteRepository;
     private final ProjectMemberRepository projectMemberRepository;
     private final ProjectInvitationRepository projectInvitationRepository;
+    private final S3Service s3Service;
 
     /**
      * 프로젝트 생성
@@ -76,7 +79,7 @@ public class ProjectServiceImpl implements ProjectService {
             throw new BusinessException(ErrorCode.PROJECT_ACCESS_DENIED);
         }
 
-        project.update(request.title(), request.description(), request.bannerImageUrl());
+        project.update(request.title(), request.description());
 
         return ProjectUpdateResponse.of(project);
     }
@@ -302,6 +305,38 @@ public class ProjectServiceImpl implements ProjectService {
                 .collect(Collectors.toList());
 
         return MyProjectDashboardResponse.of(managingProjects, participatingProjects);
+    }
+
+
+    @Override
+    public ProjectBannerUpdateResponse updateBannerImage(Long projectId, MultipartFile file, String email) {
+        Project project = projectRepository.findById(projectId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.PROJECT_NOT_FOUND));
+
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
+
+        ProjectMember member = projectMemberRepository
+                .findByProjectProjectIdAndUserUserId(projectId, user.getUserId())
+                .orElseThrow(() -> new BusinessException(ErrorCode.PROJECT_ACCESS_DENIED));
+
+        if (member.getRole() != ProjectRole.MANAGER) {
+            throw new BusinessException(ErrorCode.PROJECT_ACCESS_DENIED);
+        }
+
+        // 기존 이미지 S3 삭제
+        if (project.getBannerImageUrl() != null) {
+            s3Service.deleteFileByUrl(project.getBannerImageUrl());
+        }
+
+        // 새 이미지 업로드 or null 처리
+        String newUrl = null;
+        if (file != null && !file.isEmpty()) {
+            newUrl = s3Service.uploadFile(file, "projects/banners");
+        }
+
+        project.updateBannerImage(newUrl);
+        return ProjectBannerUpdateResponse.of(project);
     }
 
 }
