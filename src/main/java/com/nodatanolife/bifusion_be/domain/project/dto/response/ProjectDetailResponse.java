@@ -2,8 +2,6 @@ package com.nodatanolife.bifusion_be.domain.project.dto.response;
 
 
 import com.nodatanolife.bifusion_be.domain.project.entity.ProjectRole;
-import lombok.AllArgsConstructor;
-import lombok.Getter;
 import java.time.LocalDateTime;
 import java.util.List;
 import com.nodatanolife.bifusion_be.domain.project.entity.Project;
@@ -16,6 +14,7 @@ public record ProjectDetailResponse(
         String description,
         ProjectRole role,
         String bannerImageUrl,
+        Boolean isPublic,
         Boolean isFavorited,
         Integer memberCount,
         List<ProjectMemberResponse> members,
@@ -36,6 +35,7 @@ public record ProjectDetailResponse(
                 project.getDescription(),
                 membership.getRole(),
                 project.getBannerImageUrl(),
+                project.getIsPublic(),
                 false,
                 memberResponses.size(),
                 memberResponses,
