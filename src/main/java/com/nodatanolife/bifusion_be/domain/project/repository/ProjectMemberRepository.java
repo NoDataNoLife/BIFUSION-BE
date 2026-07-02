@@ -29,16 +29,26 @@ public interface ProjectMemberRepository extends JpaRepository<ProjectMember, Lo
 
     Optional<ProjectMember> findByProjectProjectIdAndUserUserId(Long projectId, Long userId);
 
-    long countByUserUserId(Long userId);
+    @Query("""
+            select count(pm) from ProjectMember pm
+            where pm.user.userId = :userId
+              and (:isPublic is null or pm.isPublic = :isPublic)
+            """)
+    long countMyProjects(
+            @Param("userId") Long userId,
+            @Param("isPublic") Boolean isPublic
+    );
 
     @Query("""
             select pm from ProjectMember pm
             join fetch pm.project
             where pm.user.userId = :userId
+              and (:isPublic is null or pm.isPublic = :isPublic)
             order by pm.joinedAt desc, pm.projectMemberId desc
             """)
     List<ProjectMember> findMyProjectsFirstPage(
             @Param("userId") Long userId,
+            @Param("isPublic") Boolean isPublic,
             Pageable pageable
     );
 
@@ -46,6 +56,7 @@ public interface ProjectMemberRepository extends JpaRepository<ProjectMember, Lo
             select pm from ProjectMember pm
             join fetch pm.project
             where pm.user.userId = :userId
+              and (:isPublic is null or pm.isPublic = :isPublic)
               and (
                 pm.joinedAt < :cursorJoinedAt
                 or (pm.joinedAt = :cursorJoinedAt and pm.projectMemberId < :cursorMemberId)
@@ -54,6 +65,7 @@ public interface ProjectMemberRepository extends JpaRepository<ProjectMember, Lo
             """)
     List<ProjectMember> findMyProjectsByCursor(
             @Param("userId") Long userId,
+            @Param("isPublic") Boolean isPublic,
             @Param("cursorJoinedAt") LocalDateTime cursorJoinedAt,
             @Param("cursorMemberId") Long cursorMemberId,
             Pageable pageable

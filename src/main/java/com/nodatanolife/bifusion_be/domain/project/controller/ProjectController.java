@@ -51,16 +51,19 @@ public class ProjectController {
 
     @Operation(
             summary = "내가 참여한 프로젝트 목록 조회",
-            description = "MANAGER / MEMBER 모두 포함합니다. 커서 기반 페이지네이션이며 기본 size는 4입니다."
+            description = "MANAGER / MEMBER 모두 포함합니다. 커서 기반 페이지네이션이며 기본 size는 4입니다. "
+                    + "isPublic 파라미터를 넘기면 DB 단계에서 해당 공개 여부(사용자별 설정)로 필터링한 뒤 페이징합니다. "
+                    + "예) isPublic=true 이면 프로필에 공개된 프로젝트만 조회합니다."
     )
     @GetMapping("/me")
     public CommonResponse<MyProjectsResponse> getMyProjects(
             @RequestParam(required = false) String cursor,
             @RequestParam(defaultValue = "4") int size,
+            @RequestParam(required = false) Boolean isPublic,
             @AuthenticationPrincipal CustomOAuth2User oAuth2User
     ) {
         String email = oAuth2User.getUser().getEmail();
-        MyProjectsResponse response = projectService.getMyProjects(email, cursor, size);
+        MyProjectsResponse response = projectService.getMyProjects(email, cursor, size, isPublic);
 
         return CommonResponse.success(response, "참여한 프로젝트 목록 조회 성공!");
     }
