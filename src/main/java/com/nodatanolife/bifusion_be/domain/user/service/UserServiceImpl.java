@@ -71,7 +71,7 @@ public class UserServiceImpl implements UserService {
     @Transactional(readOnly = true)
     public UserResponse getMe(Long userId) {
         User user = userRepository.findById(userId).orElseThrow(UserNotFoundException::new);
-        return UserResponse.from(user);
+        return UserResponse.from(user, expertService.resolveStatus(user));
     }
 
     /**
@@ -179,7 +179,7 @@ public class UserServiceImpl implements UserService {
                 request.organization(),
                 request.contact()
         );
-        return UserResponse.from(user);
+        return UserResponse.from(user, expertService.resolveStatus(user));
     }
 
     /**
