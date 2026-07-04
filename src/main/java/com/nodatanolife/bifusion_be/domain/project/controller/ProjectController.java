@@ -15,7 +15,8 @@ import com.nodatanolife.bifusion_be.global.security.oauth2.CustomOAuth2User;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
-
+import org.springframework.http.MediaType;
+import org.springframework.web.multipart.MultipartFile;
 
 @Tag(name = "Project", description = "프로젝트 관리 API")
 @RestController
@@ -113,5 +114,17 @@ public class ProjectController {
     public CommonResponse<MyProjectDashboardResponse> getMyProjects(@AuthenticationPrincipal CustomOAuth2User principal) {
         MyProjectDashboardResponse response = projectService.getMyProjectDashboard(principal.getUser().getUserId());
         return CommonResponse.success(response, "프로젝트 목록 조회 성공!");
+    }
+
+    @Operation(summary = "프로젝트 배너 이미지 등록/변경", description = "file이 없으면 배너 이미지를 삭제합니다.")
+    @PatchMapping(value = "/{projectId}/banner", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public CommonResponse<ProjectBannerUpdateResponse> updateBannerImage(
+            @PathVariable Long projectId,
+            @RequestPart(required = false) MultipartFile file,
+            @AuthenticationPrincipal CustomOAuth2User oAuth2User
+    ) {
+        String email = oAuth2User.getUser().getEmail();
+        ProjectBannerUpdateResponse response = projectService.updateBannerImage(projectId, file, email);
+        return CommonResponse.success(response, "배너 이미지 수정 성공!");
     }
 }
