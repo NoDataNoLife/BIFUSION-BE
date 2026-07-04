@@ -27,8 +27,7 @@ public class FileServiceImpl implements FileService {
      */
     @Override
     public List<TempFileUploadResponse> uploadTempFiles(Long userId, List<MultipartFile> files) {
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+        User user = userRepository.getReferenceById(userId);
 
         return files.stream()
                 .map(file -> uploadSingleTempFile(user, file))

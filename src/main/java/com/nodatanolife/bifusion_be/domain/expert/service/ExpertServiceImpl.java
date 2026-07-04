@@ -66,8 +66,7 @@ public class ExpertServiceImpl implements ExpertService {
     public ExpertApplicationResponse apply(Long userId, MultipartFile certificationFile) {
         validateFile(certificationFile);
 
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
+        User user = userRepository.getReferenceById(userId);
 
         if (expertApplicationRepository.existsByUserAndStatus(user, ExpertApplicationStatus.APPROVED)) {
             throw new BusinessException(ErrorCode.EXPERT_ALREADY_APPROVED);

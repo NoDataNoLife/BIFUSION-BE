@@ -52,8 +52,7 @@ public class ExpertQnAServiceImpl implements ExpertQnAService {
 
     @Override
     public ExpertQnAAnswerResponse createAnswer(Long userId, Long qnaId, ExpertQnAAnswerRequest request) {
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
+        User user = userRepository.getReferenceById(userId);
 
         if (!user.getIsExpert()) {
             throw new BusinessException(ErrorCode.EXPERT_ONLY);
@@ -72,8 +71,7 @@ public class ExpertQnAServiceImpl implements ExpertQnAService {
 
     @Override
     public ExpertQnaResponse createQna(Long userId, ExpertQnaRequest request) {
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
+        User user = userRepository.getReferenceById(userId);
 
         ExpertQnA qna = ExpertQnA.create(user, request.getTitle(), request.getContent());
         expertQnARepository.save(qna);
