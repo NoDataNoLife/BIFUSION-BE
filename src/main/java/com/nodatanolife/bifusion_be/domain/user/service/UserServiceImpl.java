@@ -29,7 +29,6 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import com.nodatanolife.bifusion_be.domain.job.service.JobCommentService;
 
 @Service
 @RequiredArgsConstructor
@@ -70,8 +69,8 @@ public class UserServiceImpl implements UserService {
     @Override
     @Transactional(readOnly = true)
     public UserResponse getMe(Long userId) {
-        User user = userRepository.findById(userId).orElseThrow(UserNotFoundException::new);
-        return UserResponse.from(user);
+        User user = userRepository.getReferenceById(userId);
+        return UserResponse.from(user, expertService.resolveStatus(user));
     }
 
     /**
@@ -91,7 +90,7 @@ public class UserServiceImpl implements UserService {
      */
     @Override
     public NicknameUpdateResponse updateNickname(Long userId, String nickname) {
-        User user = userRepository.findById(userId).orElseThrow(UserNotFoundException::new);
+        User user = userRepository.getReferenceById(userId);
         user.updateNickname(nickname);
         return NicknameUpdateResponse.from(user);
     }
@@ -104,7 +103,7 @@ public class UserServiceImpl implements UserService {
     @Override
     @Transactional
     public BioUpdateResponse updateBio(Long userId, String bio) {
-        User user = userRepository.findById(userId).orElseThrow(UserNotFoundException::new);
+        User user = userRepository.getReferenceById(userId);
         user.updateBio(bio);
         return BioUpdateResponse.from(user);
     }
@@ -115,7 +114,7 @@ public class UserServiceImpl implements UserService {
      */
     @Override
     public LocationUpdateResponse updateLocation(Long userId, String location) {
-        User user = userRepository.findById(userId).orElseThrow(UserNotFoundException::new);
+        User user = userRepository.getReferenceById(userId);
         user.updateLocation(location);
         return LocationUpdateResponse.from(user);
     }
@@ -126,7 +125,7 @@ public class UserServiceImpl implements UserService {
      */
     @Override
     public WebsiteUpdateResponse updateWebsiteUrl(Long userId, String websiteUrl) {
-        User user = userRepository.findById(userId).orElseThrow(UserNotFoundException::new);
+        User user = userRepository.getReferenceById(userId);
         user.updateWebsiteUrl(websiteUrl);
         return WebsiteUpdateResponse.from(user);
     }
@@ -137,7 +136,7 @@ public class UserServiceImpl implements UserService {
      */
     @Override
     public ProfileImageUpdateResponse updateProfileImage(Long userId, MultipartFile image) {
-        User user = userRepository.findById(userId).orElseThrow(UserNotFoundException::new);
+        User user = userRepository.getReferenceById(userId);
         String imageUrl = s3Service.uploadFile(image, "profile");
         user.updateProfileImageUrl(imageUrl);
         return ProfileImageUpdateResponse.from(user);
@@ -149,8 +148,7 @@ public class UserServiceImpl implements UserService {
     @Override
     @Transactional
     public PlanChangeResponse changePlan(Long userId, SubscriptionTier newTier) {
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
+        User user = userRepository.getReferenceById(userId);
 
         int oldLimit = user.getPlanType().getMaxTokens();
         int newLimit = newTier.getMaxTokens();
@@ -168,7 +166,7 @@ public class UserServiceImpl implements UserService {
      */
     @Override
     public UserResponse onboard(Long userId, OnboardingRequest request) {
-        User user = userRepository.findById(userId).orElseThrow(UserNotFoundException::new);
+        User user = userRepository.getReferenceById(userId);
 
         if (Boolean.TRUE.equals(user.getIsOnboarded())) {
             throw new BusinessException(ErrorCode.ALREADY_ONBOARDED);
@@ -179,7 +177,7 @@ public class UserServiceImpl implements UserService {
                 request.organization(),
                 request.contact()
         );
-        return UserResponse.from(user);
+        return UserResponse.from(user, expertService.resolveStatus(user));
     }
 
     /**
@@ -191,7 +189,7 @@ public class UserServiceImpl implements UserService {
      */
     @Override
     public void withdraw(Long userId) {
-        User user = userRepository.findById(userId).orElseThrow(UserNotFoundException::new);
+        User user = userRepository.getReferenceById(userId);
 
         User deletedUser = userRepository.findByEmail(deletedUserEmail)
                 .orElseThrow(() -> new BusinessException(ErrorCode.DELETED_USER_NOT_FOUND));

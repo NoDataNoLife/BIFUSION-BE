@@ -1,6 +1,7 @@
 package com.nodatanolife.bifusion_be.domain.expert.repository;
 
 import com.nodatanolife.bifusion_be.domain.expert.entity.ExpertApplication;
+import com.nodatanolife.bifusion_be.domain.expert.entity.ExpertApplicationStatus;
 import com.nodatanolife.bifusion_be.domain.user.entity.User;
 import org.springframework.data.jpa.repository.JpaRepository;
 
@@ -10,7 +11,9 @@ public interface ExpertApplicationRepository extends JpaRepository<ExpertApplica
 
     void deleteByUser(User user);
 
-    boolean existsByUserAndStatus(User user, String status);
+    boolean existsByUserAndStatus(User user, ExpertApplicationStatus status);
 
-    Optional<ExpertApplication> findByUserAndStatus(User user, String status);
+    Optional<ExpertApplication> findByUserAndStatus(User user, ExpertApplicationStatus status);
+
+    Optional<ExpertApplication> findFirstByUserOrderByAppliedAtDesc(User user);
 }

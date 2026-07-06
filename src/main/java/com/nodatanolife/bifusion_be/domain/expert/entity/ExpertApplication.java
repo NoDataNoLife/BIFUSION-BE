@@ -21,8 +21,9 @@ public class ExpertApplication extends BaseEntity {
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
+    @Enumerated(EnumType.STRING)
     @Column(name = "status", length = 20)
-    private String status;
+    private ExpertApplicationStatus status = ExpertApplicationStatus.NONE;
 
     @Column(name = "rejection_reason")
     private String rejectionReason;
@@ -40,15 +41,11 @@ public class ExpertApplication extends BaseEntity {
     @Column(name = "reviewed_at")
     private LocalDateTime reviewedAt;
 
-    public static final String STATUS_PENDING = "PENDING";
-    public static final String STATUS_APPROVED = "APPROVED";
-    public static final String STATUS_REJECTED = "REJECTED";
-
     public static ExpertApplication create(User user, String documentUrl) {
         ExpertApplication application = new ExpertApplication();
         application.user = user;
         application.applicationDocumentUrl = documentUrl;
-        application.status = STATUS_PENDING;
+        application.status = ExpertApplicationStatus.PENDING;
         application.appliedAt = LocalDateTime.now();
         return application;
     }

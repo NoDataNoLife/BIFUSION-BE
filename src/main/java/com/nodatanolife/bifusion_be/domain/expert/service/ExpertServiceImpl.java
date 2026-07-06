@@ -2,6 +2,7 @@ package com.nodatanolife.bifusion_be.domain.expert.service;
 
 import com.nodatanolife.bifusion_be.domain.expert.dto.response.ExpertApplicationResponse;
 import com.nodatanolife.bifusion_be.domain.expert.entity.ExpertApplication;
+import com.nodatanolife.bifusion_be.domain.expert.entity.ExpertApplicationStatus;
 import com.nodatanolife.bifusion_be.domain.expert.repository.ExpertApplicationRepository;
 import com.nodatanolife.bifusion_be.domain.expert.repository.ExpertTaskRepository;
 import com.nodatanolife.bifusion_be.domain.expert.repository.ExpertVerificationRepository;
@@ -65,17 +66,16 @@ public class ExpertServiceImpl implements ExpertService {
     public ExpertApplicationResponse apply(Long userId, MultipartFile certificationFile) {
         validateFile(certificationFile);
 
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
+        User user = userRepository.getReferenceById(userId);
 
-        if (expertApplicationRepository.existsByUserAndStatus(user, ExpertApplication.STATUS_APPROVED)) {
+        if (expertApplicationRepository.existsByUserAndStatus(user, ExpertApplicationStatus.APPROVED)) {
             throw new BusinessException(ErrorCode.EXPERT_ALREADY_APPROVED);
         }
 
         String newFileUrl = s3Service.uploadFile(certificationFile, S3_PREFIX);
 
         Optional<ExpertApplication> existingPending =
-                expertApplicationRepository.findByUserAndStatus(user, ExpertApplication.STATUS_PENDING);
+                expertApplicationRepository.findByUserAndStatus(user, ExpertApplicationStatus.PENDING);
 
         ExpertApplication target;
         if (existingPending.isPresent()) {
@@ -90,6 +90,19 @@ public class ExpertServiceImpl implements ExpertService {
         }
 
         return ExpertApplicationResponse.from(target);
+    }
+
+    /**
+     * 전문가 심사 진행 상태 판정
+     * 가장 최근 신청의 상태를 반환한다. (APPROVED는 종료 상태라 항상 마지막 신청)
+     * 신청 내역이 없으면 NONE.
+     */
+    @Override
+    @Transactional(readOnly = true)
+    public ExpertApplicationStatus resolveStatus(User user) {
+        return expertApplicationRepository.findFirstByUserOrderByAppliedAtDesc(user)
+                .map(ExpertApplication::getStatus)
+                .orElse(ExpertApplicationStatus.NONE);
     }
 
     private void validateFile(MultipartFile file) {

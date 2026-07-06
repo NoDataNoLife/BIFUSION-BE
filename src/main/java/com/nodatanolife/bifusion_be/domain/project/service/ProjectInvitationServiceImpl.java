@@ -54,8 +54,7 @@ public class ProjectInvitationServiceImpl implements ProjectInvitationService {
         Project project = projectRepository.findById(projectId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.PROJECT_NOT_FOUND));
 
-        User inviter = userRepository.findById(inviterUserId)
-                .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
+        User inviter = userRepository.getReferenceById(inviterUserId);
 
         // 초대자는 해당 프로젝트의 멤버여야 한다
         if (!projectMemberRepository.existsByProjectProjectIdAndUserUserId(projectId, inviterUserId)) {
