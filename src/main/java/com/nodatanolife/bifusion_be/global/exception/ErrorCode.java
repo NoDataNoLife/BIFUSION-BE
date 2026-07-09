@@ -43,7 +43,8 @@ public enum ErrorCode {
     COMMENT_ACCESS_DENIED(HttpStatus.FORBIDDEN, "CM003", "댓글에 대한 권한이 없습니다."),
     POST_ACCESS_DENIED(HttpStatus.FORBIDDEN, "CM004", "게시글에 대한 권한이 없습니다."),
     EXPERT_ONLY(HttpStatus.FORBIDDEN, "QNA001", "전문가만 답변할 수 있습니다."),
-
+    RECRUITMENT_NOT_FOUND(HttpStatus.NOT_FOUND, "CM005", "존재하지 않는 팀 모집글입니다."),
+    ALREADY_APPLIED(HttpStatus.CONFLICT, "CM006", "이미 해당 공고에 지원한 이력이 있습니다."),
     /* ================================
      * Collaboration / Project
      * ================================ */

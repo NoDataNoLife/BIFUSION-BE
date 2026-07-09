@@ -10,6 +10,12 @@ import com.nodatanolife.bifusion_be.domain.tag.entity.TagMapping;
 import com.nodatanolife.bifusion_be.domain.tag.repository.TagMappingRepository;
 import com.nodatanolife.bifusion_be.domain.tag.repository.TagRepository;
 import com.nodatanolife.bifusion_be.domain.user.entity.User;
+import com.nodatanolife.bifusion_be.domain.recruitment.dto.request.RecruitApplyRequest;   // ← 추가
+import com.nodatanolife.bifusion_be.domain.recruitment.dto.response.RecruitApplyResponse; // ← 추가
+import com.nodatanolife.bifusion_be.domain.recruitment.entity.RecruitApplication;         // ← 추가
+import com.nodatanolife.bifusion_be.domain.user.repository.UserRepository;                // ← 추가
+import com.nodatanolife.bifusion_be.global.exception.business.BusinessException;                   // ← 추가
+import com.nodatanolife.bifusion_be.global.exception.ErrorCode;                           // ← 추가
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -25,6 +31,7 @@ public class RecruitServiceImpl implements RecruitService {
     private final RecruitApplicationRepository recruitApplicationRepository;
     private final TagRepository tagRepository;
     private final TagMappingRepository tagMappingRepository;
+    private final UserRepository userRepository;
 
     /**
      * 회원 탈퇴 시 채용 공고 및 지원 내역 익명화
@@ -64,5 +71,31 @@ public class RecruitServiceImpl implements RecruitService {
         }
 
         return RecruitmentResponse.from(recruit, tagNames);
+    }
+
+    @Override
+    public RecruitApplyResponse applyToRecruitment(Long recruitId, RecruitApplyRequest request, Long userId) {
+
+        Recruit recruit = recruitRepository.findById(recruitId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.RECRUITMENT_NOT_FOUND));
+
+        if (recruitApplicationRepository.existsByRecruit_RecruitIdAndUser_UserId(recruitId, userId)) {
+            throw new BusinessException(ErrorCode.ALREADY_APPLIED);
+        }
+
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
+
+        RecruitApplication application = RecruitApplication.create(
+                recruit,
+                user,
+                request.getFullName(),
+                request.getEmail(),
+                request.getResumeUrl(),
+                request.getMotivation()
+        );
+        recruitApplicationRepository.save(application);
+
+        return RecruitApplyResponse.from(application);
     }
 }

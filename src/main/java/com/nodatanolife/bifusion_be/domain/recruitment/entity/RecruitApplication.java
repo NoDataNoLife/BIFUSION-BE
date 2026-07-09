@@ -39,6 +39,32 @@ public class RecruitApplication extends BaseCreatedEntity {
     @Column(name = "status", length = 20)
     private String status;
 
+
+    @Builder
+    private RecruitApplication(Recruit recruit, User user, String fullName, String email,
+                               String resumeUrl, String motivation) {
+        this.recruit = recruit;
+        this.user = user;
+        this.fullName = fullName;
+        this.email = email;
+        this.resumeUrl = resumeUrl;
+        this.motivation = motivation;
+        this.status = "PENDING";
+    }
+
+    public static RecruitApplication create(Recruit recruit, User user, String fullName,
+                                            String email, String resumeUrl, String motivation) {
+        return RecruitApplication.builder()
+                .recruit(recruit)
+                .user(user)
+                .fullName(fullName)
+                .email(email)
+                .resumeUrl(resumeUrl)
+                .motivation(motivation)
+                .build();
+    }
+
+
     public void anonymize(User deletedUser) {
         this.user = deletedUser;
     }
