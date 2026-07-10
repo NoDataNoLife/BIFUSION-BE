@@ -9,4 +9,7 @@ import java.util.List;
 public interface RecruitApplicationRepository extends JpaRepository<RecruitApplication, Long> {
 
     List<RecruitApplication> findAllByUser(User user);
+
+    boolean existsByRecruit_RecruitIdAndUser_UserId(Long recruitId, Long userId);
+
 }
