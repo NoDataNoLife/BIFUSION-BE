@@ -1,5 +1,8 @@
 package com.nodatanolife.bifusion_be.domain.recruitment.service;
 
+import com.nodatanolife.bifusion_be.domain.recruitment.dto.request.RecruitApplicationStatusRequest;
+import com.nodatanolife.bifusion_be.domain.recruitment.dto.response.RecruitApplicationStatusResponse;
+import com.nodatanolife.bifusion_be.domain.recruitment.entity.RecruitApplicationStatus;
 import com.nodatanolife.bifusion_be.domain.recruitment.dto.request.RecruitmentRequest;
 import com.nodatanolife.bifusion_be.domain.recruitment.dto.response.RecruitmentResponse;
 import com.nodatanolife.bifusion_be.domain.recruitment.entity.Recruit;
@@ -97,5 +100,28 @@ public class RecruitServiceImpl implements RecruitService {
         recruitApplicationRepository.save(application);
 
         return RecruitApplyResponse.from(application);
+    }
+
+    @Override
+    public RecruitApplicationStatusResponse updateApplicationStatus(
+            Long recruitmentId,
+            Long applicationId,
+            RecruitApplicationStatusRequest request,
+            Long userId
+    ) {
+        RecruitApplication application = recruitApplicationRepository.findById(applicationId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.APPLICATION_NOT_FOUND));
+
+        if (!application.getRecruit().getUser().getUserId().equals(userId)) {
+            throw new BusinessException(ErrorCode.APPLICATION_ACCESS_DENIED);
+        }
+
+        if (request.getStatus() == RecruitApplicationStatus.PENDING) {
+            throw new BusinessException(ErrorCode.INVALID_APPLICATION_STATUS);
+        }
+
+        application.updateStatus(request.getStatus());
+
+        return RecruitApplicationStatusResponse.from(application);
     }
 }

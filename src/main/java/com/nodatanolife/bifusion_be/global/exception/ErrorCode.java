@@ -45,6 +45,9 @@ public enum ErrorCode {
     EXPERT_ONLY(HttpStatus.FORBIDDEN, "QNA001", "전문가만 답변할 수 있습니다."),
     RECRUITMENT_NOT_FOUND(HttpStatus.NOT_FOUND, "CM005", "존재하지 않는 팀 모집글입니다."),
     ALREADY_APPLIED(HttpStatus.CONFLICT, "CM006", "이미 해당 공고에 지원한 이력이 있습니다."),
+    APPLICATION_NOT_FOUND(HttpStatus.NOT_FOUND, "CM007", "지원 내역을 찾을 수 없습니다."),
+    APPLICATION_ACCESS_DENIED(HttpStatus.FORBIDDEN, "CM008", "모집글 작성자만 처리할 수 있습니다."),
+    INVALID_APPLICATION_STATUS(HttpStatus.BAD_REQUEST, "CM009", "허용되지 않은 상태값입니다."),
     /* ================================
      * Collaboration / Project
      * ================================ */
