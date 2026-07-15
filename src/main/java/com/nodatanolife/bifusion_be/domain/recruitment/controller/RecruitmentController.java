@@ -1,5 +1,7 @@
 package com.nodatanolife.bifusion_be.domain.recruitment.controller;
 
+import com.nodatanolife.bifusion_be.domain.recruitment.dto.request.RecruitApplicationStatusRequest;
+import com.nodatanolife.bifusion_be.domain.recruitment.dto.response.RecruitApplicationStatusResponse;
 import com.nodatanolife.bifusion_be.domain.recruitment.dto.request.RecruitmentRequest;
 import com.nodatanolife.bifusion_be.domain.recruitment.dto.response.RecruitmentResponse;
 import com.nodatanolife.bifusion_be.domain.recruitment.service.RecruitService;
@@ -44,5 +46,21 @@ public class RecruitmentController {
         RecruitApplyResponse response = recruitService.applyToRecruitment(recruitmentId, request, userId);
 
         return CommonResponse.success(response, "팀원 지원이 완료되었습니다!");
+    }
+
+    @Operation(summary = "팀원 지원 승인/거절", description = "모집글 작성자가 지원자의 상태를 ACCEPTED 또는 REJECTED로 변경합니다.")
+    @PatchMapping("/{recruitmentId}/applications/{applicationId}/status")
+    public CommonResponse<RecruitApplicationStatusResponse> updateApplicationStatus(
+            @PathVariable Long recruitmentId,
+            @PathVariable Long applicationId,
+            @RequestBody @Valid RecruitApplicationStatusRequest request,
+            @AuthenticationPrincipal CustomOAuth2User oAuth2User
+    ) {
+        Long userId = oAuth2User.getUser().getUserId();
+
+        RecruitApplicationStatusResponse response =
+                recruitService.updateApplicationStatus(recruitmentId, applicationId, request, userId);
+
+        return CommonResponse.success(response, "지원 상태 변경이 완료되었습니다!");
     }
 }

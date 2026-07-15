@@ -1,7 +1,7 @@
 package com.nodatanolife.bifusion_be.domain.recruitment.entity;
 
 import com.nodatanolife.bifusion_be.domain.user.entity.User;
-import com.nodatanolife.bifusion_be.global.entity.BaseCreatedEntity;
+import com.nodatanolife.bifusion_be.global.entity.BaseEntity;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -9,7 +9,7 @@ import lombok.*;
 @Table(name = "recruit_application")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-public class RecruitApplication extends BaseCreatedEntity {
+public class RecruitApplication extends BaseEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -36,8 +36,9 @@ public class RecruitApplication extends BaseCreatedEntity {
     @Column(name = "motivation")
     private String motivation;
 
+    @Enumerated(EnumType.STRING)
     @Column(name = "status", length = 20)
-    private String status;
+    private RecruitApplicationStatus status;
 
 
     @Builder
@@ -49,7 +50,7 @@ public class RecruitApplication extends BaseCreatedEntity {
         this.email = email;
         this.resumeUrl = resumeUrl;
         this.motivation = motivation;
-        this.status = "PENDING";
+        this.status = RecruitApplicationStatus.PENDING;
     }
 
     public static RecruitApplication create(Recruit recruit, User user, String fullName,
@@ -67,5 +68,9 @@ public class RecruitApplication extends BaseCreatedEntity {
 
     public void anonymize(User deletedUser) {
         this.user = deletedUser;
+    }
+
+    public void updateStatus(RecruitApplicationStatus status) {
+        this.status = status;
     }
 }
