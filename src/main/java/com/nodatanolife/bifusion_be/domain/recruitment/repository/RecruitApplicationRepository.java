@@ -1,5 +1,6 @@
 package com.nodatanolife.bifusion_be.domain.recruitment.repository;
 
+import com.nodatanolife.bifusion_be.domain.recruitment.entity.RecruitApplicationStatus;
 import com.nodatanolife.bifusion_be.domain.recruitment.entity.RecruitApplication;
 import com.nodatanolife.bifusion_be.domain.user.entity.User;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -11,5 +12,7 @@ public interface RecruitApplicationRepository extends JpaRepository<RecruitAppli
     List<RecruitApplication> findAllByUser(User user);
 
     boolean existsByRecruit_RecruitIdAndUser_UserId(Long recruitId, Long userId);
+
+    long countByRecruit_RecruitIdAndStatus(Long recruitId, RecruitApplicationStatus status);
 
 }

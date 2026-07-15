@@ -36,8 +36,9 @@ public class RecruitApplication extends BaseEntity {
     @Column(name = "motivation")
     private String motivation;
 
+    @Enumerated(EnumType.STRING)
     @Column(name = "status", length = 20)
-    private String status;
+    private RecruitApplicationStatus status;
 
 
     @Builder
@@ -49,7 +50,7 @@ public class RecruitApplication extends BaseEntity {
         this.email = email;
         this.resumeUrl = resumeUrl;
         this.motivation = motivation;
-        this.status = "PENDING";
+        this.status = RecruitApplicationStatus.PENDING;
     }
 
     public static RecruitApplication create(Recruit recruit, User user, String fullName,
@@ -70,6 +71,6 @@ public class RecruitApplication extends BaseEntity {
     }
 
     public void updateStatus(RecruitApplicationStatus status) {
-        this.status = status.name();
+        this.status = status;
     }
 }

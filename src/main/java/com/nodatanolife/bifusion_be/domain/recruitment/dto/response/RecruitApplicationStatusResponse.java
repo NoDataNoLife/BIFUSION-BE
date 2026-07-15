@@ -16,7 +16,7 @@ public record RecruitApplicationStatusResponse(
                 application.getRecruitApplicationId(),
                 application.getRecruit().getRecruitId(),
                 application.getUser().getNickname(),
-                application.getStatus(),
+                application.getStatus().name(),
                 application.getUpdatedAt()
         );
     }

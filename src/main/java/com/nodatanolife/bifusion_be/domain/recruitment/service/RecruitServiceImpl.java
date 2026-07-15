@@ -120,8 +120,24 @@ public class RecruitServiceImpl implements RecruitService {
             throw new BusinessException(ErrorCode.INVALID_APPLICATION_STATUS);
         }
 
+        // 정원 체크: ACCEPTED로 변경하는 경우에만
+        if (request.getStatus() == RecruitApplicationStatus.ACCEPTED) {
+            Recruit recruit = application.getRecruit();
+            Integer teamSize = recruit.getTeamSize();
+
+            if (teamSize != null) {
+                long acceptedCount = recruitApplicationRepository
+                        .countByRecruit_RecruitIdAndStatus(recruit.getRecruitId(), RecruitApplicationStatus.ACCEPTED);
+
+                if (acceptedCount >= teamSize) {
+                    throw new BusinessException(ErrorCode.RECRUITMENT_FULL);
+                }
+            }
+        }
+
         application.updateStatus(request.getStatus());
 
         return RecruitApplicationStatusResponse.from(application);
     }
+
 }
