@@ -13,24 +13,21 @@ public interface RecruitApplicationRepository extends JpaRepository<RecruitAppli
 
     List<RecruitApplication> findAllByUser(User user);
 
-<<<<<<< HEAD
     boolean existsByRecruit_RecruitIdAndUser_UserId(Long recruitId, Long userId);
 
     long countByRecruit_RecruitIdAndStatus(Long recruitId, RecruitApplicationStatus status);
 
-=======
     @Query("SELECT ra.recruit.recruitId AS recruitId, COUNT(ra) AS count " +
             "FROM RecruitApplication ra " +
             "WHERE ra.recruit.recruitId IN :recruitIds AND ra.status = :status " +
             "GROUP BY ra.recruit.recruitId")
     List<RecruitMemberCount> countByRecruitIdsAndStatus(
             @Param("recruitIds") List<Long> recruitIds,
-            @Param("status") String status
+            @Param("status") RecruitApplicationStatus status
     );
 
     interface RecruitMemberCount {
         Long getRecruitId();
         Long getCount();
     }
->>>>>>> b68cd17 (팀원 모집 목록 조회 (중간 저장))
 }

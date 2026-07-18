@@ -171,7 +171,7 @@ public class RecruitServiceImpl implements RecruitService {
                 ));
 
         Map<Long, Integer> memberCountMap = recruitApplicationRepository
-                .countByRecruitIdsAndStatus(recruitIds, "ACCEPTED").stream()
+                .countByRecruitIdsAndStatus(recruitIds, RecruitApplicationStatus.ACCEPTED).stream()
                 .collect(Collectors.toMap(
                         RecruitApplicationRepository.RecruitMemberCount::getRecruitId,
                         rc -> rc.getCount().intValue()

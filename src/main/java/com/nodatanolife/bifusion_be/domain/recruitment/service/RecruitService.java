@@ -25,6 +25,8 @@ public interface RecruitService {
             RecruitApplicationStatusRequest request,
             Long userId
     );
+
     Page<RecruitmentListResponse> getRecruitmentList(String sort, int page, int size);
+
 
 }
