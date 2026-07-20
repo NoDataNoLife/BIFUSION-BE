@@ -1,5 +1,6 @@
 package com.nodatanolife.bifusion_be.domain.recruitment.service;
 
+import com.nodatanolife.bifusion_be.domain.recruitment.dto.response.RecruitmentDetailResponse;
 import com.nodatanolife.bifusion_be.domain.recruitment.dto.request.RecruitApplicationStatusRequest;
 import com.nodatanolife.bifusion_be.domain.recruitment.dto.response.RecruitApplicationStatusResponse;
 import com.nodatanolife.bifusion_be.domain.recruitment.entity.RecruitApplicationStatus;
@@ -138,6 +139,21 @@ public class RecruitServiceImpl implements RecruitService {
         application.updateStatus(request.getStatus());
 
         return RecruitApplicationStatusResponse.from(application);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public RecruitmentDetailResponse getRecruitmentDetail(Long recruitmentId) {
+
+        Recruit recruit = recruitRepository.findById(recruitmentId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.RECRUITMENT_NOT_FOUND));
+
+        List<String> tags = tagMappingRepository
+                .findAllByTargetTypeAndTargetIdIn("RECRUIT", List.of(recruitmentId)).stream()
+                .map(tm -> tm.getTag().getName())
+                .toList();
+
+        return RecruitmentDetailResponse.from(recruit, tags);
     }
 
 }
