@@ -14,7 +14,7 @@ import org.springframework.web.bind.annotation.*;
 
 @Tag(name = "Recipe", description = "레시피 API")
 @RestController
-@RequestMapping("/api/v1/recipes")
+@RequestMapping("/api/v1/community/recipes")
 @RequiredArgsConstructor
 public class RecipeController {
 
