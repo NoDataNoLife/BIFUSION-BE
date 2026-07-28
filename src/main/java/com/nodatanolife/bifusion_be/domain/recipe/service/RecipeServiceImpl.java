@@ -1,9 +1,15 @@
 package com.nodatanolife.bifusion_be.domain.recipe.service;
 
+import com.nodatanolife.bifusion_be.domain.recipe.dto.request.RecipeRegisterRequest;
+import com.nodatanolife.bifusion_be.domain.recipe.dto.response.RecipeRegisterResponse;
+import com.nodatanolife.bifusion_be.domain.recipe.entity.Recipe;
 import com.nodatanolife.bifusion_be.domain.recipe.repository.RecipeForkHistoryRepository;
 import com.nodatanolife.bifusion_be.domain.recipe.repository.RecipeRepository;
 import com.nodatanolife.bifusion_be.domain.recipe.repository.RecipeReviewRepository;
 import com.nodatanolife.bifusion_be.domain.user.entity.User;
+import com.nodatanolife.bifusion_be.domain.user.repository.UserRepository;
+import com.nodatanolife.bifusion_be.global.exception.ErrorCode;
+import com.nodatanolife.bifusion_be.global.exception.business.BusinessException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -16,6 +22,7 @@ public class RecipeServiceImpl implements RecipeService {
     private final RecipeRepository recipeRepository;
     private final RecipeReviewRepository recipeReviewRepository;
     private final RecipeForkHistoryRepository recipeForkHistoryRepository;
+    private final UserRepository userRepository;
 
     /**
      * 회원 탈퇴 시 레시피 익명화
@@ -29,5 +36,16 @@ public class RecipeServiceImpl implements RecipeService {
                 .forEach(r -> r.anonymize(deletedUser));
         recipeForkHistoryRepository.findAllByUser(user)
                 .forEach(f -> f.anonymize(deletedUser));
+    }
+
+    @Override
+    public RecipeRegisterResponse registerRecipe(RecipeRegisterRequest request, Long userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
+
+        Recipe recipe = Recipe.create(request, user);
+        Recipe savedRecipe = recipeRepository.save(recipe);
+
+        return RecipeRegisterResponse.from(savedRecipe);
     }
 }

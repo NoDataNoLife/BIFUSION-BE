@@ -1,5 +1,6 @@
 package com.nodatanolife.bifusion_be.domain.recipe.entity;
 
+import com.nodatanolife.bifusion_be.domain.recipe.dto.request.RecipeRegisterRequest;
 import com.nodatanolife.bifusion_be.domain.user.entity.User;
 import com.nodatanolife.bifusion_be.global.entity.BaseEntity;
 import jakarta.persistence.*;
@@ -99,4 +100,32 @@ public class Recipe extends BaseEntity {
     public void updateMyPageVisibility(boolean visible) {
         this.isMyPageVisible = visible;
     }
+
+    public static Recipe create(RecipeRegisterRequest request, User user) {
+        Recipe recipe = new Recipe();
+        recipe.user = user;
+        recipe.forkedFrom = null;
+        recipe.title = request.title();
+        recipe.shortDescription = request.description();
+        recipe.model = request.modelName();
+        recipe.steps = request.steps();
+        recipe.sampler = request.sampler();
+        recipe.cfgScale = BigDecimal.valueOf(request.cfgScale());
+        recipe.seed = String.valueOf(request.seed());
+        recipe.resolution = request.resolution();
+        recipe.batchSize = request.batchSize();
+
+        recipe.isPublic = true;
+        recipe.isExpertVerified = false;
+        recipe.rating = BigDecimal.ZERO;
+        recipe.likeCount = 0;
+        recipe.forkCount = 0;
+        recipe.viewCount = 0;
+        recipe.downloadCount = 0;
+        recipe.isMyPageVisible = true;
+
+        return recipe;
+    }
+
+
 }
