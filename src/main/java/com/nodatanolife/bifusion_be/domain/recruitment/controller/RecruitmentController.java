@@ -1,5 +1,6 @@
 package com.nodatanolife.bifusion_be.domain.recruitment.controller;
 
+import com.nodatanolife.bifusion_be.domain.recruitment.dto.response.RecruitmentDetailResponse;
 import com.nodatanolife.bifusion_be.domain.recruitment.dto.request.RecruitApplicationStatusRequest;
 import com.nodatanolife.bifusion_be.domain.recruitment.dto.response.RecruitApplicationStatusResponse;
 import com.nodatanolife.bifusion_be.domain.recruitment.dto.response.RecruitmentListResponse;
@@ -66,6 +67,15 @@ public class RecruitmentController {
         return CommonResponse.success(response, "지원 상태 변경이 완료되었습니다!");
     }
 
+    @Operation(summary = "팀원 모집글 세부내용 조회")
+    @GetMapping("/{recruitmentId}")
+    public CommonResponse<RecruitmentDetailResponse> getRecruitmentDetail(
+            @PathVariable Long recruitmentId
+    ) {
+        return CommonResponse.success(
+                recruitService.getRecruitmentDetail(recruitmentId),"모집 공고 상세 조회 성공!");
+    }
+  
     @Operation(summary = "팀원 모집 목록 조회", description = "sort(LATEST/DEADLINE_SOON), page, size 파라미터로 조회합니다.")
     @GetMapping
     public CommonResponse<PageResponse<RecruitmentListResponse>> getRecruitmentList(

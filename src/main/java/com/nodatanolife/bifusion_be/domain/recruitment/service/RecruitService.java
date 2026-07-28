@@ -1,5 +1,6 @@
 package com.nodatanolife.bifusion_be.domain.recruitment.service;
 
+import com.nodatanolife.bifusion_be.domain.recruitment.dto.response.RecruitmentDetailResponse;
 import com.nodatanolife.bifusion_be.domain.recruitment.dto.request.RecruitApplicationStatusRequest;
 import com.nodatanolife.bifusion_be.domain.recruitment.dto.response.RecruitApplicationStatusResponse;
 import com.nodatanolife.bifusion_be.domain.recruitment.dto.request.RecruitmentRequest;
@@ -26,7 +27,8 @@ public interface RecruitService {
             Long userId
     );
 
+    RecruitmentDetailResponse getRecruitmentDetail(Long recruitmentId);
+  
     Page<RecruitmentListResponse> getRecruitmentList(String sort, int page, int size);
-
 
 }

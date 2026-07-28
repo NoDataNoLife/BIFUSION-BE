@@ -1,5 +1,6 @@
 package com.nodatanolife.bifusion_be.domain.recruitment.service;
 
+import com.nodatanolife.bifusion_be.domain.recruitment.dto.response.RecruitmentDetailResponse;
 import com.nodatanolife.bifusion_be.domain.recruitment.dto.request.RecruitApplicationStatusRequest;
 import com.nodatanolife.bifusion_be.domain.recruitment.dto.response.RecruitApplicationStatusResponse;
 import com.nodatanolife.bifusion_be.domain.recruitment.entity.RecruitApplicationStatus;
@@ -14,12 +15,12 @@ import com.nodatanolife.bifusion_be.domain.tag.entity.TagMapping;
 import com.nodatanolife.bifusion_be.domain.tag.repository.TagMappingRepository;
 import com.nodatanolife.bifusion_be.domain.tag.repository.TagRepository;
 import com.nodatanolife.bifusion_be.domain.user.entity.User;
-import com.nodatanolife.bifusion_be.domain.recruitment.dto.request.RecruitApplyRequest;   // ← 추가
-import com.nodatanolife.bifusion_be.domain.recruitment.dto.response.RecruitApplyResponse; // ← 추가
-import com.nodatanolife.bifusion_be.domain.recruitment.entity.RecruitApplication;         // ← 추가
-import com.nodatanolife.bifusion_be.domain.user.repository.UserRepository;                // ← 추가
-import com.nodatanolife.bifusion_be.global.exception.business.BusinessException;                   // ← 추가
-import com.nodatanolife.bifusion_be.global.exception.ErrorCode;                           // ← 추가
+import com.nodatanolife.bifusion_be.domain.recruitment.dto.request.RecruitApplyRequest;   
+import com.nodatanolife.bifusion_be.domain.recruitment.dto.response.RecruitApplyResponse; 
+import com.nodatanolife.bifusion_be.domain.recruitment.entity.RecruitApplication;         
+import com.nodatanolife.bifusion_be.domain.user.repository.UserRepository;               
+import com.nodatanolife.bifusion_be.global.exception.business.BusinessException;                   
+import com.nodatanolife.bifusion_be.global.exception.ErrorCode;                          
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -148,6 +149,21 @@ public class RecruitServiceImpl implements RecruitService {
         return RecruitApplicationStatusResponse.from(application);
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public RecruitmentDetailResponse getRecruitmentDetail(Long recruitmentId) {
+
+        Recruit recruit = recruitRepository.findById(recruitmentId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.RECRUITMENT_NOT_FOUND));
+
+        List<String> tags = tagMappingRepository
+                .findAllByTargetTypeAndTargetIdIn("RECRUIT", List.of(recruitmentId)).stream()
+                .map(tm -> tm.getTag().getName())
+                .toList();
+
+        return RecruitmentDetailResponse.from(recruit, tags);
+    }
+  
     @Override
     @Transactional(readOnly = true)
     public Page<RecruitmentListResponse> getRecruitmentList(String sort, int page, int size) {
