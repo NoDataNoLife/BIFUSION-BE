@@ -6,6 +6,7 @@ import com.nodatanolife.bifusion_be.domain.recruitment.dto.response.RecruitAppli
 import com.nodatanolife.bifusion_be.domain.recruitment.entity.RecruitApplicationStatus;
 import com.nodatanolife.bifusion_be.domain.recruitment.dto.request.RecruitmentRequest;
 import com.nodatanolife.bifusion_be.domain.recruitment.dto.response.RecruitmentResponse;
+import com.nodatanolife.bifusion_be.domain.recruitment.dto.response.RecruitmentListResponse;
 import com.nodatanolife.bifusion_be.domain.recruitment.entity.Recruit;
 import com.nodatanolife.bifusion_be.domain.recruitment.repository.RecruitApplicationRepository;
 import com.nodatanolife.bifusion_be.domain.recruitment.repository.RecruitRepository;
@@ -14,17 +15,24 @@ import com.nodatanolife.bifusion_be.domain.tag.entity.TagMapping;
 import com.nodatanolife.bifusion_be.domain.tag.repository.TagMappingRepository;
 import com.nodatanolife.bifusion_be.domain.tag.repository.TagRepository;
 import com.nodatanolife.bifusion_be.domain.user.entity.User;
-import com.nodatanolife.bifusion_be.domain.recruitment.dto.request.RecruitApplyRequest;   // ← 추가
-import com.nodatanolife.bifusion_be.domain.recruitment.dto.response.RecruitApplyResponse; // ← 추가
-import com.nodatanolife.bifusion_be.domain.recruitment.entity.RecruitApplication;         // ← 추가
-import com.nodatanolife.bifusion_be.domain.user.repository.UserRepository;                // ← 추가
-import com.nodatanolife.bifusion_be.global.exception.business.BusinessException;                   // ← 추가
-import com.nodatanolife.bifusion_be.global.exception.ErrorCode;                           // ← 추가
+import com.nodatanolife.bifusion_be.domain.recruitment.dto.request.RecruitApplyRequest;   
+import com.nodatanolife.bifusion_be.domain.recruitment.dto.response.RecruitApplyResponse; 
+import com.nodatanolife.bifusion_be.domain.recruitment.entity.RecruitApplication;         
+import com.nodatanolife.bifusion_be.domain.user.repository.UserRepository;               
+import com.nodatanolife.bifusion_be.global.exception.business.BusinessException;                   
+import com.nodatanolife.bifusion_be.global.exception.ErrorCode;                          
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.util.ArrayList;
+
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -155,5 +163,40 @@ public class RecruitServiceImpl implements RecruitService {
 
         return RecruitmentDetailResponse.from(recruit, tags);
     }
+  
+    @Override
+    @Transactional(readOnly = true)
+    public Page<RecruitmentListResponse> getRecruitmentList(String sort, int page, int size) {
 
+        Sort sortOption = "DEADLINE_SOON".equalsIgnoreCase(sort)
+                ? Sort.by("deadline").ascending()
+                : Sort.by("createdAt").descending();
+
+        Pageable pageable = PageRequest.of(page, size, sortOption);
+        Page<Recruit> recruits = recruitRepository.findAllByIsPublicTrue(pageable);
+
+        List<Long> recruitIds = recruits.getContent().stream()
+                .map(Recruit::getRecruitId)
+                .toList();
+
+        Map<Long, List<String>> tagMap = tagMappingRepository
+                .findAllByTargetTypeAndTargetIdIn("RECRUIT", recruitIds).stream()
+                .collect(Collectors.groupingBy(
+                        TagMapping::getTargetId,
+                        Collectors.mapping(tm -> tm.getTag().getName(), Collectors.toList())
+                ));
+
+        Map<Long, Integer> memberCountMap = recruitApplicationRepository
+                .countByRecruitIdsAndStatus(recruitIds, RecruitApplicationStatus.ACCEPTED).stream()
+                .collect(Collectors.toMap(
+                        RecruitApplicationRepository.RecruitMemberCount::getRecruitId,
+                        rc -> rc.getCount().intValue()
+                ));
+
+        return recruits.map(recruit -> RecruitmentListResponse.from(
+                recruit,
+                tagMap.getOrDefault(recruit.getRecruitId(), List.of()),
+                memberCountMap.getOrDefault(recruit.getRecruitId(), 0)
+        ));
+    }
 }

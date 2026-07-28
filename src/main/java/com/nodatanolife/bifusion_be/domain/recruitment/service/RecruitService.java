@@ -7,7 +7,10 @@ import com.nodatanolife.bifusion_be.domain.recruitment.dto.request.RecruitmentRe
 import com.nodatanolife.bifusion_be.domain.recruitment.dto.response.RecruitmentResponse;
 import com.nodatanolife.bifusion_be.domain.recruitment.dto.request.RecruitApplyRequest;
 import com.nodatanolife.bifusion_be.domain.recruitment.dto.response.RecruitApplyResponse;
+import com.nodatanolife.bifusion_be.domain.recruitment.dto.response.RecruitmentListResponse;
 import com.nodatanolife.bifusion_be.domain.user.entity.User;
+import org.springframework.data.domain.Page;
+
 
 public interface RecruitService {
 
@@ -25,4 +28,7 @@ public interface RecruitService {
     );
 
     RecruitmentDetailResponse getRecruitmentDetail(Long recruitmentId);
+  
+    Page<RecruitmentListResponse> getRecruitmentList(String sort, int page, int size);
+
 }
