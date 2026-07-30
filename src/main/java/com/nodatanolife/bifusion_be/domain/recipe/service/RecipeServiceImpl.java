@@ -13,6 +13,11 @@ import com.nodatanolife.bifusion_be.global.exception.business.BusinessException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.nodatanolife.bifusion_be.domain.recipe.dto.response.RecipeListResponse;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 
 @Service
 @RequiredArgsConstructor
@@ -47,5 +52,19 @@ public class RecipeServiceImpl implements RecipeService {
         Recipe savedRecipe = recipeRepository.save(recipe);
 
         return RecipeRegisterResponse.from(savedRecipe);
+    }
+
+    @Override
+    public RecipeListResponse getRecipeList(String sort, int page, int size) {
+        Sort sortOption = switch (sort) {
+            case "MOST_POPULAR" -> Sort.by(Sort.Direction.DESC, "likeCount");
+            case "MOST_FORKED" -> Sort.by(Sort.Direction.DESC, "forkCount");
+            default -> Sort.by(Sort.Direction.DESC, "createdAt"); // LATEST
+        };
+
+        Pageable pageable = PageRequest.of(page, size, sortOption);
+        Page<Recipe> recipePage = recipeRepository.findAllByIsPublicTrue(pageable);
+
+        return RecipeListResponse.of(recipePage);
     }
 }
