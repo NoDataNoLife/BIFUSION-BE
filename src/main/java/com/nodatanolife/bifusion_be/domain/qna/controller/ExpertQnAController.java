@@ -1,5 +1,6 @@
 package com.nodatanolife.bifusion_be.domain.qna.controller;
 
+import com.nodatanolife.bifusion_be.domain.qna.dto.response.ExpertQnADetailResponse;
 import com.nodatanolife.bifusion_be.domain.qna.dto.request.ExpertQnAAnswerRequest;
 import com.nodatanolife.bifusion_be.domain.qna.dto.response.ExpertQnAAnswerResponse;
 import io.swagger.v3.oas.annotations.Operation;
@@ -65,5 +66,14 @@ public class ExpertQnAController {
                 expertQnAService.getQnaList(sort, keyword, page, size)
         );
         return CommonResponse.success(response, "Q&A 목록 조회 성공!");
+    }
+
+    @Operation(summary = "QnA 상세 단건 조회", description = "질문 상세 내용과 답변 목록 전체를 조회합니다.")
+    @GetMapping("/{qnaId}")
+    public CommonResponse<ExpertQnADetailResponse> getQnaDetail(
+            @PathVariable Long qnaId
+    ) {
+        ExpertQnADetailResponse response = expertQnAService.getQnaDetail(qnaId);
+        return CommonResponse.success(response, "QnA 상세 조회 성공");
     }
 }

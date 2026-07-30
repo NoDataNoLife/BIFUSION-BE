@@ -1,5 +1,6 @@
 package com.nodatanolife.bifusion_be.domain.qna.service;
 
+import com.nodatanolife.bifusion_be.domain.qna.dto.response.ExpertQnADetailResponse;
 import com.nodatanolife.bifusion_be.domain.qna.dto.request.ExpertQnAAnswerRequest;
 import com.nodatanolife.bifusion_be.domain.qna.dto.response.ExpertQnAAnswerResponse;
 import com.nodatanolife.bifusion_be.domain.qna.entity.ExpertQnA;
@@ -124,5 +125,23 @@ public class ExpertQnAServiceImpl implements ExpertQnAService {
         return qnaPage.map(qna ->
                 ExpertQnAListResponse.from(qna, tagMap.getOrDefault(qna.getExpertQnAId(), List.of()))
         );
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public ExpertQnADetailResponse getQnaDetail(Long qnaId) {
+        ExpertQnA qna = expertQnARepository.findById(qnaId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.BOARD_NOT_FOUND));
+
+        List<String> tags = tagMappingRepository
+                .findAllByTargetTypeAndTargetIdIn("EXPERT_QNA", List.of(qnaId))
+                .stream()
+                .map(tm -> tm.getTag().getName())
+                .toList();
+
+        List<ExpertQnAAnswer> answers = expertQnAAnswerRepository
+                .findAllByExpertQnAOrderByCreatedAtAsc(qna);
+
+        return ExpertQnADetailResponse.from(qna, tags, answers);
     }
 }

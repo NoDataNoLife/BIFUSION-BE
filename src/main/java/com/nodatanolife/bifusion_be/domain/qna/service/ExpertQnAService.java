@@ -1,5 +1,6 @@
 package com.nodatanolife.bifusion_be.domain.qna.service;
 
+import com.nodatanolife.bifusion_be.domain.qna.dto.response.ExpertQnADetailResponse;
 import com.nodatanolife.bifusion_be.domain.qna.dto.request.ExpertQnAAnswerRequest;
 import com.nodatanolife.bifusion_be.domain.qna.dto.response.ExpertQnAAnswerResponse;
 import com.nodatanolife.bifusion_be.domain.qna.dto.request.ExpertQnaRequest;
@@ -18,5 +19,6 @@ public interface ExpertQnAService {
 
     Page<ExpertQnAListResponse> getQnaList(String sort, String keyword, int page, int size);
 
+    ExpertQnADetailResponse getQnaDetail(Long qnaId);
 
 }
