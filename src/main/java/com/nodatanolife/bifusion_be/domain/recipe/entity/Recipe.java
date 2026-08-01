@@ -1,5 +1,7 @@
 package com.nodatanolife.bifusion_be.domain.recipe.entity;
 
+import com.nodatanolife.bifusion_be.global.converter.StringListConverter;
+import java.util.List;
 import com.nodatanolife.bifusion_be.domain.recipe.dto.request.RecipeRegisterRequest;
 import com.nodatanolife.bifusion_be.domain.user.entity.User;
 import com.nodatanolife.bifusion_be.global.entity.BaseEntity;
@@ -39,11 +41,13 @@ public class Recipe extends BaseEntity {
     @Column(name = "thumbnail_url")
     private String thumbnailUrl;
 
+    @Convert(converter = StringListConverter.class)
     @Column(name = "key_features")
-    private String keyFeatures;
+    private List<String> keyFeatures;
 
+    @Convert(converter = StringListConverter.class)
     @Column(name = "use_cases")
-    private String useCases;
+    private List<String> useCases;
 
     @Column(name = "is_expert_verified")
     private Boolean isExpertVerified;

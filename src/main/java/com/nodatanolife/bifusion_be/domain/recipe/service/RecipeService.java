@@ -1,5 +1,6 @@
 package com.nodatanolife.bifusion_be.domain.recipe.service;
 
+import com.nodatanolife.bifusion_be.domain.recipe.dto.response.RecipeDetailResponse;
 import com.nodatanolife.bifusion_be.domain.recipe.dto.response.RecipeListResponse;
 import com.nodatanolife.bifusion_be.domain.recipe.dto.request.RecipeRegisterRequest;
 import com.nodatanolife.bifusion_be.domain.recipe.dto.response.RecipeRegisterResponse;
@@ -13,4 +14,5 @@ public interface RecipeService {
 
     RecipeListResponse getRecipeList(String sort, int page, int size);
 
+    RecipeDetailResponse getRecipeDetail(Long recipeId);
 }

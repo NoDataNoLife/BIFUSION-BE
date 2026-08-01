@@ -1,5 +1,6 @@
 package com.nodatanolife.bifusion_be.domain.recipe.service;
 
+import com.nodatanolife.bifusion_be.domain.recipe.dto.response.RecipeDetailResponse;
 import com.nodatanolife.bifusion_be.domain.recipe.dto.request.RecipeRegisterRequest;
 import com.nodatanolife.bifusion_be.domain.recipe.dto.response.RecipeRegisterResponse;
 import com.nodatanolife.bifusion_be.domain.recipe.entity.Recipe;
@@ -66,5 +67,14 @@ public class RecipeServiceImpl implements RecipeService {
         Page<Recipe> recipePage = recipeRepository.findAllByIsPublicTrue(pageable);
 
         return RecipeListResponse.of(recipePage);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public RecipeDetailResponse getRecipeDetail(Long recipeId) {
+        Recipe recipe = recipeRepository.findById(recipeId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.RESOURCE_NOT_FOUND));
+
+        return RecipeDetailResponse.from(recipe);
     }
 }

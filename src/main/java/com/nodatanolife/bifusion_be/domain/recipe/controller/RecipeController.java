@@ -1,5 +1,6 @@
 package com.nodatanolife.bifusion_be.domain.recipe.controller;
 
+import com.nodatanolife.bifusion_be.domain.recipe.dto.response.RecipeDetailResponse;
 import com.nodatanolife.bifusion_be.domain.recipe.dto.response.RecipeListResponse;
 import com.nodatanolife.bifusion_be.domain.recipe.dto.request.RecipeRegisterRequest;
 import com.nodatanolife.bifusion_be.domain.recipe.dto.response.RecipeRegisterResponse;
@@ -43,5 +44,14 @@ public class RecipeController {
     ) {
         RecipeListResponse response = recipeService.getRecipeList(sort, page, size);
         return CommonResponse.success(response, "레시피 목록 조회 성공!");
+    }
+
+    @Operation(summary = "레시피 상세내역 조회", description = "레시피 ID로 상세 정보를 조회합니다.")
+    @GetMapping("/{recipeId}")
+    public CommonResponse<RecipeDetailResponse> getRecipeDetail(
+            @PathVariable Long recipeId
+    ) {
+        RecipeDetailResponse response = recipeService.getRecipeDetail(recipeId);
+        return CommonResponse.success(response, "레시피 상세 조회 성공!");
     }
 }
