@@ -30,6 +30,22 @@ public class RecipeReview extends BaseEntity {
     @Column(name = "content")
     private String content;
 
+    @Builder
+    private RecipeReview(Recipe recipe, User user, Short rating, String content) {
+        this.recipe = recipe;
+        this.user = user;
+        this.rating = rating;
+        this.content = content;
+    }
+
+    public static RecipeReview create(Recipe recipe, User user, Short rating, String content) {
+        return RecipeReview.builder()
+                .recipe(recipe)
+                .user(user)
+                .rating(rating)
+                .content(content)
+                .build();
+    }
     public void anonymize(User deletedUser) {
         this.user = deletedUser;
     }
