@@ -131,5 +131,39 @@ public class Recipe extends BaseEntity {
         return recipe;
     }
 
+    public static Recipe fork(Recipe original, User user) {
+        Recipe recipe = new Recipe();
+        recipe.user = user;
+        recipe.forkedFrom = original;
+        recipe.title = original.title;
+        recipe.shortDescription = original.shortDescription;
+        recipe.overview = original.overview;
+        recipe.thumbnailUrl = original.thumbnailUrl;
+        recipe.keyFeatures = original.keyFeatures;
+        recipe.useCases = original.useCases;
+        recipe.model = original.model;
+        recipe.steps = original.steps;
+        recipe.sampler = original.sampler;
+        recipe.cfgScale = original.cfgScale;
+        recipe.seed = original.seed;
+        recipe.resolution = original.resolution;
+        recipe.batchSize = original.batchSize;
+
+        recipe.isPublic = false;
+        recipe.isExpertVerified = false;
+        recipe.rating = BigDecimal.ZERO;
+        recipe.likeCount = 0;
+        recipe.forkCount = 0;
+        recipe.viewCount = 0;
+        recipe.downloadCount = 0;
+        recipe.isMyPageVisible = true;
+
+        return recipe;
+    }
+
+    public void increaseForkCount() {
+        this.forkCount = this.forkCount + 1;
+    }
+
 
 }

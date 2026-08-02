@@ -34,4 +34,22 @@ public class RecipeForkHistory extends BaseCreatedEntity {
     public void anonymize(User deletedUser) {
         this.user = deletedUser;
     }
+
+
+    @Builder
+    private RecipeForkHistory(User user, Recipe forkedRecipe, Recipe originalRecipe, String originalTitle) {
+        this.user = user;
+        this.forkedRecipe = forkedRecipe;
+        this.originalRecipe = originalRecipe;
+        this.originalTitle = originalTitle;
+    }
+
+    public static RecipeForkHistory create(User user, Recipe forkedRecipe, Recipe originalRecipe, String originalTitle) {
+        return RecipeForkHistory.builder()
+                .user(user)
+                .forkedRecipe(forkedRecipe)
+                .originalRecipe(originalRecipe)
+                .originalTitle(originalTitle)
+                .build();
+    }
 }
