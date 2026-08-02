@@ -1,5 +1,7 @@
 package com.nodatanolife.bifusion_be.domain.recipe.service;
 
+import com.nodatanolife.bifusion_be.domain.recipe.dto.request.RecipeUpdateRequest;
+import com.nodatanolife.bifusion_be.domain.recipe.dto.response.RecipeUpdateResponse;
 import com.nodatanolife.bifusion_be.domain.recipe.dto.response.RecipeDetailResponse;
 import com.nodatanolife.bifusion_be.domain.recipe.dto.request.RecipeRegisterRequest;
 import com.nodatanolife.bifusion_be.domain.recipe.dto.response.RecipeRegisterResponse;
@@ -76,5 +78,20 @@ public class RecipeServiceImpl implements RecipeService {
                 .orElseThrow(() -> new BusinessException(ErrorCode.RESOURCE_NOT_FOUND));
 
         return RecipeDetailResponse.from(recipe);
+    }
+
+    @Override
+    @Transactional
+    public RecipeUpdateResponse updateRecipe(Long recipeId, Long userId, RecipeUpdateRequest request) {
+        Recipe recipe = recipeRepository.findById(recipeId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.RESOURCE_NOT_FOUND));
+
+        if (!recipe.getUser().getUserId().equals(userId)) {
+            throw new BusinessException(ErrorCode.FORBIDDEN_RECIPE_ACCESS);
+        }
+
+        recipe.update(request);
+
+        return RecipeUpdateResponse.of(recipe.getRecipeId());
     }
 }

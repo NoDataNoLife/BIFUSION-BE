@@ -1,5 +1,7 @@
 package com.nodatanolife.bifusion_be.domain.recipe.controller;
 
+import com.nodatanolife.bifusion_be.domain.recipe.dto.request.RecipeUpdateRequest;
+import com.nodatanolife.bifusion_be.domain.recipe.dto.response.RecipeUpdateResponse;
 import com.nodatanolife.bifusion_be.domain.recipe.dto.response.RecipeDetailResponse;
 import com.nodatanolife.bifusion_be.domain.recipe.dto.response.RecipeListResponse;
 import com.nodatanolife.bifusion_be.domain.recipe.dto.request.RecipeRegisterRequest;
@@ -53,5 +55,19 @@ public class RecipeController {
     ) {
         RecipeDetailResponse response = recipeService.getRecipeDetail(recipeId);
         return CommonResponse.success(response, "레시피 상세 조회 성공!");
+    }
+
+    @Operation(summary = "레시피 수정", description = "레시피 설정값을 수정합니다.")
+    @PutMapping("/{recipeId}")
+    public CommonResponse<RecipeUpdateResponse> updateRecipe(
+            @AuthenticationPrincipal CustomOAuth2User oAuth2User,
+            @PathVariable Long recipeId,
+            @RequestBody @Valid RecipeUpdateRequest request
+    ) {
+        Long userId = oAuth2User.getUser().getUserId();
+
+        RecipeUpdateResponse response = recipeService.updateRecipe(recipeId, userId, request);
+
+        return CommonResponse.success(response, "레시피 수정 성공");
     }
 }

@@ -1,5 +1,6 @@
 package com.nodatanolife.bifusion_be.domain.recipe.entity;
 
+import com.nodatanolife.bifusion_be.domain.recipe.dto.request.RecipeUpdateRequest;
 import com.nodatanolife.bifusion_be.global.converter.StringListConverter;
 import java.util.List;
 import com.nodatanolife.bifusion_be.domain.recipe.dto.request.RecipeRegisterRequest;
@@ -165,5 +166,16 @@ public class Recipe extends BaseEntity {
         this.forkCount = this.forkCount + 1;
     }
 
+    public void update(RecipeUpdateRequest request) {
+        this.title = request.title();
+        this.shortDescription = request.description();
+        this.model = request.modelName();
+        this.steps = request.steps();
+        this.sampler = request.sampler();
+        this.cfgScale = BigDecimal.valueOf(request.cfgScale());
+        this.seed = String.valueOf(request.seed());
+        this.resolution = request.resolution();
+        this.batchSize = request.batchSize();
+    }
 
 }
