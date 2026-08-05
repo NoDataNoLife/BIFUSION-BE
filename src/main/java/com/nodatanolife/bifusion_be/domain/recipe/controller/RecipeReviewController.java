@@ -20,7 +20,11 @@ public class RecipeReviewController {
 
     private final RecipeReviewService recipeReviewService;
 
-    @Operation(summary = "리뷰 작성", description = "레시피에 대한 리뷰(별점, 내용)를 작성합니다.")
+    @Operation(
+            summary = "댓글/대댓글 작성",
+            description = "레시피에 댓글을 작성합니다. parentReviewId가 null이면 최상위 댓글(별점 필수), "
+                    + "값이 있으면 해당 댓글의 대댓글(별점 불가)로 등록됩니다."
+    )
     @PostMapping("/{recipeId}/reviews")
     public CommonResponse<RecipeReviewResponse> createReview(
             @AuthenticationPrincipal CustomOAuth2User oAuth2User,
@@ -31,6 +35,6 @@ public class RecipeReviewController {
 
         RecipeReviewResponse response = recipeReviewService.createReview(recipeId, userId, request);
 
-        return CommonResponse.success(response, "리뷰 작성 성공");
+        return CommonResponse.success(response, request.isReply() ? "대댓글 작성 성공!" : "댓글 작성 성공!");
     }
 }

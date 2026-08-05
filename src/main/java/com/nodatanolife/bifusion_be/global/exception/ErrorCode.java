@@ -50,6 +50,12 @@ public enum ErrorCode {
     INVALID_APPLICATION_STATUS(HttpStatus.BAD_REQUEST, "CM009", "허용되지 않은 상태값입니다."),
     RECRUITMENT_FULL(HttpStatus.CONFLICT, "CM010", "모집 정원이 마감되었습니다."),
     ALREADY_FORKED_RECIPE(HttpStatus.CONFLICT, "CM011", "이미 포크한 레시피입니다."),
+    RECIPE_NOT_FOUND(HttpStatus.NOT_FOUND, "CM012", "레시피를 찾을 수 없습니다."),
+    PARENT_REVIEW_NOT_FOUND(HttpStatus.NOT_FOUND, "CM013", "부모 댓글을 찾을 수 없습니다."),
+    PARENT_REVIEW_RECIPE_MISMATCH(HttpStatus.CONFLICT, "CM014", "다른 레시피의 댓글에는 답글을 달 수 없습니다."),
+    REVIEW_REPLY_DEPTH_EXCEEDED(HttpStatus.CONFLICT, "CM015", "대댓글에는 답글을 달 수 없습니다."),
+    REVIEW_RATING_REQUIRED(HttpStatus.BAD_REQUEST, "CM016", "리뷰에는 별점이 필요합니다."),
+    REPLY_RATING_NOT_ALLOWED(HttpStatus.BAD_REQUEST, "CM017", "대댓글에는 별점을 남길 수 없습니다."),
     /* ================================
      * Collaboration / Project
      * ================================ */
