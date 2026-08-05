@@ -16,6 +16,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
+@Transactional
 public class RecipeReviewServiceImpl implements RecipeReviewService {
 
     private final RecipeReviewRepository recipeReviewRepository;
@@ -23,18 +24,52 @@ public class RecipeReviewServiceImpl implements RecipeReviewService {
     private final UserRepository userRepository;
 
     @Override
-    @Transactional
     public RecipeReviewResponse createReview(Long recipeId, Long userId, RecipeReviewRequest request) {
         Recipe recipe = recipeRepository.findById(recipeId)
-                .orElseThrow(() -> new BusinessException(ErrorCode.RESOURCE_NOT_FOUND));
+                .orElseThrow(() -> new BusinessException(ErrorCode.RECIPE_NOT_FOUND));
 
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new BusinessException(ErrorCode.RESOURCE_NOT_FOUND));
+        RecipeReview parent = resolveParent(recipeId, request.parentReviewId());
+        validateRating(parent, request.rating());
 
-        RecipeReview review = RecipeReview.create(recipe, user, request.rating().shortValue(), request.content());
+        User user = userRepository.getReferenceById(userId);
+
+        RecipeReview review = RecipeReview.create(
+                recipe, user, parent, request.ratingAsShort(), request.content()
+        );
 
         RecipeReview saved = recipeReviewRepository.save(review);
 
         return RecipeReviewResponse.from(saved);
+    }
+
+    private RecipeReview resolveParent(Long recipeId, Long parentReviewId) {
+        if (parentReviewId == null) {
+            return null;
+        }
+
+        RecipeReview parent = recipeReviewRepository.findById(parentReviewId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.PARENT_REVIEW_NOT_FOUND));
+
+        // 다른 레시피의 리뷰 ID를 잘못 넣는 경우를 막는다.
+        if (!parent.getRecipe().getRecipeId().equals(recipeId)) {
+            throw new BusinessException(ErrorCode.PARENT_REVIEW_RECIPE_MISMATCH);
+        }
+
+        // 대댓글에는 다시 답글을 달 수 없다.
+        if (parent.isReply()) {
+            throw new BusinessException(ErrorCode.REVIEW_REPLY_DEPTH_EXCEEDED);
+        }
+
+        return parent;
+    }
+
+    // 별점은 최상위 리뷰만 가진다.
+    private void validateRating(RecipeReview parent, Integer rating) {
+        if (parent == null && rating == null) {
+            throw new BusinessException(ErrorCode.REVIEW_RATING_REQUIRED);
+        }
+        if (parent != null && rating != null) {
+            throw new BusinessException(ErrorCode.REPLY_RATING_NOT_ALLOWED);
+        }
     }
 }

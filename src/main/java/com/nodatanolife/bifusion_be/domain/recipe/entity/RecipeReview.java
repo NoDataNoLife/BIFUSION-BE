@@ -24,6 +24,12 @@ public class RecipeReview extends BaseEntity {
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
+    // 최상위 리뷰면 null, 대댓글이면 대상 리뷰를 가리킨다.
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "parent_review_id")
+    private RecipeReview parent;
+
+    // 최상위 리뷰만 별점을 가진다. 대댓글은 항상 null.
     @Column(name = "rating")
     private Short rating;
 
@@ -31,20 +37,26 @@ public class RecipeReview extends BaseEntity {
     private String content;
 
     @Builder
-    private RecipeReview(Recipe recipe, User user, Short rating, String content) {
+    private RecipeReview(Recipe recipe, User user, RecipeReview parent, Short rating, String content) {
         this.recipe = recipe;
         this.user = user;
+        this.parent = parent;
         this.rating = rating;
         this.content = content;
     }
 
-    public static RecipeReview create(Recipe recipe, User user, Short rating, String content) {
+    public static RecipeReview create(Recipe recipe, User user, RecipeReview parent, Short rating, String content) {
         return RecipeReview.builder()
                 .recipe(recipe)
                 .user(user)
+                .parent(parent)
                 .rating(rating)
                 .content(content)
                 .build();
+    }
+
+    public boolean isReply() {
+        return parent != null;
     }
     public void anonymize(User deletedUser) {
         this.user = deletedUser;
