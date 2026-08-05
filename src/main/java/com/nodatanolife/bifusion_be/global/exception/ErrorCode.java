@@ -49,6 +49,7 @@ public enum ErrorCode {
     APPLICATION_ACCESS_DENIED(HttpStatus.FORBIDDEN, "CM008", "모집글 작성자만 처리할 수 있습니다."),
     INVALID_APPLICATION_STATUS(HttpStatus.BAD_REQUEST, "CM009", "허용되지 않은 상태값입니다."),
     RECRUITMENT_FULL(HttpStatus.CONFLICT, "CM010", "모집 정원이 마감되었습니다."),
+    ALREADY_FORKED_RECIPE(HttpStatus.CONFLICT, "CM011", "이미 포크한 레시피입니다."),
     /* ================================
      * Collaboration / Project
      * ================================ */
