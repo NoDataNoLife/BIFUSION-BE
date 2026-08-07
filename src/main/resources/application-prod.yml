@@ -29,6 +29,4 @@ app:
   oauth2:
     frontend-uri: https://bifusion-fe-whb3.vercel.app
   cookie:
-    # TODO: 도메인 연결 + HTTPS(nginx+certbot) 적용 후 true로 전환할 것
-    # (secure:true인 채로 HTTP만 쓰면 브라우저가 쿠키를 버려서 로그인이 always-fail로 보임)
-    secure: false
+    secure: true
