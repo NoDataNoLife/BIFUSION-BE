@@ -56,6 +56,8 @@ public enum ErrorCode {
     REVIEW_REPLY_DEPTH_EXCEEDED(HttpStatus.CONFLICT, "CM015", "대댓글에는 답글을 달 수 없습니다."),
     REVIEW_RATING_REQUIRED(HttpStatus.BAD_REQUEST, "CM016", "리뷰에는 별점이 필요합니다."),
     REPLY_RATING_NOT_ALLOWED(HttpStatus.BAD_REQUEST, "CM017", "대댓글에는 별점을 남길 수 없습니다."),
+    RECIPE_REVIEW_NOT_FOUND(HttpStatus.NOT_FOUND, "CM018", "댓글을 찾을 수 없습니다."),
+    RECIPE_REVIEW_ACCESS_DENIED(HttpStatus.FORBIDDEN, "CM019", "댓글에 대한 권한이 없습니다."),
     /* ================================
      * Collaboration / Project
      * ================================ */

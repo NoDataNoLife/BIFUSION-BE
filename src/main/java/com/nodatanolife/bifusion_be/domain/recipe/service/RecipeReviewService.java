@@ -5,4 +5,6 @@ import com.nodatanolife.bifusion_be.domain.recipe.dto.response.RecipeReviewRespo
 
 public interface RecipeReviewService {
     RecipeReviewResponse createReview(Long recipeId, Long userId, RecipeReviewRequest request);
+
+    void deleteReview(Long recipeId, Long reviewId, Long userId);
 }

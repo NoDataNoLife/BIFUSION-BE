@@ -9,4 +9,6 @@ import java.util.List;
 public interface RecipeReviewRepository extends JpaRepository<RecipeReview, Long> {
 
     List<RecipeReview> findAllByUser(User user);
+
+    void deleteAllByParent(RecipeReview parent);
 }

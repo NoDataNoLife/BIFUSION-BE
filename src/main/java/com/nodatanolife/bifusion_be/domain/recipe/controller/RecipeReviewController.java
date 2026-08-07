@@ -37,4 +37,21 @@ public class RecipeReviewController {
 
         return CommonResponse.success(response, request.isReply() ? "대댓글 작성 성공!" : "댓글 작성 성공!");
     }
+
+    @Operation(
+            summary = "댓글/대댓글 삭제",
+            description = "본인이 작성한 레시피 댓글을 삭제합니다. 하드 삭제이며, 최상위 댓글을 삭제하면 딸린 대댓글도 함께 삭제됩니다."
+    )
+    @DeleteMapping("/{recipeId}/reviews/{reviewId}")
+    public CommonResponse<Void> deleteReview(
+            @AuthenticationPrincipal CustomOAuth2User oAuth2User,
+            @PathVariable Long recipeId,
+            @PathVariable Long reviewId
+    ) {
+        Long userId = oAuth2User.getUser().getUserId();
+
+        recipeReviewService.deleteReview(recipeId, reviewId, userId);
+
+        return CommonResponse.success(null, "댓글 삭제 성공!");
+    }
 }
