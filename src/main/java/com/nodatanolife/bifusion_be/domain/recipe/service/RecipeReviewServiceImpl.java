@@ -43,7 +43,7 @@ public class RecipeReviewServiceImpl implements RecipeReviewService {
     }
 
     @Override
-    public void deleteReview(Long recipeId, Long reviewId, Long userId) {
+    public boolean deleteReview(Long recipeId, Long reviewId, Long userId) {
         RecipeReview review = recipeReviewRepository.findById(reviewId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.RECIPE_REVIEW_NOT_FOUND));
 
@@ -54,12 +54,16 @@ public class RecipeReviewServiceImpl implements RecipeReviewService {
             throw new BusinessException(ErrorCode.RECIPE_REVIEW_ACCESS_DENIED);
         }
 
+        boolean isReply = review.isReply();
+
         // 최상위 댓글을 삭제하면 딸린 대댓글도 함께 하드 삭제한다.
-        if (!review.isReply()) {
+        if (!isReply) {
             recipeReviewRepository.deleteAllByParent(review);
         }
 
         recipeReviewRepository.delete(review);
+
+        return isReply;
     }
 
     private RecipeReview resolveParent(Long recipeId, Long parentReviewId) {

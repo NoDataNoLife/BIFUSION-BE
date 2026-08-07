@@ -50,8 +50,8 @@ public class RecipeReviewController {
     ) {
         Long userId = oAuth2User.getUser().getUserId();
 
-        recipeReviewService.deleteReview(recipeId, reviewId, userId);
+        boolean isReply = recipeReviewService.deleteReview(recipeId, reviewId, userId);
 
-        return CommonResponse.success(null, "댓글 삭제 성공!");
+        return CommonResponse.success(null, isReply ? "대댓글 삭제 성공!" : "댓글 삭제 성공!");
     }
 }
