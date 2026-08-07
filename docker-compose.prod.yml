@@ -1,0 +1,50 @@
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: bifusion-be
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      DB_HOST: postgres
+      DB_PORT: 5432
+    # nginx가 80에서 리버스 프록시하므로 8080은 localhost에만 바인딩 (외부에서 직접 접근 차단)
+    ports:
+      - "127.0.0.1:8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - bifusion-net
+
+  postgres:
+    image: postgres:16
+    container_name: bifusion-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: bifusion
+      POSTGRES_USER: ${DB_USERNAME}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    # 로컬 개발과 달리 prod에서는 5432를 외부에 노출하지 않음
+    # 필요 시 디버깅용으로만 아래 주석 해제
+    # ports:
+    #   - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME} -d bifusion"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - bifusion-net
+
+networks:
+  bifusion-net:
+    driver: bridge
+
+volumes:
+  postgres_data:
