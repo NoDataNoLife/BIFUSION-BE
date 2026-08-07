@@ -20,7 +20,7 @@ public class CookieUtil {
         return ResponseCookie.from("access_token", token)
                 .httpOnly(true)
                 .secure(secureCookie)
-                .sameSite("Lax")
+                .sameSite(sameSite())
                 .path("/")
                 .maxAge(accessExpiration / 1000)
                 .build();
@@ -30,7 +30,7 @@ public class CookieUtil {
         return ResponseCookie.from("refresh_token", token)
                 .httpOnly(true)
                 .secure(secureCookie)
-                .sameSite("Lax")
+                .sameSite(sameSite())
                 .path("/")
                 .maxAge(maxAgeSeconds)
                 .build();
@@ -40,9 +40,14 @@ public class CookieUtil {
         return ResponseCookie.from(name, "")
                 .httpOnly(true)
                 .secure(secureCookie)
-                .sameSite("Lax")
+                .sameSite(sameSite())
                 .path("/")
                 .maxAge(0)
                 .build();
+    }
+
+    // SameSite=None은 Secure 쿠키에서만 유효하므로 secure 플래그에 값을 종속시킨다.
+    private String sameSite() {
+        return secureCookie ? "None" : "Lax";
     }
 }
