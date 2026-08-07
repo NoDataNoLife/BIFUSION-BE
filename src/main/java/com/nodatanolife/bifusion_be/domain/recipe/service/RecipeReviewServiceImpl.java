@@ -57,7 +57,7 @@ public class RecipeReviewServiceImpl implements RecipeReviewService {
             throw new BusinessException(ErrorCode.RECIPE_NOT_FOUND);
         }
 
-        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
+        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.ASC, "createdAt"));
         Page<RecipeReview> topLevelReviews = recipeReviewRepository.findAllByRecipe_RecipeIdAndParentIsNull(recipeId, pageable);
 
         List<Long> topLevelIds = topLevelReviews.getContent().stream()

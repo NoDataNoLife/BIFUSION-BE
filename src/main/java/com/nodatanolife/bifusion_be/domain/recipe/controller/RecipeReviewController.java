@@ -41,7 +41,7 @@ public class RecipeReviewController {
 
     @Operation(
             summary = "댓글/대댓글 목록 조회",
-            description = "레시피의 최상위 댓글을 최신순으로 페이지 조회합니다. 각 댓글에는 딸린 대댓글이 함께 내려갑니다."
+            description = "레시피의 최상위 댓글을 생성순으로 페이지 조회합니다. 각 댓글에는 딸린 대댓글이 함께 내려갑니다."
     )
     @GetMapping("/{recipeId}/reviews")
     public CommonResponse<PageResponse<RecipeReviewResponse>> getReviews(
