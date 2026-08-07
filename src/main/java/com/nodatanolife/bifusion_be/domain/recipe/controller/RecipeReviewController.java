@@ -3,6 +3,7 @@ package com.nodatanolife.bifusion_be.domain.recipe.controller;
 import com.nodatanolife.bifusion_be.domain.recipe.dto.request.RecipeReviewRequest;
 import com.nodatanolife.bifusion_be.domain.recipe.dto.response.RecipeReviewResponse;
 import com.nodatanolife.bifusion_be.domain.recipe.service.RecipeReviewService;
+import com.nodatanolife.bifusion_be.global.dto.response.PageResponse;
 import com.nodatanolife.bifusion_be.global.response.CommonResponse;
 import com.nodatanolife.bifusion_be.global.security.oauth2.CustomOAuth2User;
 import io.swagger.v3.oas.annotations.Operation;
@@ -36,5 +37,20 @@ public class RecipeReviewController {
         RecipeReviewResponse response = recipeReviewService.createReview(recipeId, userId, request);
 
         return CommonResponse.success(response, request.isReply() ? "대댓글 작성 성공!" : "댓글 작성 성공!");
+    }
+
+    @Operation(
+            summary = "댓글/대댓글 목록 조회",
+            description = "레시피의 최상위 댓글을 최신순으로 페이지 조회합니다. 각 댓글에는 딸린 대댓글이 함께 내려갑니다."
+    )
+    @GetMapping("/{recipeId}/reviews")
+    public CommonResponse<PageResponse<RecipeReviewResponse>> getReviews(
+            @PathVariable Long recipeId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size
+    ) {
+        PageResponse<RecipeReviewResponse> response = PageResponse.from(recipeReviewService.getReviews(recipeId, page, size));
+
+        return CommonResponse.success(response, "댓글 목록 조회 성공!");
     }
 }
