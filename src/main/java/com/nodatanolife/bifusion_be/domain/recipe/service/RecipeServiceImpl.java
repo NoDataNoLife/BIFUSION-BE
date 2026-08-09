@@ -1,7 +1,5 @@
 package com.nodatanolife.bifusion_be.domain.recipe.service;
 
-import com.nodatanolife.bifusion_be.domain.recipe.dto.request.RecipeUpdateRequest;
-import com.nodatanolife.bifusion_be.domain.recipe.dto.response.RecipeUpdateResponse;
 import com.nodatanolife.bifusion_be.domain.recipe.dto.response.RecipeDetailResponse;
 import com.nodatanolife.bifusion_be.domain.recipe.dto.request.RecipeRegisterRequest;
 import com.nodatanolife.bifusion_be.domain.recipe.dto.response.RecipeRegisterResponse;
@@ -46,16 +44,6 @@ public class RecipeServiceImpl implements RecipeService {
                 .forEach(f -> f.anonymize(deletedUser));
     }
 
-    @Override
-    public RecipeRegisterResponse registerRecipe(RecipeRegisterRequest request, Long userId) {
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
-
-        Recipe recipe = Recipe.create(request, user);
-        Recipe savedRecipe = recipeRepository.save(recipe);
-
-        return RecipeRegisterResponse.from(savedRecipe);
-    }
 
     @Override
     public RecipeListResponse getRecipeList(String sort, int page, int size) {
@@ -81,17 +69,20 @@ public class RecipeServiceImpl implements RecipeService {
     }
 
     @Override
-    @Transactional
-    public RecipeUpdateResponse updateRecipe(Long recipeId, Long userId, RecipeUpdateRequest request) {
-        Recipe recipe = recipeRepository.findById(recipeId)
-                .orElseThrow(() -> new BusinessException(ErrorCode.RESOURCE_NOT_FOUND));
+    public RecipeRegisterResponse registerRecipe(RecipeRegisterRequest request, Long userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
 
-        if (!recipe.getUser().getUserId().equals(userId)) {
-            throw new BusinessException(ErrorCode.FORBIDDEN_RECIPE_ACCESS);
+        Recipe forkedFrom = null;
+        if (request.forkedFromId() != null) {
+            forkedFrom = recipeRepository.findById(request.forkedFromId())
+                    .orElseThrow(() -> new BusinessException(ErrorCode.RESOURCE_NOT_FOUND));
+            forkedFrom.increaseForkCount();
         }
 
-        recipe.update(request);
+        Recipe recipe = Recipe.create(request, user, forkedFrom);
+        Recipe savedRecipe = recipeRepository.save(recipe);
 
-        return RecipeUpdateResponse.of(recipe.getRecipeId());
+        return RecipeRegisterResponse.from(savedRecipe);
     }
 }
