@@ -44,16 +44,6 @@ public class RecipeServiceImpl implements RecipeService {
                 .forEach(f -> f.anonymize(deletedUser));
     }
 
-    @Override
-    public RecipeRegisterResponse registerRecipe(RecipeRegisterRequest request, Long userId) {
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
-
-        Recipe recipe = Recipe.create(request, user);
-        Recipe savedRecipe = recipeRepository.save(recipe);
-
-        return RecipeRegisterResponse.from(savedRecipe);
-    }
 
     @Override
     public RecipeListResponse getRecipeList(String sort, int page, int size) {
@@ -76,5 +66,23 @@ public class RecipeServiceImpl implements RecipeService {
                 .orElseThrow(() -> new BusinessException(ErrorCode.RESOURCE_NOT_FOUND));
 
         return RecipeDetailResponse.from(recipe);
+    }
+
+    @Override
+    public RecipeRegisterResponse registerRecipe(RecipeRegisterRequest request, Long userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
+
+        Recipe forkedFrom = null;
+        if (request.forkedFromId() != null) {
+            forkedFrom = recipeRepository.findById(request.forkedFromId())
+                    .orElseThrow(() -> new BusinessException(ErrorCode.RESOURCE_NOT_FOUND));
+            forkedFrom.increaseForkCount();
+        }
+
+        Recipe recipe = Recipe.create(request, user, forkedFrom);
+        Recipe savedRecipe = recipeRepository.save(recipe);
+
+        return RecipeRegisterResponse.from(savedRecipe);
     }
 }
