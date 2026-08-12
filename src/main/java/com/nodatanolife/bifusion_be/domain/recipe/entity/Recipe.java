@@ -105,12 +105,15 @@ public class Recipe extends BaseEntity {
         this.isMyPageVisible = visible;
     }
 
-    public static Recipe create(RecipeRegisterRequest request, User user) {
+    public static Recipe create(RecipeRegisterRequest request, User user, Recipe forkedFrom) {
         Recipe recipe = new Recipe();
         recipe.user = user;
-        recipe.forkedFrom = null;
+        recipe.forkedFrom = forkedFrom;
         recipe.title = request.title();
         recipe.shortDescription = request.description();
+        recipe.overview = request.overview();
+        recipe.keyFeatures = request.features();
+        recipe.useCases = request.recommendations();
         recipe.model = request.modelName();
         recipe.steps = request.steps();
         recipe.sampler = request.sampler();
@@ -164,6 +167,5 @@ public class Recipe extends BaseEntity {
     public void increaseForkCount() {
         this.forkCount = this.forkCount + 1;
     }
-
 
 }
