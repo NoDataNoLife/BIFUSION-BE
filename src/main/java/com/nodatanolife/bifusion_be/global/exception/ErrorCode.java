@@ -59,6 +59,11 @@ public enum ErrorCode {
     FORBIDDEN_RECIPE_ACCESS(HttpStatus.FORBIDDEN, "CM018", "본인의 레시피가 아닙니다."),
 
     /* ================================
+     * Dataset
+     * ================================ */
+    INVALID_DATASET_LIST_TYPE(HttpStatus.BAD_REQUEST, "DS001", "유효하지 않은 데이터셋 목록 조회 타입입니다."),
+
+    /* ================================
      * Collaboration / Project
      * ================================ */
     PROJECT_NOT_FOUND(HttpStatus.NOT_FOUND, "P001", "프로젝트를 찾을 수 없습니다."),
