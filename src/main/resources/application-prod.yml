@@ -16,6 +16,9 @@ spring:
   # prod에서는 AWS access-key를 넣지 않음
   # EC2 인스턴스에 IAM Role을 부여해서 Spring Cloud AWS가 자동으로 자격증명을 획득하도록 함
 
+server:
+  forward-headers-strategy: native
+
 logging:
   level:
     root: INFO
