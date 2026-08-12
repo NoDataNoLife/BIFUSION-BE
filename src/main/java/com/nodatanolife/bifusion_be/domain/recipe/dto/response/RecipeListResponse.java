@@ -17,6 +17,7 @@ public record RecipeListResponse(
             String bannerUrl,
             AuthorInfo author,
             int forkCount,
+            int likeCount,
             boolean isExpertVerified
     ) {
         public static RecipeSummary from(Recipe recipe) {
@@ -26,7 +27,9 @@ public record RecipeListResponse(
                     recipe.getThumbnailUrl(),
                     AuthorInfo.from(recipe.getUser()),
                     recipe.getForkCount(),
+                    recipe.getLikeCount() != null ? recipe.getLikeCount() : 0,
                     recipe.getIsExpertVerified()
+
             );
         }
     }
