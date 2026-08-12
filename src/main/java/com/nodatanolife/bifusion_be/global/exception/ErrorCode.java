@@ -105,7 +105,14 @@ public enum ErrorCode {
      * ================================ */
     ACTIVITY_NOT_FOUND(HttpStatus.NOT_FOUND, "AC001", "활동 콘텐츠를 찾을 수 없습니다."),
     ACTIVITY_ACCESS_DENIED(HttpStatus.FORBIDDEN, "AC002", "본인 소유의 활동만 변경할 수 있습니다."),
-    ACTIVITY_PRIVATE_CONTENT_CANNOT_BE_PUBLIC(HttpStatus.BAD_REQUEST, "AC003", "비공개 콘텐츠는 마이페이지에 공개할 수 없습니다.");
+    ACTIVITY_PRIVATE_CONTENT_CANNOT_BE_PUBLIC(HttpStatus.BAD_REQUEST, "AC003", "비공개 콘텐츠는 마이페이지에 공개할 수 없습니다."),
+
+    /* ================================
+     * Inspection (전문가 검수 신청)
+     * ================================ */
+    INSPECTION_TARGET_NOT_FOUND(HttpStatus.NOT_FOUND, "IS001", "검수 대상을 찾을 수 없습니다."),
+    INSPECTION_FORBIDDEN(HttpStatus.FORBIDDEN, "IS002", "전문가 검수를 신청할 권한이 없습니다."),
+    INSPECTION_ALREADY_EXISTS(HttpStatus.CONFLICT, "IS003", "이미 해당 대상에 대한 검수 신청이 존재합니다.");
 
     private final HttpStatus status;
     private final String code;

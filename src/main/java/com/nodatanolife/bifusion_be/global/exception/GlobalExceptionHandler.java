@@ -70,6 +70,21 @@ public class GlobalExceptionHandler {
     }
 
     /* ================================
+     * 요청 본문 파싱 실패 (허용되지 않은 Enum 값 등)
+     * ================================ */
+    @ExceptionHandler(org.springframework.http.converter.HttpMessageNotReadableException.class)
+    protected ResponseEntity<CommonResponse<?>> handleHttpMessageNotReadable() {
+        ErrorCode errorCode = ErrorCode.INVALID_INPUT_VALUE;
+
+        return ResponseEntity
+                .status(errorCode.getStatus()) // 400
+                .body(CommonResponse.fail(
+                        errorCode.getCode(),
+                        "요청 본문의 형식이 올바르지 않습니다."
+                ));
+    }
+
+    /* ================================
      * 타입 불일치 (Long에 문자 등)
      * ================================ */
     @ExceptionHandler(org.springframework.web.method.annotation.MethodArgumentTypeMismatchException.class)
