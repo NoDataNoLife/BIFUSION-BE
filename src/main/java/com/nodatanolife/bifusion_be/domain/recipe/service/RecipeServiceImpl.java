@@ -1,9 +1,11 @@
 package com.nodatanolife.bifusion_be.domain.recipe.service;
 
+import com.nodatanolife.bifusion_be.domain.recipe.dto.response.MyRecipeListResponse;
 import com.nodatanolife.bifusion_be.domain.recipe.dto.response.RecipeDetailResponse;
 import com.nodatanolife.bifusion_be.domain.recipe.dto.request.RecipeRegisterRequest;
 import com.nodatanolife.bifusion_be.domain.recipe.dto.response.RecipeRegisterResponse;
 import com.nodatanolife.bifusion_be.domain.recipe.entity.Recipe;
+import com.nodatanolife.bifusion_be.domain.recipe.entity.RecipeListType;
 import com.nodatanolife.bifusion_be.domain.recipe.repository.RecipeForkHistoryRepository;
 import com.nodatanolife.bifusion_be.domain.recipe.repository.RecipeRepository;
 import com.nodatanolife.bifusion_be.domain.recipe.repository.RecipeReviewRepository;
@@ -84,5 +86,18 @@ public class RecipeServiceImpl implements RecipeService {
         Recipe savedRecipe = recipeRepository.save(recipe);
 
         return RecipeRegisterResponse.from(savedRecipe);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<MyRecipeListResponse> getMyRecipes(RecipeListType type, Long userId, int page, int size) {
+        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
+
+        Page<Recipe> recipePage = switch (type) {
+            case MINE -> recipeRepository.findAllByForkedFromIsNullAndUser_UserId(userId, pageable);
+            case FORKED -> recipeRepository.findAllByForkedFromIsNotNullAndUser_UserId(userId, pageable);
+        };
+
+        return recipePage.map(MyRecipeListResponse::from);
     }
 }

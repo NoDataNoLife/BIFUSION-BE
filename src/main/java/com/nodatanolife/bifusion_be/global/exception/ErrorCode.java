@@ -57,6 +57,7 @@ public enum ErrorCode {
     REVIEW_RATING_REQUIRED(HttpStatus.BAD_REQUEST, "CM016", "리뷰에는 별점이 필요합니다."),
     REPLY_RATING_NOT_ALLOWED(HttpStatus.BAD_REQUEST, "CM017", "대댓글에는 별점을 남길 수 없습니다."),
     FORBIDDEN_RECIPE_ACCESS(HttpStatus.FORBIDDEN, "CM018", "본인의 레시피가 아닙니다."),
+    INVALID_RECIPE_LIST_TYPE(HttpStatus.BAD_REQUEST, "CM019", "유효하지 않은 레시피 목록 조회 타입입니다."),
 
     /* ================================
      * Collaboration / Project
