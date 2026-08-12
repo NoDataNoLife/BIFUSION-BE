@@ -15,4 +15,5 @@ public interface RecipeService {
     RecipeListResponse getRecipeList(String sort, int page, int size);
 
     RecipeDetailResponse getRecipeDetail(Long recipeId);
+
 }

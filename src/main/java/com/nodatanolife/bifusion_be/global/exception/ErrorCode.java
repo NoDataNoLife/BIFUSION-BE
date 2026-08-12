@@ -58,6 +58,8 @@ public enum ErrorCode {
     REPLY_RATING_NOT_ALLOWED(HttpStatus.BAD_REQUEST, "CM017", "대댓글에는 별점을 남길 수 없습니다."),
     RECIPE_REVIEW_NOT_FOUND(HttpStatus.NOT_FOUND, "CM018", "댓글을 찾을 수 없습니다."),
     RECIPE_REVIEW_ACCESS_DENIED(HttpStatus.FORBIDDEN, "CM019", "댓글에 대한 권한이 없습니다."),
+    FORBIDDEN_RECIPE_ACCESS(HttpStatus.FORBIDDEN, "CM018", "본인의 레시피가 아닙니다."),
+
     /* ================================
      * Collaboration / Project
      * ================================ */
