@@ -48,20 +48,6 @@ public class RecipeServiceImpl implements RecipeService {
 
 
     @Override
-    public RecipeListResponse getRecipeList(String sort, int page, int size) {
-        Sort sortOption = switch (sort) {
-            case "MOST_POPULAR" -> Sort.by(Sort.Direction.DESC, "likeCount");
-            case "MOST_FORKED" -> Sort.by(Sort.Direction.DESC, "forkCount");
-            default -> Sort.by(Sort.Direction.DESC, "createdAt"); // LATEST
-        };
-
-        Pageable pageable = PageRequest.of(page, size, sortOption);
-        Page<Recipe> recipePage = recipeRepository.findAllByIsPublicTrue(pageable);
-
-        return RecipeListResponse.of(recipePage);
-    }
-
-    @Override
     @Transactional(readOnly = true)
     public RecipeDetailResponse getRecipeDetail(Long recipeId) {
         Recipe recipe = recipeRepository.findById(recipeId)
@@ -99,5 +85,20 @@ public class RecipeServiceImpl implements RecipeService {
         };
 
         return recipePage.map(MyRecipeListResponse::from);
+
+    }
+    @Override
+    @Transactional(readOnly = true)
+    public RecipeListResponse getRecipeList(String sort, String keyword, int page, int size) {
+        Sort sortOption = switch (sort) {
+            case "MOST_POPULAR" -> Sort.by(Sort.Direction.DESC, "likeCount");
+            case "MOST_FORKED" -> Sort.by(Sort.Direction.DESC, "forkCount");
+            default -> Sort.by(Sort.Direction.DESC, "createdAt"); // LATEST
+        };
+
+        Pageable pageable = PageRequest.of(page, size, sortOption);
+        Page<Recipe> recipePage = recipeRepository.searchRecipes(keyword, pageable);
+
+        return RecipeListResponse.of(recipePage);
     }
 }

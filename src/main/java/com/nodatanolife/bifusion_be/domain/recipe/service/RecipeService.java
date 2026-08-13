@@ -15,10 +15,9 @@ public interface RecipeService {
 
     RecipeRegisterResponse registerRecipe(RecipeRegisterRequest request, Long userId);
 
-    RecipeListResponse getRecipeList(String sort, int page, int size);
-
     RecipeDetailResponse getRecipeDetail(Long recipeId);
 
     Page<MyRecipeListResponse> getMyRecipes(RecipeListType type, Long userId, int page, int size);
 
+    RecipeListResponse getRecipeList(String sort, String keyword, int page, int size);
 }

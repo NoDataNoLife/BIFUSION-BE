@@ -6,6 +6,8 @@ import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import java.util.List;
 
@@ -20,4 +22,7 @@ public interface RecipeRepository extends JpaRepository<Recipe, Long> {
 
     @EntityGraph(attributePaths = "user")
     Page<Recipe> findAllByForkedFromIsNotNullAndUser_UserId(Long userId, Pageable pageable);
+    @Query("SELECT r FROM Recipe r WHERE r.isPublic = true AND " +
+            "(:keyword IS NULL OR :keyword = '' OR LOWER(r.title) LIKE LOWER(CONCAT('%', :keyword, '%')) OR LOWER(r.shortDescription) LIKE LOWER(CONCAT('%', :keyword, '%')))")
+    Page<Recipe> searchRecipes(@Param("keyword") String keyword, Pageable pageable);
 }
