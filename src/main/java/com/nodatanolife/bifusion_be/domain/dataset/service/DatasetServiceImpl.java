@@ -7,7 +7,9 @@ import com.nodatanolife.bifusion_be.domain.tag.repository.TagMappingRepository;
 import com.nodatanolife.bifusion_be.domain.dataset.dto.request.DatasetCreateRequest;
 import com.nodatanolife.bifusion_be.domain.dataset.dto.response.DatasetCreateResponse;
 import com.nodatanolife.bifusion_be.domain.dataset.dto.response.DatasetListResponse;
+import com.nodatanolife.bifusion_be.domain.dataset.dto.response.MyDatasetListResponse;
 import com.nodatanolife.bifusion_be.domain.dataset.entity.Dataset;
+import com.nodatanolife.bifusion_be.domain.dataset.entity.DatasetType;
 import com.nodatanolife.bifusion_be.domain.dataset.repository.DatasetRepository;
 import com.nodatanolife.bifusion_be.domain.file.entity.File;
 import com.nodatanolife.bifusion_be.domain.file.repository.FileRepository;
@@ -105,5 +107,14 @@ public class DatasetServiceImpl implements DatasetService {
                 DatasetListResponse.from(dataset, tagMap.getOrDefault(dataset.getDatasetId(), List.of()))
 
         );
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<MyDatasetListResponse> getMyDatasets(DatasetType type, Long userId, int page, int size) {
+        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
+        Page<Dataset> datasetPage = datasetRepository.findAllByTypeAndUser_UserId(type, userId, pageable);
+
+        return datasetPage.map(MyDatasetListResponse::from);
     }
 }

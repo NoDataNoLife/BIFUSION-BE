@@ -1,6 +1,7 @@
 package com.nodatanolife.bifusion_be.domain.recipe.service;
 
 import com.nodatanolife.bifusion_be.domain.recipe.dto.request.RecipeReviewRequest;
+import com.nodatanolife.bifusion_be.domain.recipe.dto.request.RecipeReviewUpdateRequest;
 import com.nodatanolife.bifusion_be.domain.recipe.dto.response.RecipeReviewResponse;
 import com.nodatanolife.bifusion_be.domain.recipe.entity.Recipe;
 import com.nodatanolife.bifusion_be.domain.recipe.entity.RecipeReview;
@@ -52,15 +53,7 @@ public class RecipeReviewServiceImpl implements RecipeReviewService {
 
     @Override
     public boolean deleteReview(Long recipeId, Long reviewId, Long userId) {
-        RecipeReview review = recipeReviewRepository.findById(reviewId)
-                .orElseThrow(() -> new BusinessException(ErrorCode.RECIPE_REVIEW_NOT_FOUND));
-
-        if (!review.getRecipe().getRecipeId().equals(recipeId)) {
-            throw new BusinessException(ErrorCode.RECIPE_REVIEW_NOT_FOUND);
-        }
-        if (!review.getUser().getUserId().equals(userId)) {
-            throw new BusinessException(ErrorCode.RECIPE_REVIEW_ACCESS_DENIED);
-        }
+        RecipeReview review = getOwnedReview(recipeId, reviewId, userId);
 
         boolean isReply = review.isReply();
 
@@ -72,6 +65,17 @@ public class RecipeReviewServiceImpl implements RecipeReviewService {
         recipeReviewRepository.delete(review);
 
         return isReply;
+    }
+
+    @Override
+    public RecipeReviewResponse updateReview(Long recipeId, Long reviewId, Long userId, RecipeReviewUpdateRequest request) {
+        RecipeReview review = getOwnedReview(recipeId, reviewId, userId);
+
+        validateRating(review.getParent(), request.rating());
+
+        review.update(request.ratingAsShort(), request.content());
+
+        return RecipeReviewResponse.from(review);
     }
 
     @Override
@@ -97,6 +101,20 @@ public class RecipeReviewServiceImpl implements RecipeReviewService {
         return topLevelReviews.map(review ->
                 RecipeReviewResponse.from(review, repliesByParentId.getOrDefault(review.getRecipeReviewId(), List.of()))
         );
+    }
+
+    private RecipeReview getOwnedReview(Long recipeId, Long reviewId, Long userId) {
+        RecipeReview review = recipeReviewRepository.findById(reviewId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.RECIPE_REVIEW_NOT_FOUND));
+
+        if (!review.getRecipe().getRecipeId().equals(recipeId)) {
+            throw new BusinessException(ErrorCode.RECIPE_REVIEW_NOT_FOUND);
+        }
+        if (!review.getUser().getUserId().equals(userId)) {
+            throw new BusinessException(ErrorCode.RECIPE_REVIEW_ACCESS_DENIED);
+        }
+
+        return review;
     }
 
     private RecipeReview resolveParent(Long recipeId, Long parentReviewId) {

@@ -59,6 +59,13 @@ public enum ErrorCode {
     RECIPE_REVIEW_NOT_FOUND(HttpStatus.NOT_FOUND, "CM018", "댓글을 찾을 수 없습니다."),
     RECIPE_REVIEW_ACCESS_DENIED(HttpStatus.FORBIDDEN, "CM019", "댓글에 대한 권한이 없습니다."),
     FORBIDDEN_RECIPE_ACCESS(HttpStatus.FORBIDDEN, "CM020", "본인의 레시피가 아닙니다."),
+    FORBIDDEN_RECIPE_ACCESS(HttpStatus.FORBIDDEN, "CM021", "본인의 레시피가 아닙니다."),
+    INVALID_RECIPE_LIST_TYPE(HttpStatus.BAD_REQUEST, "CM022", "유효하지 않은 레시피 목록 조회 타입입니다."),
+
+    /* ================================
+     * Dataset
+     * ================================ */
+    INVALID_DATASET_LIST_TYPE(HttpStatus.BAD_REQUEST, "DS001", "유효하지 않은 데이터셋 목록 조회 타입입니다."),
 
     /* ================================
      * Collaboration / Project
@@ -107,7 +114,14 @@ public enum ErrorCode {
      * ================================ */
     ACTIVITY_NOT_FOUND(HttpStatus.NOT_FOUND, "AC001", "활동 콘텐츠를 찾을 수 없습니다."),
     ACTIVITY_ACCESS_DENIED(HttpStatus.FORBIDDEN, "AC002", "본인 소유의 활동만 변경할 수 있습니다."),
-    ACTIVITY_PRIVATE_CONTENT_CANNOT_BE_PUBLIC(HttpStatus.BAD_REQUEST, "AC003", "비공개 콘텐츠는 마이페이지에 공개할 수 없습니다.");
+    ACTIVITY_PRIVATE_CONTENT_CANNOT_BE_PUBLIC(HttpStatus.BAD_REQUEST, "AC003", "비공개 콘텐츠는 마이페이지에 공개할 수 없습니다."),
+
+    /* ================================
+     * Inspection (전문가 검수 신청)
+     * ================================ */
+    INSPECTION_TARGET_NOT_FOUND(HttpStatus.NOT_FOUND, "IS001", "검수 대상을 찾을 수 없습니다."),
+    INSPECTION_FORBIDDEN(HttpStatus.FORBIDDEN, "IS002", "전문가 검수를 신청할 권한이 없습니다."),
+    INSPECTION_ALREADY_EXISTS(HttpStatus.CONFLICT, "IS003", "이미 해당 대상에 대한 검수 신청이 존재합니다.");
 
     private final HttpStatus status;
     private final String code;

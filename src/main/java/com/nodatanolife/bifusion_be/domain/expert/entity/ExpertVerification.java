@@ -8,10 +8,16 @@ import java.time.LocalDateTime;
 
 /**
  * 전문가 인증 요청 (Recipe, Dataset 등에 대한 검수 요청)
- * target_type: "RECIPE" | "DATASET" 등
+ * target_type: "RECIPE" | "UPLOADED_DATA" | "AUGMENTED_DATA"
  */
 @Entity
-@Table(name = "expert_verification")
+@Table(
+        name = "expert_verification",
+        uniqueConstraints = @UniqueConstraint(
+                name = "uk_expert_verification_user_target",
+                columnNames = {"user_id", "target_type", "target_id"}
+        )
+)
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class ExpertVerification extends BaseEntity {
@@ -28,11 +34,13 @@ public class ExpertVerification extends BaseEntity {
     @Column(name = "target_id")
     private Long targetId;
 
-    @Column(name = "target_type", length = 50)
-    private String targetType;
+    @Enumerated(EnumType.STRING)
+    @Column(name = "target_type", length = 20)
+    private InspectionTargetType targetType;
 
+    @Enumerated(EnumType.STRING)
     @Column(name = "status", length = 20)
-    private String status;
+    private ExpertVerificationStatus status;
 
     @Column(name = "rejection_reason")
     private String rejectionReason;
@@ -41,11 +49,28 @@ public class ExpertVerification extends BaseEntity {
     private LocalDateTime appliedAt;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "reviewed_by", nullable = false)
+    @JoinColumn(name = "reviewed_by")
     private User reviewedBy;
 
     @Column(name = "reviewed_at")
     private LocalDateTime reviewedAt;
+
+    @Builder
+    private ExpertVerification(User user, Long targetId, InspectionTargetType targetType) {
+        this.user = user;
+        this.targetId = targetId;
+        this.targetType = targetType;
+        this.status = ExpertVerificationStatus.PENDING;
+        this.appliedAt = LocalDateTime.now();
+    }
+
+    public static ExpertVerification create(User user, InspectionTargetType targetType, Long targetId) {
+        return ExpertVerification.builder()
+                .user(user)
+                .targetType(targetType)
+                .targetId(targetId)
+                .build();
+    }
 
     public void anonymize(User deletedUser) {
         this.user = deletedUser;
