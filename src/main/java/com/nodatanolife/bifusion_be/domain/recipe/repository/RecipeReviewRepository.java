@@ -12,6 +12,8 @@ public interface RecipeReviewRepository extends JpaRepository<RecipeReview, Long
 
     List<RecipeReview> findAllByUser(User user);
 
+    void deleteAllByParent(RecipeReview parent);
+    
     Page<RecipeReview> findAllByRecipe_RecipeIdAndParentIsNull(Long recipeId, Pageable pageable);
 
     List<RecipeReview> findAllByParent_RecipeReviewIdInOrderByCreatedAtAsc(List<Long> parentIds);

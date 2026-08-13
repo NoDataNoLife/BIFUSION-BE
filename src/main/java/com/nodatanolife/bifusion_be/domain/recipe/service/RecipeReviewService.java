@@ -8,6 +8,8 @@ import org.springframework.data.domain.Page;
 public interface RecipeReviewService {
     RecipeReviewResponse createReview(Long recipeId, Long userId, RecipeReviewRequest request);
 
+    boolean deleteReview(Long recipeId, Long reviewId, Long userId);
+    
     RecipeReviewResponse updateReview(Long recipeId, Long reviewId, Long userId, RecipeReviewUpdateRequest request);
   
     Page<RecipeReviewResponse> getReviews(Long recipeId, int page, int size);
