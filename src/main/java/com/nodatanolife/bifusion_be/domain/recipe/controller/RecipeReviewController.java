@@ -13,7 +13,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
-@Tag(name = "Recipe Review", description = "레시피 리뷰 API")
+@Tag(name = "Recipe Review", description = "레시피 댓글 API")
 @RestController
 @RequestMapping("/api/v1/community/recipes")
 @RequiredArgsConstructor
