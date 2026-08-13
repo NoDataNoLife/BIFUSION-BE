@@ -1,6 +1,7 @@
 package com.nodatanolife.bifusion_be.domain.recipe.controller;
 
 import com.nodatanolife.bifusion_be.domain.recipe.dto.request.RecipeReviewRequest;
+import com.nodatanolife.bifusion_be.domain.recipe.dto.request.RecipeReviewUpdateRequest;
 import com.nodatanolife.bifusion_be.domain.recipe.dto.response.RecipeReviewResponse;
 import com.nodatanolife.bifusion_be.domain.recipe.service.RecipeReviewService;
 import com.nodatanolife.bifusion_be.global.dto.response.PageResponse;
@@ -39,6 +40,22 @@ public class RecipeReviewController {
         return CommonResponse.success(response, request.isReply() ? "대댓글 작성 성공!" : "댓글 작성 성공!");
     }
 
+   @Operation(
+            summary = "댓글/대댓글 수정",
+            description = "본인이 작성한 레시피 댓글을 수정합니다. 최상위 댓글은 별점이 필수이며, 대댓글은 별점을 보낼 수 없습니다."
+    )
+    @PutMapping("/{recipeId}/reviews/{reviewId}")
+    public CommonResponse<RecipeReviewResponse> updateReview(
+            @AuthenticationPrincipal CustomOAuth2User oAuth2User,
+            @PathVariable Long recipeId,
+            @PathVariable Long reviewId,
+            @RequestBody @Valid RecipeReviewUpdateRequest request
+    ) {
+        Long userId = oAuth2User.getUser().getUserId();
+        RecipeReviewResponse response = recipeReviewService.updateReview(recipeId, reviewId, userId, request);
+        return CommonResponse.success(response, response.parentReviewId() != null ? "대댓글 수정 성공!" : "댓글 수정 성공!");
+    }
+
     @Operation(
             summary = "댓글/대댓글 목록 조회",
             description = "레시피의 최상위 댓글을 생성순으로 페이지 조회합니다. 각 댓글에는 딸린 대댓글이 함께 내려갑니다."
@@ -50,7 +67,6 @@ public class RecipeReviewController {
             @RequestParam(defaultValue = "10") int size
     ) {
         PageResponse<RecipeReviewResponse> response = PageResponse.from(recipeReviewService.getReviews(recipeId, page, size));
-
         return CommonResponse.success(response, "댓글 목록 조회 성공!");
     }
 }

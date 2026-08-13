@@ -61,4 +61,9 @@ public class RecipeReview extends BaseEntity {
     public void anonymize(User deletedUser) {
         this.user = deletedUser;
     }
+
+    public void update(Short rating, String content) {
+        this.rating = rating;
+        this.content = content;
+    }
 }
