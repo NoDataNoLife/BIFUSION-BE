@@ -1,6 +1,7 @@
 package com.nodatanolife.bifusion_be.domain.dataset.dto.response;
 
 import com.nodatanolife.bifusion_be.domain.dataset.entity.Dataset;
+import com.nodatanolife.bifusion_be.domain.file.entity.File;
 import com.nodatanolife.bifusion_be.domain.file.presign.PresignedUrl;
 
 import java.time.LocalDateTime;
@@ -17,18 +18,27 @@ public record DatasetListResponse(
         Integer downloadCount,
         AuthorInfo author,
         String license,
-        LocalDateTime createdAt
+        LocalDateTime createdAt,
+        String format,
+        String imageType,
+        String resolution,
+        String classes,
+        String usageExample,
+        String fileName,
+        @PresignedUrl String downloadUrl
 ) {
     public record AuthorInfo(Long userId, String nickname, @PresignedUrl String profileImageUrl) {}
 
     public static DatasetListResponse from(Dataset dataset, List<String> tags) {
+        File file = dataset.getFile();
+
         return new DatasetListResponse(
                 dataset.getDatasetId(),
                 dataset.getTitle(),
                 dataset.getDescription(),
                 dataset.getIsExpertVerified(),
                 tags,
-                formatFileSize(dataset.getFile() != null ? dataset.getFile().getFileSize() : null),
+                formatFileSize(file != null ? file.getFileSize() : null),
                 dataset.getFileCount(),
                 dataset.getDownloadCount(),
                 new AuthorInfo(
@@ -37,7 +47,14 @@ public record DatasetListResponse(
                         dataset.getUser().getProfileImageUrl()
                 ),
                 dataset.getLicense(),
-                dataset.getCreatedAt()
+                dataset.getCreatedAt(),
+                dataset.getFormat(),
+                dataset.getImageType(),
+                dataset.getResolution(),
+                dataset.getClasses(),
+                dataset.getUsageExample(),
+                file != null ? file.getFileName() : null,
+                file != null ? file.getS3Key() : null
         );
     }
 
