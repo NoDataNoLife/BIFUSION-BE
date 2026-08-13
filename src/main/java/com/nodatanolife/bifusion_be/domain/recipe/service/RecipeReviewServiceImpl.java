@@ -1,6 +1,7 @@
 package com.nodatanolife.bifusion_be.domain.recipe.service;
 
 import com.nodatanolife.bifusion_be.domain.recipe.dto.request.RecipeReviewRequest;
+import com.nodatanolife.bifusion_be.domain.recipe.dto.request.RecipeReviewUpdateRequest;
 import com.nodatanolife.bifusion_be.domain.recipe.dto.response.RecipeReviewResponse;
 import com.nodatanolife.bifusion_be.domain.recipe.entity.Recipe;
 import com.nodatanolife.bifusion_be.domain.recipe.entity.RecipeReview;
@@ -48,6 +49,25 @@ public class RecipeReviewServiceImpl implements RecipeReviewService {
         RecipeReview saved = recipeReviewRepository.save(review);
 
         return RecipeReviewResponse.from(saved);
+    }
+
+    @Override
+    public RecipeReviewResponse updateReview(Long recipeId, Long reviewId, Long userId, RecipeReviewUpdateRequest request) {
+        RecipeReview review = recipeReviewRepository.findById(reviewId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.RECIPE_REVIEW_NOT_FOUND));
+
+        if (!review.getRecipe().getRecipeId().equals(recipeId)) {
+            throw new BusinessException(ErrorCode.RECIPE_REVIEW_NOT_FOUND);
+        }
+        if (!review.getUser().getUserId().equals(userId)) {
+            throw new BusinessException(ErrorCode.RECIPE_REVIEW_ACCESS_DENIED);
+        }
+
+        validateRating(review.getParent(), request.rating());
+
+        review.update(request.ratingAsShort(), request.content());
+
+        return RecipeReviewResponse.from(review);
     }
 
     @Override
