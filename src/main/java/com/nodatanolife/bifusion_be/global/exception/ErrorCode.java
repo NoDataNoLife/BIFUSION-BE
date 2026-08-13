@@ -62,6 +62,11 @@ public enum ErrorCode {
     INVALID_RECIPE_LIST_TYPE(HttpStatus.BAD_REQUEST, "CM019", "유효하지 않은 레시피 목록 조회 타입입니다."),
 
     /* ================================
+     * Dataset
+     * ================================ */
+    INVALID_DATASET_LIST_TYPE(HttpStatus.BAD_REQUEST, "DS001", "유효하지 않은 데이터셋 목록 조회 타입입니다."),
+
+    /* ================================
      * Collaboration / Project
      * ================================ */
     PROJECT_NOT_FOUND(HttpStatus.NOT_FOUND, "P001", "프로젝트를 찾을 수 없습니다."),
