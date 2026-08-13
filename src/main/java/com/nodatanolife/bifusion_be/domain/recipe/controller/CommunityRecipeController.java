@@ -46,14 +46,16 @@ public class CommunityRecipeController {
         return CommonResponse.success(response, request.forkedFromId() != null ? "포크 레시피 등록 성공!" : "레시피 등록 성공!");
     }
 
-    @Operation(summary = "레시피 목록 전체 조회", description = "sort(LATEST/MOST_POPULAR/MOST_FORKED), page, size 파라미터로 조회합니다.")
+
+    @Operation(summary = "레시피 목록 전체 조회", description = "sort(LATEST/MOST_POPULAR/MOST_FORKED), keyword, page, size 파라미터로 조회합니다.")
     @GetMapping
     public CommonResponse<RecipeListResponse> getRecipeList(
             @RequestParam(defaultValue = "LATEST") String sort,
+            @RequestParam(required = false) String keyword,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size
     ) {
-        RecipeListResponse response = recipeService.getRecipeList(sort, page, size);
+        RecipeListResponse response = recipeService.getRecipeList(sort, keyword, page, size);
         return CommonResponse.success(response, "레시피 목록 조회 성공!");
     }
 
