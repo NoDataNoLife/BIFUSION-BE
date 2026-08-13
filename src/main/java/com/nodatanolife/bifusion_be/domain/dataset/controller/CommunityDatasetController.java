@@ -17,11 +17,11 @@ import com.nodatanolife.bifusion_be.domain.dataset.dto.response.DatasetListRespo
 import com.nodatanolife.bifusion_be.global.dto.response.PageResponse;
 
 
-@Tag(name = "Dataset", description = "Dataset api")
+@Tag(name = "Community Dataset", description = "커뮤니티 데이터셋 api")
 @RestController
 @RequestMapping("/api/v1/community/datasets")
 @RequiredArgsConstructor
-public class DatasetController {
+public class CommunityDatasetController {
 
     private final DatasetService datasetService;
 

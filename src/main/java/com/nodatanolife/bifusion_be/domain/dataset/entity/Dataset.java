@@ -80,6 +80,12 @@ public class Dataset extends BaseEntity {
     @Column(name = "citation")
     private String citation;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "type", length = 20)
+    private DatasetType type;
+
+    @Column(name = "banner_image_url")
+    private String bannerImageUrl;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "file_id")
@@ -109,6 +115,7 @@ public class Dataset extends BaseEntity {
         this.downloadCount = 0;
         this.likeCount = 0;
         this.viewCount = 0;
+        this.type = DatasetType.UPLOADED;
     }
 
     public static Dataset create(User user, DatasetCreateRequest request,  File file) {
