@@ -1,5 +1,8 @@
 package com.nodatanolife.bifusion_be.domain.recipe.dto.response;
 
+import com.nodatanolife.bifusion_be.domain.expert.dto.response.VerificationResultResponse;
+import com.nodatanolife.bifusion_be.domain.expert.dto.response.VerificationSummary;
+import com.nodatanolife.bifusion_be.domain.expert.entity.VerificationStatus;
 import com.nodatanolife.bifusion_be.domain.recipe.entity.Recipe;
 import com.nodatanolife.bifusion_be.domain.user.entity.User;
 
@@ -20,7 +23,9 @@ public record RecipeDetailResponse(
         int viewCount,
         int downloadCount,
         Overview overview,
-        Settings settings
+        Settings settings,
+        VerificationStatus verificationStatus,
+        VerificationResultResponse verificationResult
 ) {
     public record AuthorInfo(Long userId, String nickname, String profileImageUrl) {
         public static AuthorInfo from(User author) {
@@ -64,7 +69,7 @@ public record RecipeDetailResponse(
         }
     }
 
-    public static RecipeDetailResponse from(Recipe recipe ) {
+    public static RecipeDetailResponse from(Recipe recipe, VerificationSummary verificationSummary) {
         return new RecipeDetailResponse(
                 recipe.getRecipeId(),
                 recipe.getTitle(),
@@ -79,7 +84,9 @@ public record RecipeDetailResponse(
                 recipe.getViewCount(),
                 recipe.getDownloadCount(),
                 Overview.from(recipe),
-                Settings.from(recipe)
+                Settings.from(recipe),
+                verificationSummary.status(),
+                verificationSummary.result()
         );
     }
 }
