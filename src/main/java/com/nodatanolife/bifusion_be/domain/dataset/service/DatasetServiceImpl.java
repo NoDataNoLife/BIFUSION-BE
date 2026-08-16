@@ -139,6 +139,9 @@ public class DatasetServiceImpl implements DatasetService {
                 .map(tm -> tm.getTag().getName())
                 .toList();
 
-        return DatasetDetailResponse.from(dataset, tags);
+        VerificationSummary verificationSummary =
+                verificationResultService.getSummary(InspectionTargetType.UPLOADED_DATA, datasetId);
+
+        return DatasetDetailResponse.from(dataset, tags, verificationSummary);
     }
 }
