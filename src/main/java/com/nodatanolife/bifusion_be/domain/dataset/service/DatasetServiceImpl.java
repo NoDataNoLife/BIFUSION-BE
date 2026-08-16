@@ -1,5 +1,8 @@
 package com.nodatanolife.bifusion_be.domain.dataset.service;
 
+import com.nodatanolife.bifusion_be.domain.expert.dto.response.VerificationSummary;
+import com.nodatanolife.bifusion_be.domain.expert.entity.InspectionTargetType;
+import com.nodatanolife.bifusion_be.domain.expert.service.VerificationResultService;
 import com.nodatanolife.bifusion_be.domain.tag.entity.Tag;
 import com.nodatanolife.bifusion_be.domain.tag.entity.TagMapping;
 import com.nodatanolife.bifusion_be.domain.tag.repository.TagRepository;
@@ -39,6 +42,7 @@ public class DatasetServiceImpl implements DatasetService {
     private final FileRepository fileRepository;
     private final TagRepository tagRepository;
     private final TagMappingRepository tagMappingRepository;
+    private final VerificationResultService verificationResultService;
 
 
     @Override
@@ -103,10 +107,14 @@ public class DatasetServiceImpl implements DatasetService {
                         Collectors.mapping(tm -> tm.getTag().getName(), Collectors.toList())
                 ));
 
-        return datasetPage.map(dataset ->
-                DatasetListResponse.from(dataset, tagMap.getOrDefault(dataset.getDatasetId(), List.of()))
+        Map<Long, VerificationSummary> verificationMap =
+                verificationResultService.getSummaries(InspectionTargetType.UPLOADED_DATA, ids);
 
-        );
+        return datasetPage.map(dataset -> DatasetListResponse.from(
+                dataset,
+                tagMap.getOrDefault(dataset.getDatasetId(), List.of()),
+                verificationMap.getOrDefault(dataset.getDatasetId(), VerificationSummary.none())
+        ));
     }
 
     @Override

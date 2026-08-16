@@ -1,5 +1,8 @@
 package com.nodatanolife.bifusion_be.domain.recipe.service;
 
+import com.nodatanolife.bifusion_be.domain.expert.dto.response.VerificationSummary;
+import com.nodatanolife.bifusion_be.domain.expert.entity.InspectionTargetType;
+import com.nodatanolife.bifusion_be.domain.expert.service.VerificationResultService;
 import com.nodatanolife.bifusion_be.domain.recipe.dto.response.MyRecipeListResponse;
 import com.nodatanolife.bifusion_be.domain.recipe.dto.response.RecipeDetailResponse;
 import com.nodatanolife.bifusion_be.domain.recipe.dto.request.RecipeRegisterRequest;
@@ -28,6 +31,7 @@ import org.springframework.data.domain.Sort;
 public class RecipeServiceImpl implements RecipeService {
 
     private final RecipeRepository recipeRepository;
+    private final VerificationResultService verificationResultService;
     private final RecipeReviewRepository recipeReviewRepository;
     private final RecipeForkHistoryRepository recipeForkHistoryRepository;
     private final UserRepository userRepository;
@@ -53,7 +57,10 @@ public class RecipeServiceImpl implements RecipeService {
         Recipe recipe = recipeRepository.findById(recipeId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.RESOURCE_NOT_FOUND));
 
-        return RecipeDetailResponse.from(recipe);
+        VerificationSummary verificationSummary = verificationResultService
+                .getSummary(InspectionTargetType.RECIPE, recipeId);
+
+        return RecipeDetailResponse.from(recipe, verificationSummary);
     }
 
     @Override

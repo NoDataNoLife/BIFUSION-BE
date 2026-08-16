@@ -6,6 +6,7 @@ import com.nodatanolife.bifusion_be.domain.user.entity.User;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;
+import java.util.Optional;
 
 public interface ExpertVerificationRepository extends JpaRepository<ExpertVerification, Long> {
 
@@ -14,4 +15,8 @@ public interface ExpertVerificationRepository extends JpaRepository<ExpertVerifi
     List<ExpertVerification> findAllByReviewedBy(User reviewedBy);
 
     boolean existsByUserAndTargetTypeAndTargetId(User user, InspectionTargetType targetType, Long targetId);
+
+    Optional<ExpertVerification> findFirstByTargetTypeAndTargetIdOrderByAppliedAtDesc(InspectionTargetType targetType, Long targetId);
+
+    List<ExpertVerification> findAllByTargetTypeAndTargetIdIn(InspectionTargetType targetType, List<Long> targetIds);
 }
