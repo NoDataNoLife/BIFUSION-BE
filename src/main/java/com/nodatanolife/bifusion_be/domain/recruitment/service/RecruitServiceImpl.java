@@ -161,7 +161,10 @@ public class RecruitServiceImpl implements RecruitService {
                 .map(tm -> tm.getTag().getName())
                 .toList();
 
-        return RecruitmentDetailResponse.from(recruit, tags);
+        List<RecruitApplication> applications = recruitApplicationRepository
+                .findAllByRecruit_RecruitId(recruitmentId);
+
+        return RecruitmentDetailResponse.from(recruit, tags, applications);
     }
   
     @Override
