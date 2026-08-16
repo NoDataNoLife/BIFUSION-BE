@@ -12,6 +12,7 @@ import com.nodatanolife.bifusion_be.domain.job.repository.AugmentationConfigRepo
 import com.nodatanolife.bifusion_be.domain.recipe.entity.Recipe;
 import com.nodatanolife.bifusion_be.domain.recipe.repository.RecipeRepository;
 import com.nodatanolife.bifusion_be.domain.user.entity.User;
+import com.nodatanolife.bifusion_be.domain.user.repository.UserRepository;
 import com.nodatanolife.bifusion_be.global.exception.ErrorCode;
 import com.nodatanolife.bifusion_be.global.exception.business.BusinessException;
 import lombok.RequiredArgsConstructor;
@@ -28,6 +29,7 @@ public class InspectionServiceImpl implements InspectionService {
     private final DatasetRepository datasetRepository;
     private final AugmentationConfigRepository augmentationConfigRepository;
     private final RecipeRepository recipeRepository;
+    private final UserRepository userRepository;
 
     /**
      * 전문가 검수 신청
@@ -40,6 +42,8 @@ public class InspectionServiceImpl implements InspectionService {
      *   ExpertVerification은 생성 시 status=PENDING으로 저장되며, 대상(Recipe/Dataset)의 검증 상태는
      *   별도 컬럼으로 중복 저장하지 않고 VerificationResultService가 이 status를 조회 시점에 읽어 파생시킨다.
      * - 실제 검수 처리(점수/코멘트 기록)는 전문가/관리자가 이후 status를 APPROVED/REJECTED로 변경하는 별도 플로우에서 이루어진다.
+     * - 파라미터로 받은 user(인증 필터에서 조회한 엔티티)는 이 트랜잭션 밖에서 로드된 상태라 그대로 변경 메서드를
+     *   호출해도 영속화가 보장되지 않는다. userId로 다시 조회한 관리 대상 엔티티에 포인트를 차감한다.
      */
     @Override
     public InspectionResponse createInspection(User user, InspectionCreateRequest request) {
@@ -53,13 +57,14 @@ public class InspectionServiceImpl implements InspectionService {
             throw new BusinessException(ErrorCode.INSPECTION_ALREADY_EXISTS);
         }
 
-        int currentPoints = user.getPoints() == null ? 0 : user.getPoints();
+        User managedUser = userRepository.getReferenceById(user.getUserId());
+        int currentPoints = managedUser.getPoints() == null ? 0 : managedUser.getPoints();
         if (currentPoints < rewardPoints) {
             throw new BusinessException(ErrorCode.INSUFFICIENT_POINTS);
         }
-        user.deductPoints(rewardPoints);
+        managedUser.deductPoints(rewardPoints);
 
-        ExpertVerification verification = ExpertVerification.create(user, targetType, targetId, request.getReason(), rewardPoints);
+        ExpertVerification verification = ExpertVerification.create(managedUser, targetType, targetId, request.getReason(), rewardPoints);
         try {
             ExpertVerification saved = expertVerificationRepository.save(verification);
             return InspectionResponse.from(saved);
