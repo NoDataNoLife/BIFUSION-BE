@@ -21,4 +21,6 @@ public interface DatasetService {
     Page<MyDatasetListResponse> getMyDatasets(DatasetType type, Long userId, int page, int size);
 
     DatasetDetailResponse getDatasetDetail(Long datasetId);
+
+    void deleteDataset(Long userId, Long datasetId);
 }
