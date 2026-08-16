@@ -1,6 +1,9 @@
 package com.nodatanolife.bifusion_be.domain.dataset.dto.response;
 
 import com.nodatanolife.bifusion_be.domain.dataset.entity.Dataset;
+import com.nodatanolife.bifusion_be.domain.expert.dto.response.VerificationResultResponse;
+import com.nodatanolife.bifusion_be.domain.expert.dto.response.VerificationSummary;
+import com.nodatanolife.bifusion_be.domain.expert.entity.VerificationStatus;
 import com.nodatanolife.bifusion_be.domain.file.entity.File;
 import com.nodatanolife.bifusion_be.domain.file.presign.PresignedUrl;
 
@@ -25,11 +28,13 @@ public record DatasetDetailResponse(
         String classes,
         String usageExample,
         String fileName,
-        @PresignedUrl String downloadUrl
+        @PresignedUrl String downloadUrl,
+        VerificationStatus verificationStatus,
+        VerificationResultResponse verificationResult
 ) {
     public record AuthorInfo(Long userId, String nickname, @PresignedUrl String profileImageUrl) {}
 
-    public static DatasetDetailResponse from(Dataset dataset, List<String> tags) {
+    public static DatasetDetailResponse from(Dataset dataset, List<String> tags, VerificationSummary verificationSummary) {
         File file = dataset.getFile();
 
         return new DatasetDetailResponse(
@@ -54,7 +59,9 @@ public record DatasetDetailResponse(
                 dataset.getClasses(),
                 dataset.getUsageExample(),
                 file != null ? file.getFileName() : null,
-                file != null ? file.getS3Key() : null
+                file != null ? file.getS3Key() : null,
+                verificationSummary.status(),
+                verificationSummary.result()
         );
     }
 

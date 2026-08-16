@@ -42,6 +42,18 @@ public class ExpertVerification extends BaseEntity {
     @Column(name = "status", length = 20)
     private ExpertVerificationStatus status;
 
+    @Column(name = "reason")
+    private String reason;
+
+    @Column(name = "reward_points")
+    private Integer rewardPoints;
+
+    @Column(name = "score")
+    private Integer score;
+
+    @Column(name = "comment")
+    private String comment;
+
     @Column(name = "rejection_reason")
     private String rejectionReason;
 
@@ -56,19 +68,23 @@ public class ExpertVerification extends BaseEntity {
     private LocalDateTime reviewedAt;
 
     @Builder
-    private ExpertVerification(User user, Long targetId, InspectionTargetType targetType) {
+    private ExpertVerification(User user, Long targetId, InspectionTargetType targetType, String reason, Integer rewardPoints) {
         this.user = user;
         this.targetId = targetId;
         this.targetType = targetType;
+        this.reason = reason;
+        this.rewardPoints = rewardPoints;
         this.status = ExpertVerificationStatus.PENDING;
         this.appliedAt = LocalDateTime.now();
     }
 
-    public static ExpertVerification create(User user, InspectionTargetType targetType, Long targetId) {
+    public static ExpertVerification create(User user, InspectionTargetType targetType, Long targetId, String reason, Integer rewardPoints) {
         return ExpertVerification.builder()
                 .user(user)
                 .targetType(targetType)
                 .targetId(targetId)
+                .reason(reason)
+                .rewardPoints(rewardPoints)
                 .build();
     }
 

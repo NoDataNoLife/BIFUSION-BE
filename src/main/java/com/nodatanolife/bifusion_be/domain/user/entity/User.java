@@ -56,7 +56,7 @@ public class User extends BaseEntity {
     private Long remainingTokens;
 
     @Column(name = "reward_balance")
-    private Integer rewardBalance;
+    private Integer points;
     @Enumerated(EnumType.STRING)
     @Column(name = "plan_type", length = 10)
     private SubscriptionTier planType;
@@ -78,7 +78,7 @@ public class User extends BaseEntity {
         user.isExpert = false;
         user.isOnboarded = false;
         user.remainingTokens = 0L;
-        user.rewardBalance = 0;
+        user.points = 0;
         user.planType = SubscriptionTier.BASIC;
         user.planStartDate = null;
         return user;
@@ -110,7 +110,7 @@ public class User extends BaseEntity {
         user.isExpert = false;
         user.isOnboarded = true;
         user.remainingTokens = 0L;
-        user.rewardBalance = 0;
+        user.points = 0;
         return user;
     }
 
@@ -129,6 +129,15 @@ public class User extends BaseEntity {
     }
     public void updateProfileImageUrl(String profileImageUrl) {
         this.profileImageUrl = profileImageUrl;
+    }
+
+    /**
+     * 전문가 검수 신청 시 리워드 포인트 차감
+     * reward_balance 컬럼이 NULL인 레거시 데이터를 방어하기 위해 null을 0으로 취급한다.
+     */
+    public void deductPoints(int amount) {
+        int current = this.points == null ? 0 : this.points;
+        this.points = current - amount;
     }
     /**
      * 플랜 변경

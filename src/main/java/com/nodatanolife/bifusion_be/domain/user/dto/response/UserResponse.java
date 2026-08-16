@@ -16,6 +16,7 @@ public record UserResponse(
         @PresignedUrl String profileImageUrl,
         SubscriptionTier planType,
         ExpertApplicationStatus expertStatus,
+        Integer points,
         LocalDateTime createdAt,
         LocalDateTime updatedAt
 ) {
@@ -34,6 +35,7 @@ public record UserResponse(
                 user.getProfileImageUrl(),
                 user.getPlanType(),
                 expertStatus,
+                user.getPoints() == null ? 0 : user.getPoints(),
                 user.getCreatedAt(),
                 user.getUpdatedAt()
         );
