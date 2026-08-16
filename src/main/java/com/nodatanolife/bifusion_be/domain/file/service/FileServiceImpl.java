@@ -1,21 +1,27 @@
 package com.nodatanolife.bifusion_be.domain.file.service;
 
+import com.nodatanolife.bifusion_be.domain.file.dto.response.FileDownloadResponse;
 import com.nodatanolife.bifusion_be.domain.file.dto.response.TempFileUploadResponse;
 import com.nodatanolife.bifusion_be.domain.file.entity.File;
 import com.nodatanolife.bifusion_be.domain.file.repository.FileRepository;
 import com.nodatanolife.bifusion_be.domain.user.entity.User;
 import com.nodatanolife.bifusion_be.domain.user.repository.UserRepository;
+import com.nodatanolife.bifusion_be.global.exception.ErrorCode;
+import com.nodatanolife.bifusion_be.global.exception.business.BusinessException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.time.Duration;
 import java.util.List;
 
 @Service
 @RequiredArgsConstructor
 @Transactional
 public class FileServiceImpl implements FileService {
+
+    private static final int DOWNLOAD_URL_EXPIRE_SECONDS = 300;
 
     private final S3Service s3Service;
     private final FileRepository fileRepository;
@@ -42,6 +48,18 @@ public class FileServiceImpl implements FileService {
     public void anonymizeByUser(User user, User deletedUser) {
         fileRepository.findAllByUser(user)
                 .forEach(f -> f.anonymize(deletedUser));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public FileDownloadResponse getDownloadUrl(Long fileId) {
+        File file = fileRepository.findById(fileId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.FILE_NOT_FOUND));
+
+        String presignedUrl = s3Service.toPresignedUrl(
+                file.getS3Key(), Duration.ofSeconds(DOWNLOAD_URL_EXPIRE_SECONDS));
+
+        return FileDownloadResponse.from(file, presignedUrl, DOWNLOAD_URL_EXPIRE_SECONDS);
     }
 
     /**
