@@ -1,5 +1,6 @@
 package com.nodatanolife.bifusion_be.domain.dataset.controller;
 
+import com.nodatanolife.bifusion_be.domain.dataset.dto.response.DatasetDetailResponse;
 import com.nodatanolife.bifusion_be.domain.dataset.dto.request.DatasetCreateRequest;
 import com.nodatanolife.bifusion_be.domain.dataset.dto.response.DatasetCreateResponse;
 import com.nodatanolife.bifusion_be.domain.dataset.service.DatasetService;
@@ -50,6 +51,15 @@ public class CommunityDatasetController {
                 datasetService.getDatasets(sort, keyword, page, size)
         );
         return CommonResponse.success(response, "데이터셋 목록 조회 성공!");
+    }
+
+    @Operation(summary = "데이터셋 상세 단건 조회",description = "데이터셋 상세 정보와 첨부 파일 정보를 함께 반환합니다.")
+    @GetMapping("/{datasetId}")
+    public CommonResponse<DatasetDetailResponse> getDatasetDetail(
+            @PathVariable Long datasetId
+    ) {
+        DatasetDetailResponse response = datasetService.getDatasetDetail(datasetId);
+        return CommonResponse.success(response, "데이터셋 상세 조회 성공!");
     }
 
 }
