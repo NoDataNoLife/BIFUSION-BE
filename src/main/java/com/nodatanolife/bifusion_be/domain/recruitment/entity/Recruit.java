@@ -102,4 +102,8 @@ public class Recruit extends BaseEntity {
     public void updateMyPageVisibility(boolean visible) {
         this.isMyPageVisible = visible;
     }
+
+    public void delete() {
+        markDeleted();
+    }
 }

@@ -89,4 +89,15 @@ public class RecruitmentController {
 
         return CommonResponse.success(response, "팀원 모집 목록 조회 성공!");
     }
+
+    @Operation(summary = "팀원 모집글 삭제", description = "본인이 작성한 모집글을 삭제(soft delete)합니다.")
+    @DeleteMapping("/{recruitmentId}")
+    public CommonResponse<Void> deleteRecruitment(
+            @AuthenticationPrincipal CustomOAuth2User oAuth2User,
+            @PathVariable Long recruitmentId
+    ) {
+        Long userId = oAuth2User.getUser().getUserId();
+        recruitService.deleteRecruitment(userId, recruitmentId);
+        return CommonResponse.success(null, "모집글 삭제 성공!");
+    }
 }
