@@ -60,6 +60,7 @@ public enum ErrorCode {
     RECIPE_REVIEW_ACCESS_DENIED(HttpStatus.FORBIDDEN, "CM019", "댓글에 대한 권한이 없습니다."),
     FORBIDDEN_RECIPE_ACCESS(HttpStatus.FORBIDDEN, "CM020", "본인의 레시피가 아닙니다."),
     INVALID_RECIPE_LIST_TYPE(HttpStatus.BAD_REQUEST, "CM021", "유효하지 않은 레시피 목록 조회 타입입니다."),
+    FORBIDDEN_RECRUITMENT_ACCESS(HttpStatus.FORBIDDEN, "CM022", "본인의 모집글이 아닙니다."),
 
     /* ================================
      * Dataset

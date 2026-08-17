@@ -202,14 +202,13 @@ public class RecruitServiceImpl implements RecruitService {
         ));
     }
 
-    @Override
-    public void deleteRecruitment(Long userId, Long recruitmentId) {
+    @Transactional
+    public void deleteRecruitment(Long recruitmentId, Long userId) {
         Recruit recruit = recruitRepository.findById(recruitmentId)
-                .filter(r -> !r.isDeleted())
-                .orElseThrow(() -> new BusinessException(ErrorCode.RECRUITMENT_NOT_FOUND));
+                .orElseThrow(() -> new BusinessException(ErrorCode.RECRUITMENT_NOT_FOUND)); // 또는 기존 컨벤션에 맞는 코드
 
         if (!recruit.getUser().getUserId().equals(userId)) {
-            throw new BusinessException(ErrorCode.POST_ACCESS_DENIED);
+            throw new BusinessException(ErrorCode.FORBIDDEN_RECRUITMENT_ACCESS); // 없으면 신설
         }
 
         recruit.delete();
