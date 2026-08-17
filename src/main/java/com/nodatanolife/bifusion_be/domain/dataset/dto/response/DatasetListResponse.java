@@ -25,7 +25,9 @@ public record DatasetListResponse(
         String classes,
         String usageExample,
         String fileName,
-        @PresignedUrl String downloadUrl
+        @PresignedUrl String downloadUrl,
+        boolean isDeleted
+
 ) {
     public record AuthorInfo(Long userId, String nickname, @PresignedUrl String profileImageUrl) {}
 
@@ -54,7 +56,9 @@ public record DatasetListResponse(
                 dataset.getClasses(),
                 dataset.getUsageExample(),
                 file != null ? file.getFileName() : null,
-                file != null ? file.getS3Key() : null
+                file != null ? file.getS3Key() : null,
+                dataset.getDeletedAt() != null
+
         );
     }
 
