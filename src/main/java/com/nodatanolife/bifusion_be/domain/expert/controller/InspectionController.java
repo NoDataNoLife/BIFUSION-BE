@@ -29,10 +29,13 @@ public class InspectionController {
 
                     - targetType: 검수 대상 종류 (RECIPE / UPLOADED_DATA / AUGMENTED_DATA)
                     - targetId: 검수를 신청할 대상의 고유 ID
+                    - reason: 전문가가 중점적으로 봐야 할 사항을 적는 검증 요청 메모 (필수)
+                    - rewardPoints: 전문가에게 제공할 리워드 포인트 (필수, 신청과 동시에 즉시 차감)
                     - 신청자 본인이 소유한 대상에 한해 신청할 수 있습니다. (본인 소유가 아니면 403)
                     - 존재하지 않는 대상이면 404가 반환됩니다.
                     - 같은 사용자가 같은 대상에 이미 신청한 이력이 있으면 409가 반환됩니다.
-                    - 신청이 성공하면 상태값 PENDING으로 검수 요청이 생성됩니다.
+                    - 보유 포인트가 rewardPoints보다 부족하면 400이 반환됩니다.
+                    - 신청이 성공하면 rewardPoints만큼 포인트가 차감되고, 대상(레시피/업로드 데이터)의 검증 상태가 PENDING으로 전환되며, 상태값 PENDING으로 검수 요청이 생성됩니다.
                     """
     )
     @PostMapping

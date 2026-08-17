@@ -12,6 +12,7 @@ import com.nodatanolife.bifusion_be.domain.job.repository.AugmentationConfigRepo
 import com.nodatanolife.bifusion_be.domain.recipe.entity.Recipe;
 import com.nodatanolife.bifusion_be.domain.recipe.repository.RecipeRepository;
 import com.nodatanolife.bifusion_be.domain.user.entity.User;
+import com.nodatanolife.bifusion_be.domain.user.repository.UserRepository;
 import com.nodatanolife.bifusion_be.global.exception.ErrorCode;
 import com.nodatanolife.bifusion_be.global.exception.business.BusinessException;
 import lombok.RequiredArgsConstructor;
@@ -28,6 +29,7 @@ public class InspectionServiceImpl implements InspectionService {
     private final DatasetRepository datasetRepository;
     private final AugmentationConfigRepository augmentationConfigRepository;
     private final RecipeRepository recipeRepository;
+    private final UserRepository userRepository;
 
     /**
      * 전문가 검수 신청
@@ -35,13 +37,19 @@ public class InspectionServiceImpl implements InspectionService {
      * - 같은 사용자 + 같은 대상 조합의 신청이 이미 있으면 409로 막는다. (existsBy 사전 체크)
      * - existsBy 체크만으로는 동시 요청을 완전히 막을 수 없어, DB unique constraint 위반도
      *   같은 409 예외로 변환해 이중으로 방어한다.
-     * - 신청 건은 ExpertVerification에 status=PENDING으로 저장되며, 실제 검수 처리는
-     *   전문가/관리자가 이후 status를 APPROVED/REJECTED로 변경하는 별도 플로우에서 이루어진다.
+     * - 보유 포인트가 리워드 포인트보다 부족하면 400으로 막는다.
+     * - 포인트 차감 → 검증 신청 생성을 한 트랜잭션(클래스 레벨 @Transactional)으로 처리한다.
+     *   ExpertVerification은 생성 시 status=PENDING으로 저장되며, 대상(Recipe/Dataset)의 검증 상태는
+     *   별도 컬럼으로 중복 저장하지 않고 VerificationResultService가 이 status를 조회 시점에 읽어 파생시킨다.
+     * - 실제 검수 처리(점수/코멘트 기록)는 전문가/관리자가 이후 status를 APPROVED/REJECTED로 변경하는 별도 플로우에서 이루어진다.
+     * - 파라미터로 받은 user(인증 필터에서 조회한 엔티티)는 이 트랜잭션 밖에서 로드된 상태라 그대로 변경 메서드를
+     *   호출해도 영속화가 보장되지 않는다. userId로 다시 조회한 관리 대상 엔티티에 포인트를 차감한다.
      */
     @Override
     public InspectionResponse createInspection(User user, InspectionCreateRequest request) {
         InspectionTargetType targetType = request.getTargetType();
         Long targetId = request.getTargetId();
+        Integer rewardPoints = request.getRewardPoints();
 
         validateTargetOwnership(user, targetType, targetId);
 
@@ -49,7 +57,14 @@ public class InspectionServiceImpl implements InspectionService {
             throw new BusinessException(ErrorCode.INSPECTION_ALREADY_EXISTS);
         }
 
-        ExpertVerification verification = ExpertVerification.create(user, targetType, targetId);
+        User managedUser = userRepository.getReferenceById(user.getUserId());
+        int currentPoints = managedUser.getPoints() == null ? 0 : managedUser.getPoints();
+        if (currentPoints < rewardPoints) {
+            throw new BusinessException(ErrorCode.INSUFFICIENT_POINTS);
+        }
+        managedUser.deductPoints(rewardPoints);
+
+        ExpertVerification verification = ExpertVerification.create(managedUser, targetType, targetId, request.getReason(), rewardPoints);
         try {
             ExpertVerification saved = expertVerificationRepository.save(verification);
             return InspectionResponse.from(saved);
