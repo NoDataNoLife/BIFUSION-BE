@@ -17,14 +17,12 @@ public interface DatasetRepository extends JpaRepository<Dataset, Long> {
     List<Dataset> findAllByUser(User user);
 
     @EntityGraph(attributePaths = "user")
-    Page<Dataset> findAllByTypeAndUser_UserId(DatasetType type, Long userId, Pageable pageable);
+    @Query("SELECT d FROM Dataset d WHERE d.type = :type AND d.user.userId = :userId AND d.deletedAt IS NULL")
+    Page<Dataset> findAllByTypeAndUser_UserId(@Param("type") DatasetType type, @Param("userId") Long userId, Pageable pageable);
 
     @Query(
-            value = "SELECT d FROM Dataset d JOIN FETCH d.user WHERE d.isPublic = true AND (:keyword IS NULL OR d.title LIKE %:keyword%)",
-            countQuery = "SELECT COUNT(d) FROM Dataset d WHERE d.isPublic = true AND (:keyword IS NULL OR d.title LIKE %:keyword%)"
+            value = "SELECT d FROM Dataset d JOIN FETCH d.user WHERE d.isPublic = true AND d.deletedAt IS NULL AND (:keyword IS NULL OR d.title LIKE %:keyword%)",
+            countQuery = "SELECT COUNT(d) FROM Dataset d WHERE d.isPublic = true AND d.deletedAt IS NULL AND (:keyword IS NULL OR d.title LIKE %:keyword%)"
     )
-    Page<Dataset> findAllByCondition(
-            @Param("keyword") String keyword,
-            Pageable pageable
-    );
+    Page<Dataset> findAllByCondition(@Param("keyword") String keyword, Pageable pageable);
 }

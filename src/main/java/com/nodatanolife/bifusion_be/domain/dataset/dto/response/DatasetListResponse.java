@@ -29,6 +29,7 @@ public record DatasetListResponse(
         String usageExample,
         String fileName,
         @PresignedUrl String downloadUrl,
+        boolean isDeleted,
         VerificationStatus verificationStatus,
         VerificationResultResponse verificationResult
 ) {
@@ -60,6 +61,7 @@ public record DatasetListResponse(
                 dataset.getUsageExample(),
                 file != null ? file.getFileName() : null,
                 file != null ? file.getS3Key() : null,
+                dataset.getDeletedAt() != null,
                 verificationSummary.status(),
                 verificationSummary.result()
         );

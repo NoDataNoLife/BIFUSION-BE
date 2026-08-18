@@ -144,6 +144,10 @@ public class Dataset extends BaseEntity {
     public void updateMyPageVisibility(boolean visible) {
         this.isMyPageVisible = visible;
     }
+
+    public void delete() {
+        markDeleted();
+    }
 }
 
 
