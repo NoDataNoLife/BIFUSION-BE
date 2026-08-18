@@ -8,10 +8,13 @@ import org.springframework.data.repository.query.Param;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Optional;
 
 public interface ExpertTaskRepository extends JpaRepository<ExpertTask, Long> {
 
     List<ExpertTask> findAllByExpert(User expert);
+
+    Optional<ExpertTask> findByExpertTaskIdAndExpert(Long expertTaskId, User expert);
 
     @Query("SELECT t.status AS status, COUNT(t) AS count FROM ExpertTask t WHERE t.expert = :expert GROUP BY t.status")
     List<StatusCount> countGroupedByStatus(@Param("expert") User expert);
