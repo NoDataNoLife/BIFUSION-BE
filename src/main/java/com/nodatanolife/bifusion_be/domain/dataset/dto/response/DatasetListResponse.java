@@ -1,9 +1,9 @@
 package com.nodatanolife.bifusion_be.domain.dataset.dto.response;
 
 import com.nodatanolife.bifusion_be.domain.dataset.entity.Dataset;
-import com.nodatanolife.bifusion_be.domain.expert.dto.response.VerificationResultResponse;
-import com.nodatanolife.bifusion_be.domain.expert.dto.response.VerificationSummary;
-import com.nodatanolife.bifusion_be.domain.expert.entity.VerificationStatus;
+import com.nodatanolife.bifusion_be.domain.expert.dto.response.InspectionResultResponse;
+import com.nodatanolife.bifusion_be.domain.expert.dto.response.InspectionSummary;
+import com.nodatanolife.bifusion_be.domain.expert.entity.InspectionStatus;
 import com.nodatanolife.bifusion_be.domain.file.entity.File;
 import com.nodatanolife.bifusion_be.domain.file.presign.PresignedUrl;
 
@@ -31,20 +31,20 @@ public record DatasetListResponse(
         Long fileId,
         String fileName,
         boolean isDeleted,
-        VerificationStatus verificationStatus,
-        VerificationResultResponse verificationResult
+        InspectionStatus inspectionStatus,
+        InspectionResultResponse inspectionResult
 
 ) {
     public record AuthorInfo(Long userId, String nickname, @PresignedUrl String profileImageUrl) {}
 
-    public static DatasetListResponse from(Dataset dataset, List<String> tags, VerificationSummary verificationSummary) {
+    public static DatasetListResponse from(Dataset dataset, List<String> tags, InspectionSummary verificationSummary) {
         File file = dataset.getFile();
 
         return new DatasetListResponse(
                 dataset.getDatasetId(),
                 dataset.getTitle(),
                 dataset.getDescription(),
-                verificationSummary.status() == VerificationStatus.COMPLETED,
+                verificationSummary.status() == InspectionStatus.COMPLETED,
                 tags,
                 formatFileSize(file != null ? file.getFileSize() : null),
                 dataset.getFileCount(),

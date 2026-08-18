@@ -16,7 +16,7 @@ public interface ExpertTaskRepository extends JpaRepository<ExpertTask, Long> {
 
     @Query("""
             SELECT t FROM ExpertTask t
-            JOIN FETCH t.expertVerification v
+            JOIN FETCH t.inspectionRequest v
             JOIN FETCH v.user
             WHERE t.expert = :expert
               AND v.targetType = :targetType

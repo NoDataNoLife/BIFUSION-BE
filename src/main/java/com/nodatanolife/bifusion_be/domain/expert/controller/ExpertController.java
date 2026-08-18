@@ -67,9 +67,9 @@ public class ExpertController {
                     로그인한 전문가에게 배정된 검수 요청 목록을 검수 상태별로 묶어 반환합니다. (증강 데이터 검수 대상)
                     전문가 인증(APPROVED)을 받지 않은 사용자가 호출하면 403이 반환됩니다.
 
-                    - pending: 검수 전 (PENDING) 목록
-                    - inProgress: 검수 중 (IN_PROGRESS) 목록
-                    - completed: 검수 후 (COMPLETED) 목록
+                    - PENDING: 검수 전 목록
+                    - IN_PROGRESS: 검수 중 목록
+                    - COMPLETED: 검수 후 목록
                     - 각 그룹 내 정렬 기준: updatedAt 최신순
                     - 각 항목의 reviewCode: 검수 요청 코드 (예: REV-001)
                     - 각 항목의 reviewResult: 검수 완료 건의 판정 결과 (APPROVED / REJECTED), 미완료 건은 null

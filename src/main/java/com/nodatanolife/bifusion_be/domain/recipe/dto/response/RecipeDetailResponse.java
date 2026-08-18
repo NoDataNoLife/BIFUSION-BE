@@ -1,8 +1,8 @@
 package com.nodatanolife.bifusion_be.domain.recipe.dto.response;
 
-import com.nodatanolife.bifusion_be.domain.expert.dto.response.VerificationResultResponse;
-import com.nodatanolife.bifusion_be.domain.expert.dto.response.VerificationSummary;
-import com.nodatanolife.bifusion_be.domain.expert.entity.VerificationStatus;
+import com.nodatanolife.bifusion_be.domain.expert.dto.response.InspectionResultResponse;
+import com.nodatanolife.bifusion_be.domain.expert.dto.response.InspectionSummary;
+import com.nodatanolife.bifusion_be.domain.expert.entity.InspectionStatus;
 import com.nodatanolife.bifusion_be.domain.recipe.entity.Recipe;
 import com.nodatanolife.bifusion_be.domain.user.entity.User;
 
@@ -24,8 +24,8 @@ public record RecipeDetailResponse(
         int downloadCount,
         Overview overview,
         Settings settings,
-        VerificationStatus verificationStatus,
-        VerificationResultResponse verificationResult
+        InspectionStatus inspectionStatus,
+        InspectionResultResponse inspectionResult
 ) {
     public record AuthorInfo(Long userId, String nickname, String profileImageUrl) {
         public static AuthorInfo from(User author) {
@@ -69,13 +69,13 @@ public record RecipeDetailResponse(
         }
     }
 
-    public static RecipeDetailResponse from(Recipe recipe, VerificationSummary verificationSummary) {
+    public static RecipeDetailResponse from(Recipe recipe, InspectionSummary verificationSummary) {
         return new RecipeDetailResponse(
                 recipe.getRecipeId(),
                 recipe.getTitle(),
                 recipe.getShortDescription(),
                 recipe.getThumbnailUrl(),
-                verificationSummary.status() == VerificationStatus.COMPLETED,
+                verificationSummary.status() == InspectionStatus.COMPLETED,
                 AuthorInfo.from(recipe.getUser()),
                 recipe.getCreatedAt(),
                 recipe.getRating().doubleValue(),

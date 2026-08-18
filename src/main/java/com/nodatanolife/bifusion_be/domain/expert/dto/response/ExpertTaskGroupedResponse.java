@@ -1,10 +1,12 @@
 package com.nodatanolife.bifusion_be.domain.expert.dto.response;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
+
 import java.util.List;
 
 public record ExpertTaskGroupedResponse(
-        List<ExpertTaskSummaryResponse> pending,
-        List<ExpertTaskSummaryResponse> inProgress,
-        List<ExpertTaskSummaryResponse> completed
+        @JsonProperty("PENDING") List<ExpertTaskSummaryResponse> pending,
+        @JsonProperty("IN_PROGRESS") List<ExpertTaskSummaryResponse> inProgress,
+        @JsonProperty("COMPLETED") List<ExpertTaskSummaryResponse> completed
 ) {
 }

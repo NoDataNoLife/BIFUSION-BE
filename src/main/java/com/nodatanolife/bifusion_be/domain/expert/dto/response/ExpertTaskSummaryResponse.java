@@ -1,8 +1,8 @@
 package com.nodatanolife.bifusion_be.domain.expert.dto.response;
 
 import com.nodatanolife.bifusion_be.domain.expert.entity.ExpertTask;
-import com.nodatanolife.bifusion_be.domain.expert.entity.ExpertVerification;
-import com.nodatanolife.bifusion_be.domain.expert.entity.ExpertVerificationStatus;
+import com.nodatanolife.bifusion_be.domain.expert.entity.InspectionRequest;
+import com.nodatanolife.bifusion_be.domain.expert.entity.InspectionRequestStatus;
 import com.nodatanolife.bifusion_be.domain.job.entity.AugmentationConfig;
 import com.nodatanolife.bifusion_be.domain.user.entity.User;
 
@@ -12,21 +12,21 @@ import java.time.LocalDateTime;
 public record ExpertTaskSummaryResponse(
         String reviewCode,
         String status,
-        ExpertVerificationStatus reviewResult,
+        InspectionRequestStatus reviewResult,
         RequesterResponse requester,
         String projectName,
         LocalDate requestedAt,
         LocalDateTime updatedAt
 ) {
     public static ExpertTaskSummaryResponse of(ExpertTask task, AugmentationConfig config) {
-        ExpertVerification verification = task.getExpertVerification();
+        InspectionRequest inspectionRequest = task.getInspectionRequest();
         return new ExpertTaskSummaryResponse(
                 task.getReviewCode(),
                 task.getStatus(),
-                verification.getStatus() == ExpertVerificationStatus.PENDING ? null : verification.getStatus(),
-                RequesterResponse.from(verification.getUser()),
+                inspectionRequest.getStatus() == InspectionRequestStatus.PENDING ? null : inspectionRequest.getStatus(),
+                RequesterResponse.from(inspectionRequest.getUser()),
                 config.getJob().getProject().getTitle(),
-                verification.getAppliedAt() != null ? verification.getAppliedAt().toLocalDate() : null,
+                inspectionRequest.getAppliedAt() != null ? inspectionRequest.getAppliedAt().toLocalDate() : null,
                 task.getUpdatedAt()
         );
     }

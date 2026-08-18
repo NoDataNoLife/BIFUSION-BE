@@ -1,6 +1,6 @@
 package com.nodatanolife.bifusion_be.domain.expert.entity;
 
-public enum ExpertVerificationStatus {
+public enum InspectionRequestStatus {
     PENDING,
     APPROVED,
     REJECTED

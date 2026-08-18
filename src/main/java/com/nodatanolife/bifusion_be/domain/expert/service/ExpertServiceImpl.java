@@ -10,7 +10,7 @@ import com.nodatanolife.bifusion_be.domain.expert.entity.ExpertTask;
 import com.nodatanolife.bifusion_be.domain.expert.entity.InspectionTargetType;
 import com.nodatanolife.bifusion_be.domain.expert.repository.ExpertApplicationRepository;
 import com.nodatanolife.bifusion_be.domain.expert.repository.ExpertTaskRepository;
-import com.nodatanolife.bifusion_be.domain.expert.repository.ExpertVerificationRepository;
+import com.nodatanolife.bifusion_be.domain.expert.repository.InspectionRequestRepository;
 import com.nodatanolife.bifusion_be.domain.file.service.S3Service;
 import com.nodatanolife.bifusion_be.domain.job.entity.AugmentationConfig;
 import com.nodatanolife.bifusion_be.domain.job.repository.AugmentationConfigRepository;
@@ -47,7 +47,7 @@ public class ExpertServiceImpl implements ExpertService {
 
     private final ExpertApplicationRepository expertApplicationRepository;
     private final ExpertTaskRepository expertTaskRepository;
-    private final ExpertVerificationRepository expertVerificationRepository;
+    private final InspectionRequestRepository inspectionRequestRepository;
     private final AugmentationConfigRepository augmentationConfigRepository;
     private final RewardHistoryRepository rewardHistoryRepository;
     private final UserRepository userRepository;
@@ -63,15 +63,15 @@ public class ExpertServiceImpl implements ExpertService {
 
     /**
      * 회원 탈퇴 시 전문가 관련 데이터 익명화
-     * ExpertTask, ExpertVerification의 전문가/검토자를 탈퇴 계정으로 변경
+     * ExpertTask, InspectionRequest의 전문가/검토자를 탈퇴 계정으로 변경
      */
     @Override
     public void anonymizeByUser(User user, User deletedUser) {
         expertTaskRepository.findAllByExpert(user)
                 .forEach(t -> t.anonymize(deletedUser));
-        expertVerificationRepository.findAllByUser(user)
+        inspectionRequestRepository.findAllByUser(user)
                 .forEach(v -> v.anonymize(deletedUser));
-        expertVerificationRepository.findAllByReviewedBy(user)
+        inspectionRequestRepository.findAllByReviewedBy(user)
                 .forEach(v -> v.anonymizeReviewer(deletedUser));
     }
 
@@ -205,13 +205,13 @@ public class ExpertServiceImpl implements ExpertService {
         List<ExpertTask> tasks = expertTaskRepository.findMyReviewTasks(user, InspectionTargetType.AUGMENTED_DATA);
 
         List<Long> targetIds = tasks.stream()
-                .map(t -> t.getExpertVerification().getTargetId())
+                .map(t -> t.getInspectionRequest().getTargetId())
                 .toList();
         Map<Long, AugmentationConfig> configById = augmentationConfigRepository.findAllById(targetIds).stream()
                 .collect(Collectors.toMap(AugmentationConfig::getAugmentationConfigId, c -> c));
 
         Map<String, List<ExpertTaskSummaryResponse>> grouped = tasks.stream()
-                .map(t -> ExpertTaskSummaryResponse.of(t, configById.get(t.getExpertVerification().getTargetId())))
+                .map(t -> ExpertTaskSummaryResponse.of(t, configById.get(t.getInspectionRequest().getTargetId())))
                 .collect(Collectors.groupingBy(ExpertTaskSummaryResponse::status));
 
         return new ExpertTaskGroupedResponse(
