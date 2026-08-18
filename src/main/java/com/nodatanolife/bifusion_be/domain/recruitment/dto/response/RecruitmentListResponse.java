@@ -12,7 +12,9 @@ public record RecruitmentListResponse(
         List<String> tags,
         Integer currentMembers,
         Integer teamSize,
-        LocalDate deadline
+        LocalDate deadline,
+        boolean isDeleted
+
 ) {
     public static RecruitmentListResponse from(Recruit recruit, List<String> tags, Integer currentMembers) {
         return new RecruitmentListResponse(
@@ -22,7 +24,9 @@ public record RecruitmentListResponse(
                 tags,
                 currentMembers,
                 recruit.getTeamSize(),
-                recruit.getDeadline()
+                recruit.getDeadline(),
+                recruit.getDeletedAt() != null
+
         );
     }
 }

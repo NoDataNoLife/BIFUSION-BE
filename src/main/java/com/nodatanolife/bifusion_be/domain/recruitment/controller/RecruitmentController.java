@@ -89,4 +89,13 @@ public class RecruitmentController {
 
         return CommonResponse.success(response, "팀원 모집 목록 조회 성공!");
     }
+
+    @DeleteMapping("/{recruitmentId}")
+    public CommonResponse<Void> deleteRecruitment(
+            @PathVariable Long recruitmentId,
+            @AuthenticationPrincipal CustomOAuth2User oAuth2User
+    ) {
+        recruitService.deleteRecruitment(recruitmentId, oAuth2User.getUser().getUserId());
+        return CommonResponse.success(null);
+    }
 }
