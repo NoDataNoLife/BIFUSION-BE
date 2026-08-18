@@ -1,5 +1,6 @@
 package com.nodatanolife.bifusion_be.domain.file.controller;
 
+import com.nodatanolife.bifusion_be.domain.file.dto.response.FileDownloadResponse;
 import com.nodatanolife.bifusion_be.domain.file.dto.response.TempFileUploadResponse;
 import com.nodatanolife.bifusion_be.domain.file.service.FileService;
 import com.nodatanolife.bifusion_be.global.response.CommonResponse;
@@ -32,5 +33,15 @@ public class FileController {
         List<TempFileUploadResponse> response = fileService.uploadTempFiles(
                 principal.getUser().getUserId(), files);
         return CommonResponse.success(response, "파일 업로드 성공!");
+    }
+
+    @Operation(
+            summary = "파일 다운로드 URL 발급",
+            description = "S3 파일을 직접 노출하지 않고, 만료 시간이 있는 presigned URL을 발급합니다."
+    )
+    @PostMapping("files/{fileId}/download")
+    public CommonResponse<FileDownloadResponse> downloadFile(@PathVariable Long fileId) {
+        FileDownloadResponse response = fileService.getDownloadUrl(fileId);
+        return CommonResponse.success(response, "다운로드 URL 발급 성공!");
     }
 }

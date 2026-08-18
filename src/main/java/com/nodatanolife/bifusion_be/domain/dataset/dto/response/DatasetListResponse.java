@@ -27,11 +27,13 @@ public record DatasetListResponse(
         String resolution,
         String classes,
         String usageExample,
+        // presigned URL을 여기서 바로 내려주지 않음 - 다운로드 클릭 시 POST /api/v1/files/{fileId}/download로 온디맨드 발급받아야 함
+        Long fileId,
         String fileName,
-        @PresignedUrl String downloadUrl,
         boolean isDeleted,
         VerificationStatus verificationStatus,
         VerificationResultResponse verificationResult
+
 ) {
     public record AuthorInfo(Long userId, String nickname, @PresignedUrl String profileImageUrl) {}
 
@@ -59,8 +61,8 @@ public record DatasetListResponse(
                 dataset.getResolution(),
                 dataset.getClasses(),
                 dataset.getUsageExample(),
+                file != null ? file.getFileId() : null,
                 file != null ? file.getFileName() : null,
-                file != null ? file.getS3Key() : null,
                 dataset.getDeletedAt() != null,
                 verificationSummary.status(),
                 verificationSummary.result()

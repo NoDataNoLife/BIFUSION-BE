@@ -62,6 +62,14 @@ public class S3Service {
      * 입력이 비어있거나 key를 추출할 수 없으면 원본을 그대로 반환한다(외부 URL 등).
      */
     public String toPresignedUrl(String storedUrlOrKey) {
+        return toPresignedUrl(storedUrlOrKey, Duration.ofMinutes(presignDurationMinutes));
+    }
+
+    /**
+     * 만료 시간을 호출 측에서 직접 지정해 presigned GET URL을 발급한다.
+     * (예: 다운로드 API처럼 응답의 expiresIn 값과 실제 URL 만료 시간이 정확히 일치해야 하는 경우)
+     */
+    public String toPresignedUrl(String storedUrlOrKey, Duration duration) {
         if (storedUrlOrKey == null || storedUrlOrKey.isBlank()) {
             return storedUrlOrKey;
         }
@@ -88,7 +96,7 @@ public class S3Service {
                     .build();
 
             GetObjectPresignRequest presignRequest = GetObjectPresignRequest.builder()
-                    .signatureDuration(Duration.ofMinutes(presignDurationMinutes))
+                    .signatureDuration(duration)
                     .getObjectRequest(getObjectRequest)
                     .build();
 
