@@ -41,7 +41,7 @@ public record DatasetDetailResponse(
                 dataset.getDatasetId(),
                 dataset.getTitle(),
                 dataset.getDescription(),
-                dataset.getIsExpertVerified(),
+                verificationSummary.status() == VerificationStatus.COMPLETED,
                 tags,
                 formatFileSize(file != null ? file.getFileSize() : null),
                 dataset.getFileCount(),

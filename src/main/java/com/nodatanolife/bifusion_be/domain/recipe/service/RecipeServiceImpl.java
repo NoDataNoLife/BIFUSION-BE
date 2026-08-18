@@ -25,6 +25,9 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 
+import java.util.List;
+import java.util.Map;
+
 @Service
 @RequiredArgsConstructor
 @Transactional
@@ -91,7 +94,14 @@ public class RecipeServiceImpl implements RecipeService {
             case FORKED -> recipeRepository.findAllByForkedFromIsNotNullAndUser_UserId(userId, pageable);
         };
 
-        return recipePage.map(MyRecipeListResponse::from);
+        List<Long> ids = recipePage.getContent().stream().map(Recipe::getRecipeId).toList();
+        Map<Long, VerificationSummary> verificationMap =
+                verificationResultService.getSummaries(InspectionTargetType.RECIPE, ids);
+
+        return recipePage.map(recipe -> MyRecipeListResponse.from(
+                recipe,
+                verificationMap.getOrDefault(recipe.getRecipeId(), VerificationSummary.none())
+        ));
 
     }
     @Override
@@ -106,6 +116,10 @@ public class RecipeServiceImpl implements RecipeService {
         Pageable pageable = PageRequest.of(page, size, sortOption);
         Page<Recipe> recipePage = recipeRepository.searchRecipes(keyword, pageable);
 
-        return RecipeListResponse.of(recipePage);
+        List<Long> ids = recipePage.getContent().stream().map(Recipe::getRecipeId).toList();
+        Map<Long, VerificationSummary> verificationMap =
+                verificationResultService.getSummaries(InspectionTargetType.RECIPE, ids);
+
+        return RecipeListResponse.of(recipePage, verificationMap);
     }
 }
