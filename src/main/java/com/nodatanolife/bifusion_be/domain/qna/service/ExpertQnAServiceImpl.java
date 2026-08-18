@@ -8,6 +8,8 @@ import com.nodatanolife.bifusion_be.domain.qna.entity.ExpertQnAAnswer;
 import com.nodatanolife.bifusion_be.domain.qna.repository.ExpertQnAAnswerRepository;
 import com.nodatanolife.bifusion_be.domain.qna.dto.request.ExpertQnaRequest;
 import com.nodatanolife.bifusion_be.domain.qna.dto.response.ExpertQnaResponse;
+import com.nodatanolife.bifusion_be.domain.expert.entity.ExpertApplicationStatus;
+import com.nodatanolife.bifusion_be.domain.expert.service.ExpertService;
 import com.nodatanolife.bifusion_be.domain.tag.entity.Tag;
 import com.nodatanolife.bifusion_be.domain.tag.entity.TagMapping;
 import com.nodatanolife.bifusion_be.domain.tag.repository.TagMappingRepository;
@@ -40,6 +42,7 @@ public class ExpertQnAServiceImpl implements ExpertQnAService {
     private final TagRepository tagRepository;
     private final TagMappingRepository tagMappingRepository;
     private final UserRepository userRepository;
+    private final ExpertService expertService;
 
     /**
      * 회원 탈퇴 시 전문가 Q&A 익명화
@@ -55,7 +58,8 @@ public class ExpertQnAServiceImpl implements ExpertQnAService {
     public ExpertQnAAnswerResponse createAnswer(Long userId, Long qnaId, ExpertQnAAnswerRequest request) {
         User user = userRepository.getReferenceById(userId);
 
-        if (!user.getIsExpert()) {
+        boolean isExpert = expertService.resolveStatus(user) == ExpertApplicationStatus.APPROVED;
+        if (!isExpert) {
             throw new BusinessException(ErrorCode.EXPERT_ONLY);
         }
 
@@ -67,7 +71,7 @@ public class ExpertQnAServiceImpl implements ExpertQnAService {
 
         qna.addExpertReply();
 
-        return ExpertQnAAnswerResponse.from(answer);
+        return ExpertQnAAnswerResponse.from(answer, isExpert);
     }
 
     @Override

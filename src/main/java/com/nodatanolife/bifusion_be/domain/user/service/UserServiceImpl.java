@@ -10,6 +10,7 @@ import org.springframework.web.multipart.MultipartFile;
 import com.nodatanolife.bifusion_be.domain.activityLog.service.ActivityLogService;
 import com.nodatanolife.bifusion_be.domain.auth.service.AuthService;
 import com.nodatanolife.bifusion_be.domain.dataset.service.DatasetService;
+import com.nodatanolife.bifusion_be.domain.expert.entity.ExpertApplicationStatus;
 import com.nodatanolife.bifusion_be.domain.expert.service.ExpertService;
 import com.nodatanolife.bifusion_be.domain.file.service.FileService;
 import com.nodatanolife.bifusion_be.domain.file.service.S3Service;
@@ -81,7 +82,8 @@ public class UserServiceImpl implements UserService {
     @Transactional(readOnly = true)
     public MyPageBasicResponse getMyPageBasic(Long userId) {
         User user = userRepository.findById(userId).orElseThrow(UserNotFoundException::new);
-        return MyPageBasicResponse.from(user);
+        boolean isExpert = expertService.resolveStatus(user) == ExpertApplicationStatus.APPROVED;
+        return MyPageBasicResponse.from(user, isExpert);
     }
 
     /**
