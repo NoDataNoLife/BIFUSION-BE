@@ -1,17 +1,17 @@
 package com.nodatanolife.bifusion_be.domain.expert.dto.response;
 
-import com.nodatanolife.bifusion_be.domain.expert.entity.ExpertVerification;
+import com.nodatanolife.bifusion_be.domain.expert.entity.InspectionRequest;
 
 import java.time.LocalDateTime;
 
-public record VerificationResultResponse(
+public record InspectionResultResponse(
         String reviewerName,
         Integer score,
         String comment,
         LocalDateTime verifiedAt
 ) {
-    public static VerificationResultResponse from(ExpertVerification verification) {
-        return new VerificationResultResponse(
+    public static InspectionResultResponse from(InspectionRequest verification) {
+        return new InspectionResultResponse(
                 verification.getReviewedBy() != null ? verification.getReviewedBy().getName() : null,
                 verification.getScore(),
                 verification.getComment(),

@@ -6,7 +6,7 @@ import com.nodatanolife.bifusion_be.domain.expert.entity.ExpertApplication;
 import com.nodatanolife.bifusion_be.domain.expert.entity.ExpertApplicationStatus;
 import com.nodatanolife.bifusion_be.domain.expert.repository.ExpertApplicationRepository;
 import com.nodatanolife.bifusion_be.domain.expert.repository.ExpertTaskRepository;
-import com.nodatanolife.bifusion_be.domain.expert.repository.ExpertVerificationRepository;
+import com.nodatanolife.bifusion_be.domain.expert.repository.InspectionRequestRepository;
 import com.nodatanolife.bifusion_be.domain.file.service.S3Service;
 import com.nodatanolife.bifusion_be.domain.user.entity.User;
 import com.nodatanolife.bifusion_be.domain.user.repository.RewardHistoryRepository;
@@ -41,7 +41,7 @@ public class ExpertServiceImpl implements ExpertService {
 
     private final ExpertApplicationRepository expertApplicationRepository;
     private final ExpertTaskRepository expertTaskRepository;
-    private final ExpertVerificationRepository expertVerificationRepository;
+    private final InspectionRequestRepository inspectionRequestRepository;
     private final RewardHistoryRepository rewardHistoryRepository;
     private final UserRepository userRepository;
     private final S3Service s3Service;
@@ -56,15 +56,15 @@ public class ExpertServiceImpl implements ExpertService {
 
     /**
      * 회원 탈퇴 시 전문가 관련 데이터 익명화
-     * ExpertTask, ExpertVerification의 전문가/검토자를 탈퇴 계정으로 변경
+     * ExpertTask, InspectionRequest의 전문가/검토자를 탈퇴 계정으로 변경
      */
     @Override
     public void anonymizeByUser(User user, User deletedUser) {
         expertTaskRepository.findAllByExpert(user)
                 .forEach(t -> t.anonymize(deletedUser));
-        expertVerificationRepository.findAllByUser(user)
+        inspectionRequestRepository.findAllByUser(user)
                 .forEach(v -> v.anonymize(deletedUser));
-        expertVerificationRepository.findAllByReviewedBy(user)
+        inspectionRequestRepository.findAllByReviewedBy(user)
                 .forEach(v -> v.anonymizeReviewer(deletedUser));
     }
 

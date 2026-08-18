@@ -1,18 +1,18 @@
 package com.nodatanolife.bifusion_be.domain.expert.dto.response;
 
-import com.nodatanolife.bifusion_be.domain.expert.entity.ExpertVerification;
-import com.nodatanolife.bifusion_be.domain.expert.entity.ExpertVerificationStatus;
+import com.nodatanolife.bifusion_be.domain.expert.entity.InspectionRequest;
+import com.nodatanolife.bifusion_be.domain.expert.entity.InspectionRequestStatus;
 
 import java.time.LocalDateTime;
 
 public record InspectionResponse(
         Long inspectionId,
-        ExpertVerificationStatus status,
+        InspectionRequestStatus status,
         LocalDateTime createdAt
 ) {
-    public static InspectionResponse from(ExpertVerification verification) {
+    public static InspectionResponse from(InspectionRequest verification) {
         return new InspectionResponse(
-                verification.getExpertVerificationId(),
+                verification.getInspectionRequestId(),
                 verification.getStatus(),
                 verification.getCreatedAt()
         );

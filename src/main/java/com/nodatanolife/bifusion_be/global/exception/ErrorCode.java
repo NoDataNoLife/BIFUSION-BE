@@ -98,7 +98,7 @@ public enum ErrorCode {
     FILE_NOT_FOUND(HttpStatus.NOT_FOUND, "F004", "파일을 찾을 수 없습니다."),
 
     /* ================================
-     * Expert Verification
+     * Inspection Request
      * ================================ */
     EXPERT_FILE_INVALID(HttpStatus.BAD_REQUEST, "EX001", "허용되지 않은 파일 형식입니다."),
     EXPERT_FILE_TOO_LARGE(HttpStatus.BAD_REQUEST, "EX002", "파일 용량이 허용 범위를 초과했습니다."),

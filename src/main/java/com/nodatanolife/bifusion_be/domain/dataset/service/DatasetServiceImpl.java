@@ -1,8 +1,8 @@
 package com.nodatanolife.bifusion_be.domain.dataset.service;
 
-import com.nodatanolife.bifusion_be.domain.expert.dto.response.VerificationSummary;
+import com.nodatanolife.bifusion_be.domain.expert.dto.response.InspectionSummary;
 import com.nodatanolife.bifusion_be.domain.expert.entity.InspectionTargetType;
-import com.nodatanolife.bifusion_be.domain.expert.service.VerificationResultService;
+import com.nodatanolife.bifusion_be.domain.expert.service.InspectionResultService;
 import com.nodatanolife.bifusion_be.domain.tag.entity.Tag;
 import com.nodatanolife.bifusion_be.domain.tag.entity.TagMapping;
 import com.nodatanolife.bifusion_be.domain.tag.repository.TagRepository;
@@ -43,7 +43,7 @@ public class DatasetServiceImpl implements DatasetService {
     private final FileRepository fileRepository;
     private final TagRepository tagRepository;
     private final TagMappingRepository tagMappingRepository;
-    private final VerificationResultService verificationResultService;
+    private final InspectionResultService inspectionResultService;
 
 
     @Override
@@ -108,13 +108,13 @@ public class DatasetServiceImpl implements DatasetService {
                         Collectors.mapping(tm -> tm.getTag().getName(), Collectors.toList())
                 ));
 
-        Map<Long, VerificationSummary> verificationMap =
-                verificationResultService.getSummaries(InspectionTargetType.UPLOADED_DATA, ids);
+        Map<Long, InspectionSummary> verificationMap =
+                inspectionResultService.getSummaries(InspectionTargetType.UPLOADED_DATA, ids);
 
         return datasetPage.map(dataset -> DatasetListResponse.from(
                 dataset,
                 tagMap.getOrDefault(dataset.getDatasetId(), List.of()),
-                verificationMap.getOrDefault(dataset.getDatasetId(), VerificationSummary.none())
+                verificationMap.getOrDefault(dataset.getDatasetId(), InspectionSummary.none())
         ));
     }
 
@@ -131,12 +131,12 @@ public class DatasetServiceImpl implements DatasetService {
         InspectionTargetType targetType = type == DatasetType.AUGMENTED
                 ? InspectionTargetType.AUGMENTED_DATA
                 : InspectionTargetType.UPLOADED_DATA;
-        Map<Long, VerificationSummary> verificationMap =
-                verificationResultService.getSummaries(targetType, ids);
+        Map<Long, InspectionSummary> verificationMap =
+                inspectionResultService.getSummaries(targetType, ids);
 
         return datasetPage.map(dataset -> MyDatasetListResponse.from(
                 dataset,
-                verificationMap.getOrDefault(dataset.getDatasetId(), VerificationSummary.none())
+                verificationMap.getOrDefault(dataset.getDatasetId(), InspectionSummary.none())
         ));
     }
 
@@ -152,8 +152,8 @@ public class DatasetServiceImpl implements DatasetService {
                 .map(tm -> tm.getTag().getName())
                 .toList();
 
-        VerificationSummary verificationSummary =
-                verificationResultService.getSummary(InspectionTargetType.UPLOADED_DATA, datasetId);
+        InspectionSummary verificationSummary =
+                inspectionResultService.getSummary(InspectionTargetType.UPLOADED_DATA, datasetId);
 
         return DatasetDetailResponse.from(dataset, tags, verificationSummary);
     }

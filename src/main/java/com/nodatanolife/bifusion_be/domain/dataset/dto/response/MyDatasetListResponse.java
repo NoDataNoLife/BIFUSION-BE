@@ -1,8 +1,8 @@
 package com.nodatanolife.bifusion_be.domain.dataset.dto.response;
 
 import com.nodatanolife.bifusion_be.domain.dataset.entity.Dataset;
-import com.nodatanolife.bifusion_be.domain.expert.dto.response.VerificationSummary;
-import com.nodatanolife.bifusion_be.domain.expert.entity.VerificationStatus;
+import com.nodatanolife.bifusion_be.domain.expert.dto.response.InspectionSummary;
+import com.nodatanolife.bifusion_be.domain.expert.entity.InspectionStatus;
 import com.nodatanolife.bifusion_be.domain.file.presign.PresignedUrl;
 
 import java.time.LocalDate;
@@ -18,11 +18,11 @@ public record MyDatasetListResponse(
         LocalDate uploadedAt,
         List<String> fileFormats
 ) {
-    public static MyDatasetListResponse from(Dataset dataset, VerificationSummary verificationSummary) {
+    public static MyDatasetListResponse from(Dataset dataset, InspectionSummary verificationSummary) {
         return new MyDatasetListResponse(
                 dataset.getDatasetId(),
                 dataset.getTitle(),
-                verificationSummary.status() == VerificationStatus.COMPLETED,
+                verificationSummary.status() == InspectionStatus.COMPLETED,
                 dataset.getBannerImageUrl(),
                 dataset.getFile() != null ? dataset.getFile().getFileSize() : null,
                 dataset.getFileCount().longValue(),
