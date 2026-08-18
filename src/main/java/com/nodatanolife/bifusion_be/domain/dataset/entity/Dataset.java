@@ -8,6 +8,8 @@ import com.nodatanolife.bifusion_be.domain.file.entity.File;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.time.LocalDateTime;
+
 @Entity
 @Table(name = "dataset")
 @Getter
@@ -90,6 +92,9 @@ public class Dataset extends BaseEntity {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "file_id")
     private File file;
+
+    @Column(name = "deleted_at")
+    private LocalDateTime deletedAt;
 
 
     @Builder
