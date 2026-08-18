@@ -75,7 +75,7 @@ public record RecipeDetailResponse(
                 recipe.getTitle(),
                 recipe.getShortDescription(),
                 recipe.getThumbnailUrl(),
-                recipe.getIsExpertVerified(),
+                verificationSummary.status() == VerificationStatus.COMPLETED,
                 AuthorInfo.from(recipe.getUser()),
                 recipe.getCreatedAt(),
                 recipe.getRating().doubleValue(),

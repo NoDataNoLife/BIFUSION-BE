@@ -8,6 +8,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.servlet.NoHandlerFoundException;
 
 @Slf4j
 @RestControllerAdvice
@@ -97,6 +98,21 @@ public class GlobalExceptionHandler {
                 .body(CommonResponse.fail(
                         errorCode.getCode(),
                         "요청 값의 타입이 올바르지 않습니다."
+                ));
+    }
+
+    /* ================================
+     * 매핑되지 않은 경로 (진짜 404)
+     * ================================ */
+    @ExceptionHandler(NoHandlerFoundException.class)
+    protected ResponseEntity<CommonResponse<?>> handleNoHandlerFound() {
+        ErrorCode errorCode = ErrorCode.RESOURCE_NOT_FOUND;
+
+        return ResponseEntity
+                .status(errorCode.getStatus()) // 404
+                .body(CommonResponse.fail(
+                        errorCode.getCode(),
+                        errorCode.getMessage()
                 ));
     }
 

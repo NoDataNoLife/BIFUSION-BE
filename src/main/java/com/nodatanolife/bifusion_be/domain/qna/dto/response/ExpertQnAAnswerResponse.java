@@ -19,7 +19,7 @@ public record ExpertQnAAnswerResponse(
             Boolean isExpert
     ) {}
 
-    public static ExpertQnAAnswerResponse from(ExpertQnAAnswer answer) {
+    public static ExpertQnAAnswerResponse from(ExpertQnAAnswer answer, boolean isExpert) {
         return new ExpertQnAAnswerResponse(
                 answer.getExpertQnAAnswerId(),
                 answer.getExpertQnA().getExpertQnAId(),
@@ -29,7 +29,7 @@ public record ExpertQnAAnswerResponse(
                         answer.getUser().getUserId(),
                         answer.getUser().getNickname(),
                         answer.getUser().getProfileImageUrl(),
-                        answer.getUser().getIsExpert()
+                        isExpert
                 ),
                 answer.getCreatedAt()
         );

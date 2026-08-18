@@ -13,8 +13,6 @@ import com.nodatanolife.bifusion_be.domain.user.dto.request.WebsiteUpdateRequest
 import com.nodatanolife.bifusion_be.domain.user.dto.request.LocationUpdateRequest;
 import com.nodatanolife.bifusion_be.domain.user.dto.request.NicknameUpdateRequest;
 import com.nodatanolife.bifusion_be.domain.user.dto.request.OnboardingRequest;
-import com.nodatanolife.bifusion_be.domain.expert.dto.response.ExpertApplicationResponse;
-import com.nodatanolife.bifusion_be.domain.expert.service.ExpertService;
 import com.nodatanolife.bifusion_be.domain.project.dto.request.ProjectVisibilityUpdateRequest;
 import com.nodatanolife.bifusion_be.domain.project.dto.response.ProjectVisibilityUpdateResponse;
 import com.nodatanolife.bifusion_be.domain.project.service.ProjectService;
@@ -38,7 +36,6 @@ import org.springframework.web.bind.annotation.*;
 public class UserController {
 
     private final UserService userService;
-    private final ExpertService expertService;
     private final ProjectService projectService;
     private final MyActivityVisibilityService myActivityVisibilityService;
     private final CookieUtil cookieUtil;
@@ -189,20 +186,6 @@ public class UserController {
         return CommonResponse.success(response, "유저 이메일 검색 성공!");
     }
 
-    @Operation(
-            summary = "전문가 인증 신청",
-            description = "의료 면허증 또는 학위 증명서를 업로드해 PENDING 상태로 신청을 등록합니다."
-    )
-    @PostMapping("/users/me/expert")
-    public CommonResponse<ExpertApplicationResponse> applyExpert(
-            @AuthenticationPrincipal CustomOAuth2User principal,
-            @RequestPart MultipartFile certificationFile) {
-
-        ExpertApplicationResponse response = expertService.apply(
-                principal.getUser().getUserId(), certificationFile);
-
-        return CommonResponse.success(response, "전문가 인증 신청 성공!");
-    }
 
     @Operation(
             summary = "내 프로젝트 공개 여부 일괄 변경",
