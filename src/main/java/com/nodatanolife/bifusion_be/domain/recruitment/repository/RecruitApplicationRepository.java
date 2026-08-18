@@ -30,4 +30,6 @@ public interface RecruitApplicationRepository extends JpaRepository<RecruitAppli
         Long getRecruitId();
         Long getCount();
     }
+
+    List<RecruitApplication> findAllByRecruit_RecruitId(Long recruitId);
 }
