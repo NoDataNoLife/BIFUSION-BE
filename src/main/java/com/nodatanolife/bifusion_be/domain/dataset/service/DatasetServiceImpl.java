@@ -144,4 +144,17 @@ public class DatasetServiceImpl implements DatasetService {
 
         return DatasetDetailResponse.from(dataset, tags, verificationSummary);
     }
+
+    @Override
+    public void deleteDataset(Long userId, Long datasetId) {
+        Dataset dataset = datasetRepository.findById(datasetId)
+                .filter(d -> !d.isDeleted())
+                .orElseThrow(() -> new BusinessException(ErrorCode.RESOURCE_NOT_FOUND));
+
+        if (!dataset.getUser().getUserId().equals(userId)) {
+            throw new BusinessException(ErrorCode.POST_ACCESS_DENIED);
+        }
+
+        dataset.delete();
+    }
 }

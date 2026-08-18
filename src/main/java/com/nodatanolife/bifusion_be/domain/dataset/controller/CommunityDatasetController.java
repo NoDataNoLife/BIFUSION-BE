@@ -62,4 +62,15 @@ public class CommunityDatasetController {
         return CommonResponse.success(response, "데이터셋 상세 조회 성공!");
     }
 
+    @Operation(summary = "데이터셋 삭제", description = "본인이 등록한 데이터셋을 삭제(soft delete)합니다.")
+    @DeleteMapping("/{datasetId}")
+    public CommonResponse<Void> deleteDataset(
+            @AuthenticationPrincipal CustomOAuth2User principal,
+            @PathVariable Long datasetId
+    ) {
+        Long userId = principal.getUser().getUserId();
+        datasetService.deleteDataset(userId, datasetId);
+        return CommonResponse.success(null, "데이터셋 삭제 성공!");
+    }
+
 }
