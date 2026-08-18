@@ -76,4 +76,15 @@ public class ExpertQnAController {
         ExpertQnADetailResponse response = expertQnAService.getQnaDetail(qnaId);
         return CommonResponse.success(response, "QnA 상세 조회 성공");
     }
+
+    @Operation(summary = "QnA 질문글 삭제", description = "본인이 작성한 질문글을 삭제(soft delete)합니다.")
+    @DeleteMapping("/{qnaId}")
+    public CommonResponse<Void> deleteQna(
+            @AuthenticationPrincipal CustomOAuth2User userDetails,
+            @PathVariable Long qnaId
+    ) {
+        Long userId = userDetails.getUser().getUserId();
+        expertQnAService.deleteQna(userId, qnaId);
+        return CommonResponse.success(null, "질문글 삭제 성공!");
+    }
 }

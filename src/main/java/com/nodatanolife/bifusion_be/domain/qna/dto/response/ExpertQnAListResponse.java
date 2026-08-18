@@ -15,8 +15,10 @@ public record ExpertQnAListResponse(
         Boolean isExpertAnswered,
         AuthorInfo author,
         Integer answerCount,
-        LocalDateTime createdAt
-) {
+        LocalDateTime createdAt,
+        boolean isDeleted
+
+        ) {
     public record AuthorInfo(Long userId, String nickname, @PresignedUrl String profileImageUrl) {}
 
     public static ExpertQnAListResponse from(ExpertQnA qna, List<String> tags) {
@@ -31,7 +33,8 @@ public record ExpertQnAListResponse(
                         qna.getUser().getProfileImageUrl()
                 ),
                 qna.getAnswerCount(),
-                qna.getCreatedAt()
+                qna.getCreatedAt(),
+                qna.getDeletedAt() != null
         );
     }
 }

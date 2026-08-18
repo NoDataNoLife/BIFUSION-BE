@@ -17,9 +17,11 @@ public interface ExpertQnARepository extends JpaRepository<ExpertQnA, Long> {
     @Query(
             value = "SELECT q FROM ExpertQnA q JOIN FETCH q.user " +
                     "WHERE q.isPublic = true " +
+                    "AND q.deletedAt IS NULL " +
                     "AND (:keyword IS NULL OR q.title LIKE %:keyword%)",
             countQuery = "SELECT COUNT(q) FROM ExpertQnA q " +
                     "WHERE q.isPublic = true " +
+                    "AND q.deletedAt IS NULL " +
                     "AND (:keyword IS NULL OR q.title LIKE %:keyword%)"
     )
     Page<ExpertQnA> findAllByCondition(

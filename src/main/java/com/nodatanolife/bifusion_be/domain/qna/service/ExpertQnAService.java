@@ -21,4 +21,5 @@ public interface ExpertQnAService {
 
     ExpertQnADetailResponse getQnaDetail(Long qnaId);
 
+    void deleteQna(Long userId, Long qnaId);
 }
