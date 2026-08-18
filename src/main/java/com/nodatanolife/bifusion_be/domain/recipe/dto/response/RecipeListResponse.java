@@ -1,10 +1,13 @@
 package com.nodatanolife.bifusion_be.domain.recipe.dto.response;
 
+import com.nodatanolife.bifusion_be.domain.expert.dto.response.VerificationSummary;
+import com.nodatanolife.bifusion_be.domain.expert.entity.VerificationStatus;
 import com.nodatanolife.bifusion_be.domain.recipe.entity.Recipe;
 import com.nodatanolife.bifusion_be.domain.user.entity.User;
 import org.springframework.data.domain.Page;
 
 import java.util.List;
+import java.util.Map;
 
 public record RecipeListResponse(
         int totalCount,
@@ -20,7 +23,7 @@ public record RecipeListResponse(
             int likeCount,
             boolean isExpertVerified
     ) {
-        public static RecipeSummary from(Recipe recipe) {
+        public static RecipeSummary from(Recipe recipe, VerificationSummary verificationSummary) {
             return new RecipeSummary(
                     recipe.getRecipeId(),
                     recipe.getTitle(),
@@ -28,7 +31,7 @@ public record RecipeListResponse(
                     AuthorInfo.from(recipe.getUser()),
                     recipe.getForkCount(),
                     recipe.getLikeCount() != null ? recipe.getLikeCount() : 0,
-                    recipe.getIsExpertVerified()
+                    verificationSummary.status() == VerificationStatus.COMPLETED
 
             );
         }
@@ -50,10 +53,15 @@ public record RecipeListResponse(
         }
     }
 
-    public static RecipeListResponse of(Page<Recipe> page) {
+    public static RecipeListResponse of(Page<Recipe> page, Map<Long, VerificationSummary> verificationMap) {
         return new RecipeListResponse(
                 (int) page.getTotalElements(),
-                page.getContent().stream().map(RecipeSummary::from).toList(),
+                page.getContent().stream()
+                        .map(recipe -> RecipeSummary.from(
+                                recipe,
+                                verificationMap.getOrDefault(recipe.getRecipeId(), VerificationSummary.none())
+                        ))
+                        .toList(),
                 PageInfo.from(page)
         );
     }

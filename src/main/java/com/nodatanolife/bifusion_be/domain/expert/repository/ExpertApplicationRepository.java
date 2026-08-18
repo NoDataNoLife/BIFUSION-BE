@@ -5,6 +5,7 @@ import com.nodatanolife.bifusion_be.domain.expert.entity.ExpertApplicationStatus
 import com.nodatanolife.bifusion_be.domain.user.entity.User;
 import org.springframework.data.jpa.repository.JpaRepository;
 
+import java.util.List;
 import java.util.Optional;
 
 public interface ExpertApplicationRepository extends JpaRepository<ExpertApplication, Long> {
@@ -16,4 +17,6 @@ public interface ExpertApplicationRepository extends JpaRepository<ExpertApplica
     Optional<ExpertApplication> findByUserAndStatus(User user, ExpertApplicationStatus status);
 
     Optional<ExpertApplication> findFirstByUserOrderByAppliedAtDesc(User user);
+
+    List<ExpertApplication> findAllByStatus(ExpertApplicationStatus status);
 }

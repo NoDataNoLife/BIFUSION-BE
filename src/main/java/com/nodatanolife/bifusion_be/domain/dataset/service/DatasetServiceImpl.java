@@ -124,7 +124,20 @@ public class DatasetServiceImpl implements DatasetService {
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
         Page<Dataset> datasetPage = datasetRepository.findAllByTypeAndUser_UserId(type, userId, pageable);
 
-        return datasetPage.map(MyDatasetListResponse::from);
+        List<Long> ids = datasetPage.getContent()
+                .stream()
+                .map(Dataset::getDatasetId)
+                .toList();
+        InspectionTargetType targetType = type == DatasetType.AUGMENTED
+                ? InspectionTargetType.AUGMENTED_DATA
+                : InspectionTargetType.UPLOADED_DATA;
+        Map<Long, VerificationSummary> verificationMap =
+                verificationResultService.getSummaries(targetType, ids);
+
+        return datasetPage.map(dataset -> MyDatasetListResponse.from(
+                dataset,
+                verificationMap.getOrDefault(dataset.getDatasetId(), VerificationSummary.none())
+        ));
     }
 
     @Override

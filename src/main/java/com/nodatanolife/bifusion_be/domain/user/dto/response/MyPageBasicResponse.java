@@ -18,7 +18,7 @@ public record MyPageBasicResponse(
         SubscriptionTier planType,
         @PresignedUrl String profileImageUrl
 ) {
-    public static MyPageBasicResponse from(User user) {
+    public static MyPageBasicResponse from(User user, boolean isExpert) {
         return new MyPageBasicResponse(
                 user.getUserId(),
                 user.getName(),
@@ -27,7 +27,7 @@ public record MyPageBasicResponse(
                 user.getLocation(),
                 user.getWebsiteUrl(),
                 formatJoinedAt(user.getCreatedAt()),
-                user.getIsExpert(),
+                isExpert,
                 user.getPlanType(),
                 user.getProfileImageUrl()
         );

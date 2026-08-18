@@ -103,6 +103,7 @@ public enum ErrorCode {
     EXPERT_FILE_INVALID(HttpStatus.BAD_REQUEST, "EX001", "허용되지 않은 파일 형식입니다."),
     EXPERT_FILE_TOO_LARGE(HttpStatus.BAD_REQUEST, "EX002", "파일 용량이 허용 범위를 초과했습니다."),
     EXPERT_ALREADY_APPROVED(HttpStatus.CONFLICT, "EX003", "이미 전문가 인증이 완료된 사용자입니다."),
+    EXPERT_NOT_CERTIFIED(HttpStatus.FORBIDDEN, "EX004", "전문가 인증을 받은 사용자만 조회할 수 있습니다."),
 
     /* ================================
      * Plan

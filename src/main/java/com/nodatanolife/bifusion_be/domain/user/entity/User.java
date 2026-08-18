@@ -46,9 +46,6 @@ public class User extends BaseEntity {
     @Column(name = "website_url")
     private String websiteUrl;
 
-    @Column(name = "is_expert")
-    private Boolean isExpert;
-
     @Column(name = "is_onboarded")
     private Boolean isOnboarded;
 
@@ -67,7 +64,7 @@ public class User extends BaseEntity {
 
     /**
      * 구글 소셜 로그인으로 처음 가입하는 신규 유저 생성
-     * role = USER, isExpert = false, isOnboarded = false 로 고정
+     * role = USER, isOnboarded = false 로 고정
      */
     public static User createOAuthUser(String email, String name) {
         User user = new User();
@@ -75,7 +72,6 @@ public class User extends BaseEntity {
         user.name = name;
         user.profileImageUrl = null;
         user.role = "USER";
-        user.isExpert = false;
         user.isOnboarded = false;
         user.remainingTokens = 0L;
         user.points = 0;
@@ -107,7 +103,6 @@ public class User extends BaseEntity {
         user.name = "탈퇴한 사용자";
         user.nickname = "탈퇴한 사용자";
         user.role = "DELETED";
-        user.isExpert = false;
         user.isOnboarded = true;
         user.remainingTokens = 0L;
         user.points = 0;
