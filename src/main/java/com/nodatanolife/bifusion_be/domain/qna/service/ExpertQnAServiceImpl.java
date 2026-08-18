@@ -131,6 +131,7 @@ public class ExpertQnAServiceImpl implements ExpertQnAService {
     @Transactional(readOnly = true)
     public ExpertQnADetailResponse getQnaDetail(Long qnaId) {
         ExpertQnA qna = expertQnARepository.findById(qnaId)
+                .filter(q -> !q.isDeleted())
                 .orElseThrow(() -> new BusinessException(ErrorCode.BOARD_NOT_FOUND));
 
         List<String> tags = tagMappingRepository
@@ -143,5 +144,18 @@ public class ExpertQnAServiceImpl implements ExpertQnAService {
                 .findAllByExpertQnAOrderByCreatedAtAsc(qna);
 
         return ExpertQnADetailResponse.from(qna, tags, answers);
+    }
+
+    @Override
+    public void deleteQna(Long userId, Long qnaId) {
+        ExpertQnA qna = expertQnARepository.findById(qnaId)
+                .filter(q -> !q.isDeleted())
+                .orElseThrow(() -> new BusinessException(ErrorCode.BOARD_NOT_FOUND));
+
+        if (!qna.getUser().getUserId().equals(userId)) {
+            throw new BusinessException(ErrorCode.POST_ACCESS_DENIED);
+        }
+
+        qna.delete();
     }
 }

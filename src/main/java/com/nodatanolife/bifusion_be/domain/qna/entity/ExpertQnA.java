@@ -77,4 +77,7 @@ public class ExpertQnA extends BaseEntity {
         this.hasExpertReply = true;
         this.answerCount += 1;
     }
+    public void delete() {
+        markDeleted();
+    }
 }
