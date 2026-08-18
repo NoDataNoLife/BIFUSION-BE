@@ -154,6 +154,7 @@ public class RecruitServiceImpl implements RecruitService {
     public RecruitmentDetailResponse getRecruitmentDetail(Long recruitmentId) {
 
         Recruit recruit = recruitRepository.findById(recruitmentId)
+                .filter(r -> !r.isDeleted())
                 .orElseThrow(() -> new BusinessException(ErrorCode.RECRUITMENT_NOT_FOUND));
 
         List<String> tags = tagMappingRepository
@@ -174,6 +175,7 @@ public class RecruitServiceImpl implements RecruitService {
 
         Pageable pageable = PageRequest.of(page, size, sortOption);
         Page<Recruit> recruits = recruitRepository.findAllByIsPublicTrue(pageable);
+
 
         List<Long> recruitIds = recruits.getContent().stream()
                 .map(Recruit::getRecruitId)
@@ -198,5 +200,17 @@ public class RecruitServiceImpl implements RecruitService {
                 tagMap.getOrDefault(recruit.getRecruitId(), List.of()),
                 memberCountMap.getOrDefault(recruit.getRecruitId(), 0)
         ));
+    }
+
+    @Transactional
+    public void deleteRecruitment(Long recruitmentId, Long userId) {
+        Recruit recruit = recruitRepository.findById(recruitmentId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.RECRUITMENT_NOT_FOUND)); // 또는 기존 컨벤션에 맞는 코드
+
+        if (!recruit.getUser().getUserId().equals(userId)) {
+            throw new BusinessException(ErrorCode.FORBIDDEN_RECRUITMENT_ACCESS); // 없으면 신설
+        }
+
+        recruit.delete();
     }
 }

@@ -31,4 +31,6 @@ public interface RecruitService {
   
     Page<RecruitmentListResponse> getRecruitmentList(String sort, int page, int size);
 
+    void deleteRecruitment(Long recruitmentId, Long userId);
+
 }
