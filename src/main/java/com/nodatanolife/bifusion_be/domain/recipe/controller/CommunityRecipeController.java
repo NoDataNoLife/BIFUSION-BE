@@ -102,4 +102,18 @@ public class CommunityRecipeController {
         return CommonResponse.success(response, "내 레시피 보관함에 저장 성공!");
     }
 
+    @Operation(
+            summary = "레시피 삭제",
+            description = "지정한 레시피를 삭제합니다."
+    )
+    @DeleteMapping("/{recipeId}")
+    public CommonResponse<Void> deleteRecipe(
+            @PathVariable Long recipeId,
+            @AuthenticationPrincipal CustomOAuth2User oAuth2User
+    ) {
+        recipeService.deleteRecipe(recipeId, oAuth2User.getUser().getUserId());
+
+        return CommonResponse.success(null, "레시피 삭제 성공!");
+    }
+
 }

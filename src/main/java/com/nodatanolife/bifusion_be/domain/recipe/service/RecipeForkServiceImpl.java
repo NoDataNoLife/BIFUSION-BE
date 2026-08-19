@@ -33,7 +33,7 @@ public class RecipeForkServiceImpl implements RecipeForkService {
     @Override
     @Transactional
     public RecipeForkResponse forkRecipe(Long recipeId, Long userId) {
-        Recipe original = recipeRepository.findById(recipeId)
+        Recipe original = recipeRepository.findByRecipeIdAndDeletedAtIsNull(recipeId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.RESOURCE_NOT_FOUND));
 
         User user = userRepository.findById(userId)

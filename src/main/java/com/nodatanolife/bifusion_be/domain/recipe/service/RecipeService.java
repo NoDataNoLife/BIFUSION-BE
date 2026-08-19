@@ -38,4 +38,6 @@ public interface RecipeService {
      * 페이징은 컨트롤러에서 전역 PageResponse로 감싼다.
      */
     Page<RecipeListResponse> getRecipeList(String sort, String keyword, int page, int size);
+
+    void deleteRecipe(Long recipeId, Long userId);
 }

@@ -19,7 +19,9 @@ public record RecipeListResponse(
         AuthorInfo author,
         int forkCount,
         int likeCount,
-        boolean isExpertVerified
+        boolean isExpertVerified,
+        boolean isDeleted
+
 ) {
     /**
      * 작성자 정보.
@@ -42,7 +44,8 @@ public record RecipeListResponse(
                 AuthorInfo.from(recipe.getUser()),
                 recipe.getForkCount(),
                 recipe.getLikeCount() != null ? recipe.getLikeCount() : 0,
-                verificationSummary.status() == InspectionStatus.COMPLETED
+                verificationSummary.status() == InspectionStatus.COMPLETED,
+                recipe.isDeleted()
         );
     }
 }

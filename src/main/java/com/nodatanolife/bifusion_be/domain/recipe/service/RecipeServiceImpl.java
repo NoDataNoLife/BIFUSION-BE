@@ -62,7 +62,7 @@ public class RecipeServiceImpl implements RecipeService {
     @Override
     @Transactional(readOnly = true)
     public RecipeDetailResponse getRecipeDetail(Long recipeId, Long userId) {
-        Recipe recipe = recipeRepository.findById(recipeId)
+        Recipe recipe = recipeRepository.findByRecipeIdAndDeletedAtIsNull(recipeId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.RESOURCE_NOT_FOUND));
 
         if (!recipe.getIsPublic() && !recipe.getUser().getUserId().equals(userId)) {
@@ -88,7 +88,7 @@ public class RecipeServiceImpl implements RecipeService {
 
         Recipe forkedFrom = null;
         if (request.forkedFromId() != null) {
-            forkedFrom = recipeRepository.findById(request.forkedFromId())
+            forkedFrom = recipeRepository.findByRecipeIdAndDeletedAtIsNull(request.forkedFromId())
                     .orElseThrow(() -> new BusinessException(ErrorCode.RESOURCE_NOT_FOUND));
             forkedFrom.increaseForkCount();
         }
@@ -109,8 +109,8 @@ public class RecipeServiceImpl implements RecipeService {
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
 
         Page<Recipe> recipePage = switch (type) {
-            case MINE -> recipeRepository.findAllByForkedFromIsNullAndUser_UserId(userId, pageable);
-            case FORKED -> recipeRepository.findAllByForkedFromIsNotNullAndUser_UserId(userId, pageable);
+            case MINE -> recipeRepository.findAllByForkedFromIsNullAndUser_UserIdAndDeletedAtIsNull(userId, pageable);
+            case FORKED -> recipeRepository.findAllByForkedFromIsNotNullAndUser_UserIdAndDeletedAtIsNull(userId, pageable);
         };
 
         List<Long> ids = recipePage.getContent().stream().map(Recipe::getRecipeId).toList();
@@ -149,5 +149,18 @@ public class RecipeServiceImpl implements RecipeService {
                 recipe,
                 verificationMap.getOrDefault(recipe.getRecipeId(), InspectionSummary.none())
         ));
+    }
+
+    @Override
+    @Transactional
+    public void deleteRecipe(Long recipeId, Long userId) {
+        Recipe recipe = recipeRepository.findByRecipeIdAndDeletedAtIsNull(recipeId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.RESOURCE_NOT_FOUND));
+
+        if (!recipe.getUser().getUserId().equals(userId)) {
+            throw new BusinessException(ErrorCode.FORBIDDEN_RECIPE_ACCESS);
+        }
+
+        recipe.delete();
     }
 }
