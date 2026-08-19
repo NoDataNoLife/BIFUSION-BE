@@ -35,6 +35,7 @@ public interface RecipeService {
 
     /**
      * 커뮤니티 레시피 목록을 조회한다. 공개(isPublic = true) 레시피만 대상이다.
+     * 페이징은 컨트롤러에서 전역 PageResponse로 감싼다.
      */
-    RecipeListResponse getRecipeList(String sort, String keyword, int page, int size);
+    Page<RecipeListResponse> getRecipeList(String sort, String keyword, int page, int size);
 }

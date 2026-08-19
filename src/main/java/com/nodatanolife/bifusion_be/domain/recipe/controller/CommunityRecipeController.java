@@ -7,6 +7,7 @@ import com.nodatanolife.bifusion_be.domain.recipe.dto.request.RecipeRegisterRequ
 import com.nodatanolife.bifusion_be.domain.recipe.dto.response.RecipeRegisterResponse;
 import com.nodatanolife.bifusion_be.domain.recipe.service.RecipeForkService;
 import com.nodatanolife.bifusion_be.domain.recipe.service.RecipeService;
+import com.nodatanolife.bifusion_be.global.dto.response.PageResponse;
 import com.nodatanolife.bifusion_be.global.response.CommonResponse;
 import com.nodatanolife.bifusion_be.global.security.oauth2.CustomOAuth2User;
 import io.swagger.v3.oas.annotations.Operation;
@@ -56,13 +57,15 @@ public class CommunityRecipeController {
                     + "keyword(제목·짧은 설명 부분 검색, 생략 가능), page, size 파라미터로 조회합니다."
     )
     @GetMapping
-    public CommonResponse<RecipeListResponse> getRecipeList(
+    public CommonResponse<PageResponse<RecipeListResponse>> getRecipeList(
             @RequestParam(defaultValue = "LATEST") String sort,
             @RequestParam(required = false) String keyword,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size
     ) {
-        RecipeListResponse response = recipeService.getRecipeList(sort, keyword, page, size);
+        PageResponse<RecipeListResponse> response = PageResponse.from(
+                recipeService.getRecipeList(sort, keyword, page, size)
+        );
         return CommonResponse.success(response, "레시피 목록 조회 성공!");
     }
 

@@ -131,7 +131,7 @@ public class RecipeServiceImpl implements RecipeService {
      */
     @Override
     @Transactional(readOnly = true)
-    public RecipeListResponse getRecipeList(String sort, String keyword, int page, int size) {
+    public Page<RecipeListResponse> getRecipeList(String sort, String keyword, int page, int size) {
         Sort sortOption = switch (sort) {
             case "MOST_POPULAR" -> Sort.by(Sort.Direction.DESC, "likeCount");
             case "MOST_FORKED" -> Sort.by(Sort.Direction.DESC, "forkCount");
@@ -145,6 +145,9 @@ public class RecipeServiceImpl implements RecipeService {
         Map<Long, VerificationSummary> verificationMap =
                 verificationResultService.getSummaries(InspectionTargetType.RECIPE, ids);
 
-        return RecipeListResponse.of(recipePage, verificationMap);
+        return recipePage.map(recipe -> RecipeListResponse.from(
+                recipe,
+                verificationMap.getOrDefault(recipe.getRecipeId(), VerificationSummary.none())
+        ));
     }
 }
