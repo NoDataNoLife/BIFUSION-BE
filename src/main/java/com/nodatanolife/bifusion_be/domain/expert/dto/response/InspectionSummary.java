@@ -17,10 +17,10 @@ public record InspectionSummary(
         return NONE;
     }
 
-    public static InspectionSummary of(InspectionRequest verification) {
-        return switch (verification.getStatus()) {
+    public static InspectionSummary of(InspectionRequest inspectionRequest) {
+        return switch (inspectionRequest.getStatus()) {
             case PENDING -> new InspectionSummary(InspectionStatus.PENDING, null);
-            case APPROVED -> new InspectionSummary(InspectionStatus.COMPLETED, InspectionResultResponse.from(verification));
+            case APPROVED -> new InspectionSummary(InspectionStatus.COMPLETED, InspectionResultResponse.from(inspectionRequest));
             case REJECTED -> NONE;
         };
     }

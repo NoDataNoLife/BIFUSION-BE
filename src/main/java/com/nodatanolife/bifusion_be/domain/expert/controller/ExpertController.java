@@ -2,6 +2,7 @@ package com.nodatanolife.bifusion_be.domain.expert.controller;
 
 import com.nodatanolife.bifusion_be.domain.expert.dto.response.ExpertApplicationResponse;
 import com.nodatanolife.bifusion_be.domain.expert.dto.response.ExpertPerformanceResponse;
+import com.nodatanolife.bifusion_be.domain.expert.dto.response.ExpertTaskGroupedResponse;
 import com.nodatanolife.bifusion_be.domain.expert.service.ExpertService;
 import com.nodatanolife.bifusion_be.global.response.CommonResponse;
 import com.nodatanolife.bifusion_be.global.security.oauth2.CustomOAuth2User;
@@ -67,5 +68,31 @@ public class ExpertController {
     ) {
         ExpertPerformanceResponse response = expertService.getMyPerformance(principal.getUser());
         return CommonResponse.success(response, "전문가 성과 조회 성공!");
+    }
+
+    @Operation(
+            summary = "전문가 검수 요청 목록 조회",
+            description = """
+                    로그인한 전문가에게 배정된 검수 요청 목록을 검수 상태별로 묶어 반환합니다. (증강 데이터 검수 대상)
+                    전문가 인증(APPROVED)을 받지 않은 사용자가 호출하면 403이 반환됩니다.
+
+                    - PENDING: 검수 전 목록
+                    - IN_PROGRESS: 검수 중 목록
+                    - COMPLETED: 검수 후 목록
+                    - 각 그룹 내 정렬 기준: updatedAt 최신순
+                    - 각 항목의 reviewCode: 검수 요청 코드 (예: REV-001)
+                    - 각 항목의 reviewResult: 검수 완료 건의 판정 결과 (APPROVED / REJECTED), 미완료 건은 null
+                    - 각 항목의 requester: 검수를 신청한 사용자 (userId, nickname, email)
+                    - 각 항목의 projectName: 검수 대상 증강 데이터가 속한 프로젝트명
+                    - 각 항목의 requestedAt: 검수 신청일
+                    - 각 항목의 updatedAt: 검수 건 최종 수정 일시
+                    """
+    )
+    @GetMapping("/me/tasks")
+    public CommonResponse<ExpertTaskGroupedResponse> getMyTasks(
+            @AuthenticationPrincipal CustomOAuth2User principal
+    ) {
+        ExpertTaskGroupedResponse response = expertService.getMyTasks(principal.getUser());
+        return CommonResponse.success(response, "검수 요청 목록 조회 성공!");
     }
 }

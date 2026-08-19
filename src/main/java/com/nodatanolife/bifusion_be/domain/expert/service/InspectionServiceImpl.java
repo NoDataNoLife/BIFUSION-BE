@@ -39,7 +39,7 @@ public class InspectionServiceImpl implements InspectionService {
      *   같은 409 예외로 변환해 이중으로 방어한다.
      * - 보유 포인트가 리워드 포인트보다 부족하면 400으로 막는다.
      * - 포인트 차감 → 검증 신청 생성을 한 트랜잭션(클래스 레벨 @Transactional)으로 처리한다.
-     *   InspectionRequest은 생성 시 status=PENDING으로 저장되며, 대상(Recipe/Dataset)의 검증 상태는
+     *   InspectionRequest는 생성 시 status=PENDING으로 저장되며, 대상(Recipe/Dataset)의 검증 상태는
      *   별도 컬럼으로 중복 저장하지 않고 InspectionResultService가 이 status를 조회 시점에 읽어 파생시킨다.
      * - 실제 검수 처리(점수/코멘트 기록)는 전문가/관리자가 이후 status를 APPROVED/REJECTED로 변경하는 별도 플로우에서 이루어진다.
      * - 파라미터로 받은 user(인증 필터에서 조회한 엔티티)는 이 트랜잭션 밖에서 로드된 상태라 그대로 변경 메서드를
@@ -64,9 +64,9 @@ public class InspectionServiceImpl implements InspectionService {
         }
         managedUser.deductPoints(rewardPoints);
 
-        InspectionRequest verification = InspectionRequest.create(managedUser, targetType, targetId, request.getReason(), rewardPoints);
+        InspectionRequest inspectionRequest = InspectionRequest.create(managedUser, targetType, targetId, request.getReason(), rewardPoints);
         try {
-            InspectionRequest saved = inspectionRequestRepository.save(verification);
+            InspectionRequest saved = inspectionRequestRepository.save(inspectionRequest);
             return InspectionResponse.from(saved);
         } catch (DataIntegrityViolationException e) {
             // 동시 요청으로 existsBy 체크를 통과한 뒤 unique constraint에 걸린 경우

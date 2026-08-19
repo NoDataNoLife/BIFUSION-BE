@@ -10,11 +10,11 @@ public record InspectionResponse(
         InspectionRequestStatus status,
         LocalDateTime createdAt
 ) {
-    public static InspectionResponse from(InspectionRequest verification) {
+    public static InspectionResponse from(InspectionRequest inspectionRequest) {
         return new InspectionResponse(
-                verification.getInspectionRequestId(),
-                verification.getStatus(),
-                verification.getCreatedAt()
+                inspectionRequest.getInspectionRequestId(),
+                inspectionRequest.getStatus(),
+                inspectionRequest.getCreatedAt()
         );
     }
 }

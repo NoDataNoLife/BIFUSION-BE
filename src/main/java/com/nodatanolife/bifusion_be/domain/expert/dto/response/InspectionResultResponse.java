@@ -10,12 +10,12 @@ public record InspectionResultResponse(
         String comment,
         LocalDateTime verifiedAt
 ) {
-    public static InspectionResultResponse from(InspectionRequest verification) {
+    public static InspectionResultResponse from(InspectionRequest inspectionRequest) {
         return new InspectionResultResponse(
-                verification.getReviewedBy() != null ? verification.getReviewedBy().getName() : null,
-                verification.getScore(),
-                verification.getComment(),
-                verification.getReviewedAt()
+                inspectionRequest.getReviewedBy() != null ? inspectionRequest.getReviewedBy().getName() : null,
+                inspectionRequest.getScore(),
+                inspectionRequest.getComment(),
+                inspectionRequest.getReviewedAt()
         );
     }
 }
