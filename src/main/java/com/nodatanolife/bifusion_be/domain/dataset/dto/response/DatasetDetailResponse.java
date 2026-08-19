@@ -10,6 +10,12 @@ import com.nodatanolife.bifusion_be.domain.file.presign.PresignedUrl;
 import java.time.LocalDateTime;
 import java.util.List;
 
+/**
+ * 데이터셋 상세 조회 응답 DTO.
+ * 비공개 데이터셋인 경우 서비스단(DatasetServiceImpl#getDatasetDetail)에서
+ * 작성자 본인이 아니면 이 응답을 만들기 전에 이미 예외를 던지므로,
+ * 여기까지 도달했다면 "공개 데이터셋" 또는 "본인 소유 비공개 데이터셋"만 담긴다.
+ */
 public record DatasetDetailResponse(
         Long datasetId,
         String title,
@@ -33,6 +39,9 @@ public record DatasetDetailResponse(
         InspectionStatus inspectionStatus,
         InspectionResultResponse inspectionResult
 ) {
+    /**
+     * 작성자 정보. profileImageUrl은 @PresignedUrl로 직렬화 시점에 presign된다 (S3 버킷 private).
+     */
     public record AuthorInfo(Long userId, String nickname, @PresignedUrl String profileImageUrl) {}
 
     public static DatasetDetailResponse from(Dataset dataset, List<String> tags, InspectionSummary verificationSummary) {
@@ -66,6 +75,9 @@ public record DatasetDetailResponse(
         );
     }
 
+    /**
+     * 바이트 단위 파일 크기를 사람이 읽기 쉬운 단위(GB/MB/KB/B)로 변환한다.
+     */
     private static String formatFileSize(Long bytes) {
         if (bytes == null) return null;
         if (bytes >= 1024L * 1024 * 1024) return String.format("%.1f GB", bytes / (1024.0 * 1024 * 1024));

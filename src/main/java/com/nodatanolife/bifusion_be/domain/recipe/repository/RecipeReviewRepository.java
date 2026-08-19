@@ -10,11 +10,15 @@ import java.util.List;
 
 public interface RecipeReviewRepository extends JpaRepository<RecipeReview, Long> {
 
+    // 회원 탈퇴 익명화 처리 대상 조회
     List<RecipeReview> findAllByUser(User user);
 
+    // 최상위 댓글 삭제 시 딸린 대댓글을 일괄 하드 삭제하기 위한 메서드
     void deleteAllByParent(RecipeReview parent);
-    
+
+    // 레시피의 최상위 댓글만 페이지 조회 (parent가 없는 댓글)
     Page<RecipeReview> findAllByRecipe_RecipeIdAndParentIsNull(Long recipeId, Pageable pageable);
 
+    // 여러 최상위 댓글 ID에 딸린 대댓글을 한 번에 조회 (댓글 목록 조회 시 N+1 방지용 배치 조회)
     List<RecipeReview> findAllByParent_RecipeReviewIdInOrderByCreatedAtAsc(List<Long> parentIds);
 }

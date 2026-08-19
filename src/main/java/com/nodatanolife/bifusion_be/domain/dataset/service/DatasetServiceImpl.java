@@ -32,8 +32,6 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 
-
-
 @Service
 @RequiredArgsConstructor
 @Transactional
@@ -46,17 +44,27 @@ public class DatasetServiceImpl implements DatasetService {
     private final InspectionResultService inspectionResultService;
 
 
+    /**
+     * 데이터셋 생성.
+     * 1) 첨부할 파일이 요청자 본인 소유인지 검증
+     * 2) 임시 파일을 영구 보관 대상으로 전환
+     * 3) Dataset 엔티티 생성/저장 (isPublic은 request 값을 그대로 반영)
+     * 4) 태그가 있으면 태그 마스터를 조회/생성하고 매핑을 저장
+     */
     @Override
     public DatasetCreateResponse createDataset(User user, DatasetCreateRequest request) {
         File file = fileRepository.findById(request.getFileId())
                 .orElseThrow(() -> new BusinessException(ErrorCode.RESOURCE_NOT_FOUND));
+        // 타인이 업로드한 파일 ID를 도용해 데이터셋을 생성하지 못하도록 소유자 검증
         if (!file.getUser().getUserId().equals(user.getUserId())) {
             throw new BusinessException(ErrorCode.FILE_READ_FAILED);
         }
+        // 업로드 직후 임시 상태였던 파일을 데이터셋에 실제로 연결되었으므로 영구 보관으로 전환
         file.markAsPermanent();
         Dataset dataset = Dataset.create(user, request, file);
         Dataset saved = datasetRepository.save(dataset);
 
+        // 태그는 존재하면 재사용하고 없으면 새로 생성한 뒤, 데이터셋-태그 매핑을 저장
         if (request.getTags() != null && !request.getTags().isEmpty()) {
             for (String tagName : request.getTags()) {
                 Tag tag = tagRepository.findByName(tagName)
@@ -74,7 +82,6 @@ public class DatasetServiceImpl implements DatasetService {
      * 회원 탈퇴 시 데이터셋 익명화
      * Dataset의 owner를 탈퇴 계정으로 변경
      */
-
     @Override
     public void anonymizeByUser(User user, User deletedUser) {
         datasetRepository.findAllByUser(user)
@@ -82,7 +89,11 @@ public class DatasetServiceImpl implements DatasetService {
     }
 
 
-
+    /**
+     * 커뮤니티 데이터셋 목록 조회.
+     * sort 값에 따라 정렬 기준을 결정하고, 태그/전문가 검증 요약 정보를 배치로 조회해 N+1을 방지한다.
+     * 실제 공개 필터링(isPublic = true)은 DatasetRepository#findAllByCondition에서 처리한다.
+     */
     @Override
     @Transactional(readOnly = true)
     public Page<DatasetListResponse> getDatasets(String sort, String keyword, int page, int size) {
@@ -94,12 +105,14 @@ public class DatasetServiceImpl implements DatasetService {
         };
 
         Pageable pageable = PageRequest.of(page, size, sorting);
+        // 빈 문자열/공백 키워드는 검색 조건 없음(null)으로 취급
         String kw = (keyword == null || keyword.isBlank()) ? null : keyword;
         Page<Dataset> datasetPage = datasetRepository.findAllByCondition(kw, pageable);
         List<Long> ids = datasetPage.getContent()
                 .stream()
                 .map(Dataset::getDatasetId)
                 .toList();
+        // 현재 페이지에 포함된 데이터셋들의 태그를 한 번에 조회해 Map으로 그룹핑 (건별 조회 방지)
         Map<Long, List<String>> tagMap = tagMappingRepository
                 .findAllByTargetTypeAndTargetIdIn("DATASET", ids)
                 .stream()
@@ -108,6 +121,7 @@ public class DatasetServiceImpl implements DatasetService {
                         Collectors.mapping(tm -> tm.getTag().getName(), Collectors.toList())
                 ));
 
+        // 전문가 검증 요약도 동일하게 배치 조회
         Map<Long, InspectionSummary> verificationMap =
                 inspectionResultService.getSummaries(InspectionTargetType.UPLOADED_DATA, ids);
 
@@ -118,6 +132,10 @@ public class DatasetServiceImpl implements DatasetService {
         ));
     }
 
+    /**
+     * 내 자산 데이터셋 목록 조회.
+     * 공개 여부와 무관하게 본인이 작성한 데이터셋을 type(UPLOADED/AUGMENTED)으로 필터링해 반환한다.
+     */
     @Override
     @Transactional(readOnly = true)
     public Page<MyDatasetListResponse> getMyDatasets(DatasetType type, Long userId, int page, int size) {
@@ -128,6 +146,7 @@ public class DatasetServiceImpl implements DatasetService {
                 .stream()
                 .map(Dataset::getDatasetId)
                 .toList();
+        // 데이터셋 종류에 따라 검증 대상 타입도 다르게 매핑 (업로드 데이터 vs 증강 데이터)
         InspectionTargetType targetType = type == DatasetType.AUGMENTED
                 ? InspectionTargetType.AUGMENTED_DATA
                 : InspectionTargetType.UPLOADED_DATA;
@@ -140,11 +159,20 @@ public class DatasetServiceImpl implements DatasetService {
         ));
     }
 
+    /**
+     * 데이터셋 상세 조회.
+     * 비공개 데이터셋인데 요청자가 작성자 본인이 아니면 접근을 차단한다.
+     * (커뮤니티/내 자산 상세 화면이 동일 API를 공유하므로 이 가드가 유일한 비공개 방어선이다)
+     */
     @Override
     @Transactional(readOnly = true)
-    public DatasetDetailResponse getDatasetDetail(Long datasetId) {
+    public DatasetDetailResponse getDatasetDetail(Long datasetId, Long userId) {
         Dataset dataset = datasetRepository.findById(datasetId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.RESOURCE_NOT_FOUND));
+
+        if (!dataset.getIsPublic() && !dataset.getUser().getUserId().equals(userId)) {
+            throw new BusinessException(ErrorCode.POST_ACCESS_DENIED);
+        }
 
         List<String> tags = tagMappingRepository
                 .findAllByTargetTypeAndTargetIdIn("DATASET", List.of(datasetId))
@@ -158,6 +186,10 @@ public class DatasetServiceImpl implements DatasetService {
         return DatasetDetailResponse.from(dataset, tags, verificationSummary);
     }
 
+    /**
+     * 데이터셋 삭제(soft delete). 이미 삭제된 건은 조회 대상에서 제외하고,
+     * 작성자 본인이 아니면 삭제를 거부한다.
+     */
     @Override
     public void deleteDataset(Long userId, Long datasetId) {
         Dataset dataset = datasetRepository.findById(datasetId)

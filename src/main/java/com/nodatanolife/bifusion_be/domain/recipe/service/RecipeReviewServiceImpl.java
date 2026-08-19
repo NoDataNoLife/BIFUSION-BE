@@ -32,6 +32,11 @@ public class RecipeReviewServiceImpl implements RecipeReviewService {
     private final RecipeRepository recipeRepository;
     private final UserRepository userRepository;
 
+    /**
+     * 댓글/대댓글 작성.
+     * parentReviewId로 부모 댓글을 조회/검증한 뒤, 부모 유무에 따라 별점 필수 여부를 검증하고 저장한다.
+     * 요청자는 인증된 유저이므로 존재 검증 없이 getReferenceById로 프록시만 참조한다.
+     */
     @Override
     public RecipeReviewResponse createReview(Long recipeId, Long userId, RecipeReviewRequest request) {
         Recipe recipe = recipeRepository.findById(recipeId)
@@ -51,6 +56,11 @@ public class RecipeReviewServiceImpl implements RecipeReviewService {
         return RecipeReviewResponse.from(saved);
     }
 
+    /**
+     * 댓글/대댓글 삭제(하드 삭제).
+     * 최상위 댓글을 삭제하는 경우, 딸린 대댓글을 먼저 일괄 삭제한 뒤 본인을 삭제한다
+     * (FK 제약 위반을 피하기 위한 순서).
+     */
     @Override
     public boolean deleteReview(Long recipeId, Long reviewId, Long userId) {
         RecipeReview review = getOwnedReview(recipeId, reviewId, userId);
@@ -67,6 +77,9 @@ public class RecipeReviewServiceImpl implements RecipeReviewService {
         return isReply;
     }
 
+    /**
+     * 댓글/대댓글 수정. 기존 별점 유무(parent 여부)를 기준으로 요청의 별점 유효성을 재검증한다.
+     */
     @Override
     public RecipeReviewResponse updateReview(Long recipeId, Long reviewId, Long userId, RecipeReviewUpdateRequest request) {
         RecipeReview review = getOwnedReview(recipeId, reviewId, userId);
@@ -78,6 +91,10 @@ public class RecipeReviewServiceImpl implements RecipeReviewService {
         return RecipeReviewResponse.from(review);
     }
 
+    /**
+     * 최상위 댓글을 페이지 조회한 뒤, 해당 페이지에 포함된 댓글들의 대댓글을 한 번에 배치 조회해
+     * 부모 ID 기준으로 그룹핑한다 (N+1 방지).
+     */
     @Override
     @Transactional(readOnly = true)
     public Page<RecipeReviewResponse> getReviews(Long recipeId, int page, int size) {
@@ -103,6 +120,10 @@ public class RecipeReviewServiceImpl implements RecipeReviewService {
         );
     }
 
+    /**
+     * reviewId로 댓글을 조회하고, recipeId 일치 여부와 작성자 본인 여부를 함께 검증한다.
+     * 수정/삭제 두 API가 공통으로 사용하는 소유권 검증 헬퍼.
+     */
     private RecipeReview getOwnedReview(Long recipeId, Long reviewId, Long userId) {
         RecipeReview review = recipeReviewRepository.findById(reviewId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.RECIPE_REVIEW_NOT_FOUND));
@@ -117,6 +138,9 @@ public class RecipeReviewServiceImpl implements RecipeReviewService {
         return review;
     }
 
+    /**
+     * parentReviewId로 부모 댓글을 조회하고 유효성을 검증한다. null이면 최상위 댓글이므로 null 반환.
+     */
     private RecipeReview resolveParent(Long recipeId, Long parentReviewId) {
         if (parentReviewId == null) {
             return null;
@@ -138,7 +162,7 @@ public class RecipeReviewServiceImpl implements RecipeReviewService {
         return parent;
     }
 
-    // 별점은 최상위 리뷰만 가진다.
+    // 별점은 최상위 리뷰만 가진다. parent가 없으면 별점 필수, 있으면 별점 금지.
     private void validateRating(RecipeReview parent, Integer rating) {
         if (parent == null && rating == null) {
             throw new BusinessException(ErrorCode.REVIEW_RATING_REQUIRED);
