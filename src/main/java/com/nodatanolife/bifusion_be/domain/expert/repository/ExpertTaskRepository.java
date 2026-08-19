@@ -9,10 +9,13 @@ import org.springframework.data.repository.query.Param;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Optional;
 
 public interface ExpertTaskRepository extends JpaRepository<ExpertTask, Long> {
 
     List<ExpertTask> findAllByExpert(User expert);
+
+    Optional<ExpertTask> findByExpertTaskIdAndExpert(Long expertTaskId, User expert);
 
     @Query("""
             SELECT t FROM ExpertTask t

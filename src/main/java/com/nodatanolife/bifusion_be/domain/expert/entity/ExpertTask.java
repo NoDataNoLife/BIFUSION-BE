@@ -53,4 +53,9 @@ public class ExpertTask extends BaseEntity {
     public void anonymize(User deletedUser) {
         this.expert = deletedUser;
     }
+
+    public void start() {
+        this.status = "IN_PROGRESS";
+        this.startedAt = LocalDateTime.now();
+    }
 }
