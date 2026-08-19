@@ -27,7 +27,16 @@ public class ExpertController {
 
     @Operation(
             summary = "전문가 인증 신청",
-            description = "의료 면허증 또는 학위 증명서를 업로드해 PENDING 상태로 신청을 등록합니다."
+            description = """
+                    의료 면허증 또는 학위 증명서 파일을 업로드해 전문가 인증을 신청합니다.
+
+                    - certificationFile: 인증 서류 파일 (필수, 확장자 pdf/jpg/jpeg/png, 최대 10MB)
+                    - 이미 전문가 인증(APPROVED)을 받은 사용자가 다시 신청하면 409가 반환됩니다.
+                    - PENDING 상태의 신청이 이미 있으면 기존 신청 건의 첨부 파일만 새 파일로 교체합니다. (심사 큐에는 1건만 유지)
+                    - 그 외의 경우 새로운 신청이 PENDING 상태로 생성됩니다.
+                    - 파일이 없거나 허용되지 않은 확장자이면 400(EXPERT_FILE_INVALID)이 반환됩니다.
+                    - 파일 용량이 10MB를 초과하면 400(EXPERT_FILE_TOO_LARGE)이 반환됩니다.
+                    """
     )
     @PostMapping("/me")
     public CommonResponse<ExpertApplicationResponse> applyExpert(
