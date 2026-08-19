@@ -1,7 +1,7 @@
 package com.nodatanolife.bifusion_be.domain.recipe.dto.response;
 
-import com.nodatanolife.bifusion_be.domain.expert.dto.response.VerificationSummary;
-import com.nodatanolife.bifusion_be.domain.expert.entity.VerificationStatus;
+import com.nodatanolife.bifusion_be.domain.expert.dto.response.InspectionSummary;
+import com.nodatanolife.bifusion_be.domain.expert.entity.InspectionStatus;
 import com.nodatanolife.bifusion_be.domain.recipe.entity.Recipe;
 import com.nodatanolife.bifusion_be.domain.user.entity.User;
 
@@ -34,7 +34,7 @@ public record RecipeListResponse(
         }
     }
 
-    public static RecipeListResponse from(Recipe recipe, VerificationSummary verificationSummary) {
+    public static RecipeListResponse from(Recipe recipe, InspectionSummary verificationSummary) {
         return new RecipeListResponse(
                 recipe.getRecipeId(),
                 recipe.getTitle(),
@@ -42,7 +42,7 @@ public record RecipeListResponse(
                 AuthorInfo.from(recipe.getUser()),
                 recipe.getForkCount(),
                 recipe.getLikeCount() != null ? recipe.getLikeCount() : 0,
-                verificationSummary.status() == VerificationStatus.COMPLETED
+                verificationSummary.status() == InspectionStatus.COMPLETED
         );
     }
 }

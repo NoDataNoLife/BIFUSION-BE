@@ -4,9 +4,9 @@ import com.nodatanolife.bifusion_be.domain.dataset.entity.Dataset;
 import com.nodatanolife.bifusion_be.domain.dataset.repository.DatasetRepository;
 import com.nodatanolife.bifusion_be.domain.expert.dto.request.InspectionCreateRequest;
 import com.nodatanolife.bifusion_be.domain.expert.dto.response.InspectionResponse;
-import com.nodatanolife.bifusion_be.domain.expert.entity.ExpertVerification;
+import com.nodatanolife.bifusion_be.domain.expert.entity.InspectionRequest;
 import com.nodatanolife.bifusion_be.domain.expert.entity.InspectionTargetType;
-import com.nodatanolife.bifusion_be.domain.expert.repository.ExpertVerificationRepository;
+import com.nodatanolife.bifusion_be.domain.expert.repository.InspectionRequestRepository;
 import com.nodatanolife.bifusion_be.domain.job.entity.AugmentationConfig;
 import com.nodatanolife.bifusion_be.domain.job.repository.AugmentationConfigRepository;
 import com.nodatanolife.bifusion_be.domain.recipe.entity.Recipe;
@@ -25,7 +25,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional
 public class InspectionServiceImpl implements InspectionService {
 
-    private final ExpertVerificationRepository expertVerificationRepository;
+    private final InspectionRequestRepository inspectionRequestRepository;
     private final DatasetRepository datasetRepository;
     private final AugmentationConfigRepository augmentationConfigRepository;
     private final RecipeRepository recipeRepository;
@@ -39,8 +39,8 @@ public class InspectionServiceImpl implements InspectionService {
      *   같은 409 예외로 변환해 이중으로 방어한다.
      * - 보유 포인트가 리워드 포인트보다 부족하면 400으로 막는다.
      * - 포인트 차감 → 검증 신청 생성을 한 트랜잭션(클래스 레벨 @Transactional)으로 처리한다.
-     *   ExpertVerification은 생성 시 status=PENDING으로 저장되며, 대상(Recipe/Dataset)의 검증 상태는
-     *   별도 컬럼으로 중복 저장하지 않고 VerificationResultService가 이 status를 조회 시점에 읽어 파생시킨다.
+     *   InspectionRequest는 생성 시 status=PENDING으로 저장되며, 대상(Recipe/Dataset)의 검증 상태는
+     *   별도 컬럼으로 중복 저장하지 않고 InspectionResultService가 이 status를 조회 시점에 읽어 파생시킨다.
      * - 실제 검수 처리(점수/코멘트 기록)는 전문가/관리자가 이후 status를 APPROVED/REJECTED로 변경하는 별도 플로우에서 이루어진다.
      * - 파라미터로 받은 user(인증 필터에서 조회한 엔티티)는 이 트랜잭션 밖에서 로드된 상태라 그대로 변경 메서드를
      *   호출해도 영속화가 보장되지 않는다. userId로 다시 조회한 관리 대상 엔티티에 포인트를 차감한다.
@@ -53,7 +53,7 @@ public class InspectionServiceImpl implements InspectionService {
 
         validateTargetOwnership(user, targetType, targetId);
 
-        if (expertVerificationRepository.existsByUserAndTargetTypeAndTargetId(user, targetType, targetId)) {
+        if (inspectionRequestRepository.existsByUserAndTargetTypeAndTargetId(user, targetType, targetId)) {
             throw new BusinessException(ErrorCode.INSPECTION_ALREADY_EXISTS);
         }
 
@@ -64,9 +64,9 @@ public class InspectionServiceImpl implements InspectionService {
         }
         managedUser.deductPoints(rewardPoints);
 
-        ExpertVerification verification = ExpertVerification.create(managedUser, targetType, targetId, request.getReason(), rewardPoints);
+        InspectionRequest inspectionRequest = InspectionRequest.create(managedUser, targetType, targetId, request.getReason(), rewardPoints);
         try {
-            ExpertVerification saved = expertVerificationRepository.save(verification);
+            InspectionRequest saved = inspectionRequestRepository.save(inspectionRequest);
             return InspectionResponse.from(saved);
         } catch (DataIntegrityViolationException e) {
             // 동시 요청으로 existsBy 체크를 통과한 뒤 unique constraint에 걸린 경우

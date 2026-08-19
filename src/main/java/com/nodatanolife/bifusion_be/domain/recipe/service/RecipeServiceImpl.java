@@ -1,8 +1,8 @@
 package com.nodatanolife.bifusion_be.domain.recipe.service;
 
-import com.nodatanolife.bifusion_be.domain.expert.dto.response.VerificationSummary;
+import com.nodatanolife.bifusion_be.domain.expert.dto.response.InspectionSummary;
 import com.nodatanolife.bifusion_be.domain.expert.entity.InspectionTargetType;
-import com.nodatanolife.bifusion_be.domain.expert.service.VerificationResultService;
+import com.nodatanolife.bifusion_be.domain.expert.service.InspectionResultService;
 import com.nodatanolife.bifusion_be.domain.recipe.dto.response.MyRecipeListResponse;
 import com.nodatanolife.bifusion_be.domain.recipe.dto.response.RecipeDetailResponse;
 import com.nodatanolife.bifusion_be.domain.recipe.dto.request.RecipeRegisterRequest;
@@ -34,7 +34,7 @@ import java.util.Map;
 public class RecipeServiceImpl implements RecipeService {
 
     private final RecipeRepository recipeRepository;
-    private final VerificationResultService verificationResultService;
+    private final InspectionResultService inspectionResultService;
     private final RecipeReviewRepository recipeReviewRepository;
     private final RecipeForkHistoryRepository recipeForkHistoryRepository;
     private final UserRepository userRepository;
@@ -69,7 +69,7 @@ public class RecipeServiceImpl implements RecipeService {
             throw new BusinessException(ErrorCode.FORBIDDEN_RECIPE_ACCESS);
         }
 
-        VerificationSummary verificationSummary = verificationResultService
+        InspectionSummary verificationSummary = inspectionResultService
                 .getSummary(InspectionTargetType.RECIPE, recipeId);
 
         return RecipeDetailResponse.from(recipe, verificationSummary);
@@ -114,12 +114,12 @@ public class RecipeServiceImpl implements RecipeService {
         };
 
         List<Long> ids = recipePage.getContent().stream().map(Recipe::getRecipeId).toList();
-        Map<Long, VerificationSummary> verificationMap =
-                verificationResultService.getSummaries(InspectionTargetType.RECIPE, ids);
+        Map<Long, InspectionSummary> verificationMap =
+                inspectionResultService.getSummaries(InspectionTargetType.RECIPE, ids);
 
         return recipePage.map(recipe -> MyRecipeListResponse.from(
                 recipe,
-                verificationMap.getOrDefault(recipe.getRecipeId(), VerificationSummary.none())
+                verificationMap.getOrDefault(recipe.getRecipeId(), InspectionSummary.none())
         ));
 
     }
@@ -142,12 +142,12 @@ public class RecipeServiceImpl implements RecipeService {
         Page<Recipe> recipePage = recipeRepository.searchRecipes(keyword, pageable);
 
         List<Long> ids = recipePage.getContent().stream().map(Recipe::getRecipeId).toList();
-        Map<Long, VerificationSummary> verificationMap =
-                verificationResultService.getSummaries(InspectionTargetType.RECIPE, ids);
+        Map<Long, InspectionSummary> verificationMap =
+                inspectionResultService.getSummaries(InspectionTargetType.RECIPE, ids);
 
         return recipePage.map(recipe -> RecipeListResponse.from(
                 recipe,
-                verificationMap.getOrDefault(recipe.getRecipeId(), VerificationSummary.none())
+                verificationMap.getOrDefault(recipe.getRecipeId(), InspectionSummary.none())
         ));
     }
 }

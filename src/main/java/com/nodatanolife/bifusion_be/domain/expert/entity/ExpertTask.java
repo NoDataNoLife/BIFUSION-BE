@@ -23,8 +23,8 @@ public class ExpertTask extends BaseEntity {
     private User expert;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "expert_verification_id", nullable = false)
-    private ExpertVerification expertVerification;
+    @JoinColumn(name = "inspection_request_id", nullable = false)
+    private InspectionRequest inspectionRequest;
 
     @Column(name = "status", length = 20)
     private String status;
