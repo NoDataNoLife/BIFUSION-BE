@@ -27,7 +27,11 @@ public class AssetRecipeController {
 
     @Operation(
             summary = "내 레시피 목록 조회",
-            description = "type(MINE: 내가 작성한 레시피 / FORKED: 내가 Fork한 레시피), page, size 파라미터로 조회합니다."
+            description = "로그인한 본인이 작성했거나 포크한 레시피만 조회합니다. 커뮤니티 목록과 달리 "
+                    + "isPublic 값(공개/비공개)과 무관하게 본인 소유 레시피가 전부 노출됩니다. "
+                    + "type(MINE: forkedFrom이 없는, 내가 직접 작성한 레시피 / FORKED: forkedFrom이 있는, "
+                    + "내가 포크해온 레시피), page, size 파라미터로 조회합니다. 등록/상세/포크는 이 컨트롤러가 아니라 "
+                    + "커뮤니티 레시피 API(POST·GET /api/v1/community/recipes, POST .../fork)를 그대로 사용합니다."
     )
     @GetMapping
     public CommonResponse<PageResponse<MyRecipeListResponse>> getMyRecipeList(
