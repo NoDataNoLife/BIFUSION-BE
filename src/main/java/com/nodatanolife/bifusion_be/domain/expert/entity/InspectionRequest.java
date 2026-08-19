@@ -7,25 +7,26 @@ import lombok.*;
 import java.time.LocalDateTime;
 
 /**
- * 전문가 인증 요청 (Recipe, Dataset 등에 대한 검수 요청)
+ * 콘텐츠(Recipe, Dataset 등)에 대한 전문가 검수 요청.
+ * 사람을 전문가로 인증하는 {@link ExpertApplication}과는 다른 개념이다.
  * target_type: "RECIPE" | "UPLOADED_DATA" | "AUGMENTED_DATA"
  */
 @Entity
 @Table(
-        name = "expert_verification",
+        name = "inspection_request",
         uniqueConstraints = @UniqueConstraint(
-                name = "uk_expert_verification_user_target",
+                name = "uk_inspection_request_user_target",
                 columnNames = {"user_id", "target_type", "target_id"}
         )
 )
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-public class ExpertVerification extends BaseEntity {
+public class InspectionRequest extends BaseEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "expert_verification_id")
-    private Long expertVerificationId;
+    @Column(name = "inspection_request_id")
+    private Long inspectionRequestId;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
@@ -40,7 +41,7 @@ public class ExpertVerification extends BaseEntity {
 
     @Enumerated(EnumType.STRING)
     @Column(name = "status", length = 20)
-    private ExpertVerificationStatus status;
+    private InspectionRequestStatus status;
 
     @Column(name = "reason")
     private String reason;
@@ -68,18 +69,18 @@ public class ExpertVerification extends BaseEntity {
     private LocalDateTime reviewedAt;
 
     @Builder
-    private ExpertVerification(User user, Long targetId, InspectionTargetType targetType, String reason, Integer rewardPoints) {
+    private InspectionRequest(User user, Long targetId, InspectionTargetType targetType, String reason, Integer rewardPoints) {
         this.user = user;
         this.targetId = targetId;
         this.targetType = targetType;
         this.reason = reason;
         this.rewardPoints = rewardPoints;
-        this.status = ExpertVerificationStatus.PENDING;
+        this.status = InspectionRequestStatus.PENDING;
         this.appliedAt = LocalDateTime.now();
     }
 
-    public static ExpertVerification create(User user, InspectionTargetType targetType, Long targetId, String reason, Integer rewardPoints) {
-        return ExpertVerification.builder()
+    public static InspectionRequest create(User user, InspectionTargetType targetType, Long targetId, String reason, Integer rewardPoints) {
+        return InspectionRequest.builder()
                 .user(user)
                 .targetType(targetType)
                 .targetId(targetId)

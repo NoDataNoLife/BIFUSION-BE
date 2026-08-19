@@ -2,12 +2,18 @@ package com.nodatanolife.bifusion_be.domain.expert.service;
 
 import com.nodatanolife.bifusion_be.domain.expert.dto.response.ExpertApplicationResponse;
 import com.nodatanolife.bifusion_be.domain.expert.dto.response.ExpertPerformanceResponse;
+import com.nodatanolife.bifusion_be.domain.expert.dto.response.ExpertTaskGroupedResponse;
+import com.nodatanolife.bifusion_be.domain.expert.dto.response.ExpertTaskSummaryResponse;
 import com.nodatanolife.bifusion_be.domain.expert.entity.ExpertApplication;
 import com.nodatanolife.bifusion_be.domain.expert.entity.ExpertApplicationStatus;
+import com.nodatanolife.bifusion_be.domain.expert.entity.ExpertTask;
+import com.nodatanolife.bifusion_be.domain.expert.entity.InspectionTargetType;
 import com.nodatanolife.bifusion_be.domain.expert.repository.ExpertApplicationRepository;
 import com.nodatanolife.bifusion_be.domain.expert.repository.ExpertTaskRepository;
-import com.nodatanolife.bifusion_be.domain.expert.repository.ExpertVerificationRepository;
+import com.nodatanolife.bifusion_be.domain.expert.repository.InspectionRequestRepository;
 import com.nodatanolife.bifusion_be.domain.file.service.S3Service;
+import com.nodatanolife.bifusion_be.domain.job.entity.AugmentationConfig;
+import com.nodatanolife.bifusion_be.domain.job.repository.AugmentationConfigRepository;
 import com.nodatanolife.bifusion_be.domain.user.entity.User;
 import com.nodatanolife.bifusion_be.domain.user.repository.RewardHistoryRepository;
 import com.nodatanolife.bifusion_be.domain.user.repository.UserRepository;
@@ -41,7 +47,8 @@ public class ExpertServiceImpl implements ExpertService {
 
     private final ExpertApplicationRepository expertApplicationRepository;
     private final ExpertTaskRepository expertTaskRepository;
-    private final ExpertVerificationRepository expertVerificationRepository;
+    private final InspectionRequestRepository inspectionRequestRepository;
+    private final AugmentationConfigRepository augmentationConfigRepository;
     private final RewardHistoryRepository rewardHistoryRepository;
     private final UserRepository userRepository;
     private final S3Service s3Service;
@@ -56,15 +63,15 @@ public class ExpertServiceImpl implements ExpertService {
 
     /**
      * 회원 탈퇴 시 전문가 관련 데이터 익명화
-     * ExpertTask, ExpertVerification의 전문가/검토자를 탈퇴 계정으로 변경
+     * ExpertTask, InspectionRequest의 전문가/검토자를 탈퇴 계정으로 변경
      */
     @Override
     public void anonymizeByUser(User user, User deletedUser) {
         expertTaskRepository.findAllByExpert(user)
                 .forEach(t -> t.anonymize(deletedUser));
-        expertVerificationRepository.findAllByUser(user)
+        inspectionRequestRepository.findAllByUser(user)
                 .forEach(v -> v.anonymize(deletedUser));
-        expertVerificationRepository.findAllByReviewedBy(user)
+        inspectionRequestRepository.findAllByReviewedBy(user)
                 .forEach(v -> v.anonymizeReviewer(deletedUser));
     }
 
@@ -181,6 +188,37 @@ public class ExpertServiceImpl implements ExpertService {
 
         long rank = rankedAbove + 1;
         return (int) Math.ceil(rank * 100.0 / approvedExpertIds.size());
+    }
+
+    /**
+     * 전문가 검수 요청 목록 조회
+     * 전문가 인증(APPROVED)을 받지 않은 사용자는 조회할 수 없다.
+     * 증강 데이터(AUGMENTED_DATA) 검수만 대상으로 하며, 검수 상태(PENDING/IN_PROGRESS/COMPLETED)별로 묶어 반환한다.
+     */
+    @Override
+    @Transactional(readOnly = true)
+    public ExpertTaskGroupedResponse getMyTasks(User user) {
+        if (!expertApplicationRepository.existsByUserAndStatus(user, ExpertApplicationStatus.APPROVED)) {
+            throw new BusinessException(ErrorCode.EXPERT_NOT_CERTIFIED);
+        }
+
+        List<ExpertTask> tasks = expertTaskRepository.findMyReviewTasks(user, InspectionTargetType.AUGMENTED_DATA);
+
+        List<Long> targetIds = tasks.stream()
+                .map(t -> t.getInspectionRequest().getTargetId())
+                .toList();
+        Map<Long, AugmentationConfig> configById = augmentationConfigRepository.findAllById(targetIds).stream()
+                .collect(Collectors.toMap(AugmentationConfig::getAugmentationConfigId, c -> c));
+
+        Map<String, List<ExpertTaskSummaryResponse>> grouped = tasks.stream()
+                .map(t -> ExpertTaskSummaryResponse.of(t, configById.get(t.getInspectionRequest().getTargetId())))
+                .collect(Collectors.groupingBy(ExpertTaskSummaryResponse::status));
+
+        return new ExpertTaskGroupedResponse(
+                grouped.getOrDefault(STATUS_PENDING, List.of()),
+                grouped.getOrDefault(STATUS_IN_PROGRESS, List.of()),
+                grouped.getOrDefault(STATUS_COMPLETED, List.of())
+        );
     }
 
     private void validateFile(MultipartFile file) {
