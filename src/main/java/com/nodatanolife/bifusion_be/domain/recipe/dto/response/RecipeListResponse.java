@@ -9,11 +9,19 @@ import org.springframework.data.domain.Page;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * 커뮤니티 레시피 목록 조회 응답 DTO.
+ * RecipeRepository#searchRecipes가 이미 isPublic = true인 항목만 조회하므로
+ * 이 응답에는 항상 공개 레시피만 담긴다.
+ */
 public record RecipeListResponse(
         int totalCount,
         List<RecipeSummary> content,
         PageInfo pageInfo
 ) {
+    /**
+     * 목록에 표시되는 레시피 요약 정보.
+     */
     public record RecipeSummary(
             Long recipeId,
             String title,
@@ -37,6 +45,9 @@ public record RecipeListResponse(
         }
     }
 
+    /**
+     * 작성자 정보.
+     */
     public record AuthorInfo(Long userId, String nickname, String profileImageUrl) {
         public static AuthorInfo from(User author) {
             return new AuthorInfo(
@@ -47,6 +58,9 @@ public record RecipeListResponse(
         }
     }
 
+    /**
+     * 페이지 정보. 전체 페이지 수 대신 hasNext(다음 페이지 존재 여부)만 제공한다.
+     */
     public record PageInfo(int page, boolean hasNext) {
         public static PageInfo from(Page<?> page) {
             return new PageInfo(page.getNumber(), page.hasNext());
