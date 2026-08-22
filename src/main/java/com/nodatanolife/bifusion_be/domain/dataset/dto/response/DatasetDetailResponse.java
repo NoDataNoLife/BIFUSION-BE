@@ -26,6 +26,7 @@ public record DatasetDetailResponse(
         Integer fileCount,
         Integer downloadCount,
         AuthorInfo author,
+        String category,
         String license,
         LocalDateTime createdAt,
         String format,
@@ -61,6 +62,7 @@ public record DatasetDetailResponse(
                         dataset.getUser().getNickname(),
                         dataset.getUser().getProfileImageUrl()
                 ),
+                dataset.getCategory(),
                 dataset.getLicense(),
                 dataset.getCreatedAt(),
                 dataset.getFormat(),

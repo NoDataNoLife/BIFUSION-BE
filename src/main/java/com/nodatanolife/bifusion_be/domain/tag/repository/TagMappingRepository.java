@@ -9,5 +9,6 @@ import java.util.List;
 public interface TagMappingRepository extends JpaRepository<TagMapping, Long> {
     List<TagMapping> findAllByTargetTypeAndTargetId(String targetType, Long targetId);
     List<TagMapping> findAllByTargetTypeAndTargetIdIn(String targetType, List<Long> targetIds);
+    void deleteAllByTargetTypeAndTargetId(String targetType, Long targetId);
 
 }
