@@ -1,6 +1,7 @@
 package com.nodatanolife.bifusion_be.domain.expert.controller;
 
 import com.nodatanolife.bifusion_be.domain.expert.dto.request.InspectionCreateRequest;
+import com.nodatanolife.bifusion_be.domain.expert.dto.response.InspectionDetailResponse;
 import com.nodatanolife.bifusion_be.domain.expert.dto.response.InspectionResponse;
 import com.nodatanolife.bifusion_be.domain.expert.service.InspectionService;
 import com.nodatanolife.bifusion_be.domain.user.entity.User;
@@ -47,5 +48,27 @@ public class InspectionController {
         User user = principal.getUser();
         InspectionResponse response = inspectionService.createInspection(user, request);
         return CommonResponse.success(response, "전문가 검수 신청이 완료되었습니다.");
+    }
+
+    @Operation(
+            summary = "검수 중인 job 상세 조회",
+            description = """
+                    전문가가 검수 대기/진행 중인 특정 검수 요청 하나를 상세로 조회합니다.
+
+                    - inspectionId: 검수 시작 API(PATCH /api/v1/experts/me/tasks/{taskId}/start)와 동일한 리소스 ID입니다.
+                    - 전문가 인증(APPROVED)을 받지 않은 사용자가 요청하면 403이 반환됩니다.
+                    - 존재하지 않거나 본인에게 배정되지 않은 검수 요청이면 404가 반환됩니다.
+                    - expertComment는 이전에 임시 저장한 코멘트이며, 없으면 null입니다.
+                    - sampleImages.images의 각 항목은 imageUrl뿐 아니라 label(분류 라벨)과 comment(이미지별 검수 의견)도 함께 내려줍니다.
+                      "이미지 정밀 검수" 모달을 열 때 별도 API 호출 없이 바로 채울 수 있도록 상세 조회 시점에 전부 포함합니다.
+                    """
+    )
+    @GetMapping("/{inspectionId}")
+    public CommonResponse<InspectionDetailResponse> getInspectionDetail(
+            @AuthenticationPrincipal CustomOAuth2User principal,
+            @PathVariable Long inspectionId
+    ) {
+        InspectionDetailResponse response = inspectionService.getInspectionDetail(principal.getUser(), inspectionId);
+        return CommonResponse.success(response, "검수 상세 조회 성공");
     }
 }

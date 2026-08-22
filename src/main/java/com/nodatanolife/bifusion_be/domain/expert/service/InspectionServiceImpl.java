@@ -3,12 +3,19 @@ package com.nodatanolife.bifusion_be.domain.expert.service;
 import com.nodatanolife.bifusion_be.domain.dataset.entity.Dataset;
 import com.nodatanolife.bifusion_be.domain.dataset.repository.DatasetRepository;
 import com.nodatanolife.bifusion_be.domain.expert.dto.request.InspectionCreateRequest;
+import com.nodatanolife.bifusion_be.domain.expert.dto.response.InspectionDetailResponse;
 import com.nodatanolife.bifusion_be.domain.expert.dto.response.InspectionResponse;
+import com.nodatanolife.bifusion_be.domain.expert.entity.ExpertApplicationStatus;
+import com.nodatanolife.bifusion_be.domain.expert.entity.ExpertTask;
 import com.nodatanolife.bifusion_be.domain.expert.entity.InspectionRequest;
 import com.nodatanolife.bifusion_be.domain.expert.entity.InspectionTargetType;
+import com.nodatanolife.bifusion_be.domain.expert.repository.ExpertApplicationRepository;
+import com.nodatanolife.bifusion_be.domain.expert.repository.ExpertTaskRepository;
 import com.nodatanolife.bifusion_be.domain.expert.repository.InspectionRequestRepository;
 import com.nodatanolife.bifusion_be.domain.job.entity.AugmentationConfig;
+import com.nodatanolife.bifusion_be.domain.job.entity.AugmentationSampleImage;
 import com.nodatanolife.bifusion_be.domain.job.repository.AugmentationConfigRepository;
+import com.nodatanolife.bifusion_be.domain.job.repository.AugmentationSampleImageRepository;
 import com.nodatanolife.bifusion_be.domain.recipe.entity.Recipe;
 import com.nodatanolife.bifusion_be.domain.recipe.repository.RecipeRepository;
 import com.nodatanolife.bifusion_be.domain.user.entity.User;
@@ -20,6 +27,8 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
+
 @Service
 @RequiredArgsConstructor
 @Transactional
@@ -28,8 +37,11 @@ public class InspectionServiceImpl implements InspectionService {
     private final InspectionRequestRepository inspectionRequestRepository;
     private final DatasetRepository datasetRepository;
     private final AugmentationConfigRepository augmentationConfigRepository;
+    private final AugmentationSampleImageRepository augmentationSampleImageRepository;
     private final RecipeRepository recipeRepository;
     private final UserRepository userRepository;
+    private final ExpertApplicationRepository expertApplicationRepository;
+    private final ExpertTaskRepository expertTaskRepository;
 
     /**
      * 전문가 검수 신청
@@ -72,6 +84,37 @@ public class InspectionServiceImpl implements InspectionService {
             // 동시 요청으로 existsBy 체크를 통과한 뒤 unique constraint에 걸린 경우
             throw new BusinessException(ErrorCode.INSPECTION_ALREADY_EXISTS);
         }
+    }
+
+    /**
+     * 검수 중인 job(전문가 검수 요청) 상세 조회
+     * inspectionId는 ExpertTask.expertTaskId를 가리킨다 (검수 시작 API와 동일한 리소스 기준).
+     * - 전문가 인증(APPROVED)을 받지 않은 사용자는 조회할 수 없다. (403)
+     * - 본인에게 배정되지 않았거나 존재하지 않는 task는 startTask와 동일하게 404로 처리한다.
+     * - AUGMENTED_DATA 검수만 대상으로 한다. (증강 파라미터/샘플 이미지가 있는 대상)
+     */
+    @Override
+    @Transactional(readOnly = true)
+    public InspectionDetailResponse getInspectionDetail(User expert, Long inspectionId) {
+        if (!expertApplicationRepository.existsByUserAndStatus(expert, ExpertApplicationStatus.APPROVED)) {
+            throw new BusinessException(ErrorCode.EXPERT_NOT_CERTIFIED);
+        }
+
+        ExpertTask task = expertTaskRepository.findByExpertTaskIdAndExpert(inspectionId, expert)
+                .orElseThrow(() -> new BusinessException(ErrorCode.EXPERT_TASK_NOT_FOUND));
+
+        InspectionRequest inspectionRequest = task.getInspectionRequest();
+        if (inspectionRequest.getTargetType() != InspectionTargetType.AUGMENTED_DATA) {
+            throw new BusinessException(ErrorCode.EXPERT_TASK_NOT_FOUND);
+        }
+
+        AugmentationConfig config = augmentationConfigRepository.findById(inspectionRequest.getTargetId())
+                .orElseThrow(() -> new BusinessException(ErrorCode.INSPECTION_TARGET_NOT_FOUND));
+
+        List<AugmentationSampleImage> images = augmentationSampleImageRepository
+                .findAllByAugmentationConfigOrderByAugmentationSampleImageIdAsc(config);
+
+        return InspectionDetailResponse.from(task, config, images);
     }
 
     /**
