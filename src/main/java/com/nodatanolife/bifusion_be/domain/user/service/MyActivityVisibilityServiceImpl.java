@@ -64,7 +64,7 @@ public class MyActivityVisibilityServiceImpl implements MyActivityVisibilityServ
      * 마이페이지 활동 공개 여부 일괄 변경 (레시피)
      */
     private Boolean updateRecipe(Long recipeId, Long userId, boolean visible) {
-        Recipe recipe = recipeRepository.findById(recipeId)
+        Recipe recipe = recipeRepository.findByRecipeIdAndDeletedAtIsNull(recipeId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.ACTIVITY_NOT_FOUND));
         if (!recipe.getUser().getUserId().equals(userId)) {
             throw new BusinessException(ErrorCode.ACTIVITY_ACCESS_DENIED);

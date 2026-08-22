@@ -1,5 +1,7 @@
 package com.nodatanolife.bifusion_be.domain.recipe.service;
 
+import com.nodatanolife.bifusion_be.domain.expert.entity.InspectionRequestStatus;
+import com.nodatanolife.bifusion_be.domain.expert.repository.InspectionRequestRepository;
 import com.nodatanolife.bifusion_be.domain.expert.dto.response.InspectionSummary;
 import com.nodatanolife.bifusion_be.domain.expert.entity.InspectionTargetType;
 import com.nodatanolife.bifusion_be.domain.expert.service.InspectionResultService;
@@ -38,6 +40,7 @@ public class RecipeServiceImpl implements RecipeService {
     private final RecipeReviewRepository recipeReviewRepository;
     private final RecipeForkHistoryRepository recipeForkHistoryRepository;
     private final UserRepository userRepository;
+    private final InspectionRequestRepository inspectionRequestRepository;
 
     /**
      * 회원 탈퇴 시 레시피 익명화
@@ -160,7 +163,17 @@ public class RecipeServiceImpl implements RecipeService {
         if (!recipe.getUser().getUserId().equals(userId)) {
             throw new BusinessException(ErrorCode.FORBIDDEN_RECIPE_ACCESS);
         }
-
+        //  검수 진행 중(PENDING) 상태인 레시피는 삭제 차단
+        boolean hasPendingInspection = inspectionRequestRepository
+                .existsByUserAndTargetTypeAndTargetIdAndStatus(
+                        recipe.getUser(),
+                        InspectionTargetType.RECIPE,
+                        recipeId,
+                        InspectionRequestStatus.PENDING
+                );
+        if (hasPendingInspection) {
+            throw new BusinessException(ErrorCode.INSPECTION_IN_PROGRESS);
+        }
         recipe.delete();
     }
 }
