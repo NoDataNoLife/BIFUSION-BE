@@ -116,7 +116,7 @@ public class InspectionController {
             summary = "검수 최종 승인",
             description = """
                     하단 "최종 승인하기" 버튼. PENDING만 가능(아니면 400). expertComment는 선택값(비면 코멘트 없이 승인).
-                    draft는 폐기되고 요청값이 최종 코멘트로 확정됩니다.
+                    draft는 폐기되고 요청값이 최종 코멘트로 확정되며, 담당 전문가에게 ExpertTask.reward의 90%(수수료 10% 제외, 반올림)가 즉시 지급됩니다.
                     """
     )
     @PatchMapping("/{inspectionId}/approve")
@@ -134,7 +134,7 @@ public class InspectionController {
             summary = "검수 최종 거절",
             description = """
                     하단 "거절하기" 버튼. PENDING만 가능(아니면 400). expertComment(거절 사유)는 필수(비면 400).
-                    draft는 폐기되고 요청값이 최종 코멘트로 확정됩니다.
+                    draft는 폐기되고 요청값이 최종 코멘트로 확정되며, 승인과 동일하게 담당 전문가에게 ExpertTask.reward의 90%가 즉시 지급됩니다.
                     """
     )
     @PatchMapping("/{inspectionId}/reject")

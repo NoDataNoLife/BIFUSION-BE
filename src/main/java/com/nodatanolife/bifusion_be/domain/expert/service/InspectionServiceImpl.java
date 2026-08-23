@@ -21,7 +21,9 @@ import com.nodatanolife.bifusion_be.domain.job.repository.AugmentationConfigRepo
 import com.nodatanolife.bifusion_be.domain.job.repository.AugmentationSampleImageRepository;
 import com.nodatanolife.bifusion_be.domain.recipe.entity.Recipe;
 import com.nodatanolife.bifusion_be.domain.recipe.repository.RecipeRepository;
+import com.nodatanolife.bifusion_be.domain.user.entity.RewardHistory;
 import com.nodatanolife.bifusion_be.domain.user.entity.User;
+import com.nodatanolife.bifusion_be.domain.user.repository.RewardHistoryRepository;
 import com.nodatanolife.bifusion_be.domain.user.repository.UserRepository;
 import com.nodatanolife.bifusion_be.global.exception.ErrorCode;
 import com.nodatanolife.bifusion_be.global.exception.business.BusinessException;
@@ -37,6 +39,9 @@ import java.util.List;
 @Transactional
 public class InspectionServiceImpl implements InspectionService {
 
+    private static final String REWARD_TYPE_EXPERT_TASK = "EXPERT_TASK_REWARD";
+    private static final double PLATFORM_FEE_EXCLUDED_RATE = 0.9;
+
     private final InspectionRequestRepository inspectionRequestRepository;
     private final DatasetRepository datasetRepository;
     private final AugmentationConfigRepository augmentationConfigRepository;
@@ -45,6 +50,7 @@ public class InspectionServiceImpl implements InspectionService {
     private final UserRepository userRepository;
     private final ExpertApplicationRepository expertApplicationRepository;
     private final ExpertTaskRepository expertTaskRepository;
+    private final RewardHistoryRepository rewardHistoryRepository;
 
     /**
      * 전문가 검수 신청
@@ -151,6 +157,7 @@ public class InspectionServiceImpl implements InspectionService {
      * PENDING 상태에서만 가능하며, 이미 처리된 건은 400(INSPECTION_ALREADY_PROCESSED)으로 막는다.
      * expertComment는 draft 값과 무관하게 요청 바디로 받은 값만 최종 코멘트로 확정한다.
      * 확정과 동시에 ExpertTask도 COMPLETED로 전환하고, feedback에 최종 코멘트를 옮기고 draftFeedback은 비운다.
+     * 승인/거절 여부와 무관하게 검수 자체는 완료된 것이므로 ExpertTask.reward만큼 전문가에게 즉시 포인트를 지급한다.
      */
     @Override
     public InspectionDecisionResponse approveInspection(User expert, Long inspectionId, String expertComment) {
@@ -159,6 +166,7 @@ public class InspectionServiceImpl implements InspectionService {
 
         inspectionRequest.approve(expert, expertComment);
         task.complete(expertComment);
+        payExpertReward(expert, task);
 
         return InspectionDecisionResponse.from(task, inspectionRequest);
     }
@@ -167,6 +175,7 @@ public class InspectionServiceImpl implements InspectionService {
      * 검수 최종 거절 (하단 "거절하기" 버튼)
      * PENDING 상태에서만 가능하며, 이미 처리된 건은 400(INSPECTION_ALREADY_PROCESSED)으로 막는다.
      * expertComment(거절 사유)는 컨트롤러 단 validation(@NotBlank)으로 필수 처리한다.
+     * 승인/거절 여부와 무관하게 검수 자체는 완료된 것이므로 ExpertTask.reward만큼 전문가에게 즉시 포인트를 지급한다.
      */
     @Override
     public InspectionDecisionResponse rejectInspection(User expert, Long inspectionId, String expertComment) {
@@ -175,8 +184,27 @@ public class InspectionServiceImpl implements InspectionService {
 
         inspectionRequest.reject(expert, expertComment);
         task.complete(expertComment);
+        payExpertReward(expert, task);
 
         return InspectionDecisionResponse.from(task, inspectionRequest);
+    }
+
+    /**
+     * ExpertTask.reward에서 플랫폼 수수료 10%를 뗀 나머지(90%)를 전문가에게 지급하고 RewardHistory에 기록한다.
+     * reward가 설정되지 않은 task(파이프라인상 아직 배정되지 않은 값 등)는 지급 없이 건너뛴다.
+     * 파라미터로 받은 expert는 트랜잭션 밖에서 로드된 상태일 수 있어 getReferenceById로 다시 관리 대상 엔티티를 얻는다.
+     */
+    private void payExpertReward(User expert, ExpertTask task) {
+        Integer reward = task.getReward();
+        if (reward == null || reward <= 0) {
+            return;
+        }
+
+        int payout = (int) Math.round(reward * PLATFORM_FEE_EXCLUDED_RATE);
+
+        User managedExpert = userRepository.getReferenceById(expert.getUserId());
+        managedExpert.addPoints(payout);
+        rewardHistoryRepository.save(RewardHistory.create(managedExpert, task, payout, REWARD_TYPE_EXPERT_TASK));
     }
 
     /**
