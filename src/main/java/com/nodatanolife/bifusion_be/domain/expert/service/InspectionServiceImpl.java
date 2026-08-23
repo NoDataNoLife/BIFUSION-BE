@@ -5,6 +5,7 @@ import com.nodatanolife.bifusion_be.domain.dataset.repository.DatasetRepository;
 import com.nodatanolife.bifusion_be.domain.expert.dto.request.InspectionCreateRequest;
 import com.nodatanolife.bifusion_be.domain.expert.dto.response.InspectionDetailResponse;
 import com.nodatanolife.bifusion_be.domain.expert.dto.response.InspectionDraftResponse;
+import com.nodatanolife.bifusion_be.domain.expert.dto.response.InspectionImageCommentResponse;
 import com.nodatanolife.bifusion_be.domain.expert.dto.response.InspectionResponse;
 import com.nodatanolife.bifusion_be.domain.expert.entity.ExpertApplicationStatus;
 import com.nodatanolife.bifusion_be.domain.expert.entity.ExpertTask;
@@ -119,6 +120,25 @@ public class InspectionServiceImpl implements InspectionService {
         expertTaskRepository.saveAndFlush(task);
 
         return InspectionDraftResponse.from(task);
+    }
+
+    /**
+     * 이미지별 검수 의견 저장 ("이미지 정밀 검수" 모달의 "코멘트 저장" 버튼)
+     * imageId는 해당 검수 건(inspectionId)의 AugmentationConfig에 속한 샘플 이미지여야 한다.
+     */
+    @Override
+    public InspectionImageCommentResponse saveImageComment(User expert, Long inspectionId, Long imageId, String comment) {
+        ExpertTask task = getOwnedAugmentedDataTask(expert, inspectionId);
+        AugmentationConfig config = getAugmentationConfig(task);
+
+        AugmentationSampleImage image = augmentationSampleImageRepository
+                .findByAugmentationSampleImageIdAndAugmentationConfig(imageId, config)
+                .orElseThrow(() -> new BusinessException(ErrorCode.INSPECTION_IMAGE_NOT_FOUND));
+
+        image.saveComment(comment);
+        augmentationSampleImageRepository.saveAndFlush(image);
+
+        return InspectionImageCommentResponse.from(image);
     }
 
     /**

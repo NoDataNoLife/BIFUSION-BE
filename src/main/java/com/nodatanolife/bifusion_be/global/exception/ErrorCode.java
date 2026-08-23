@@ -126,7 +126,8 @@ public enum ErrorCode {
     INSPECTION_TARGET_NOT_FOUND(HttpStatus.NOT_FOUND, "IS001", "검수 대상을 찾을 수 없습니다."),
     INSPECTION_FORBIDDEN(HttpStatus.FORBIDDEN, "IS002", "전문가 검수를 신청할 권한이 없습니다."),
     INSPECTION_ALREADY_EXISTS(HttpStatus.CONFLICT, "IS003", "이미 해당 대상에 대한 검수 신청이 존재합니다."),
-    INSUFFICIENT_POINTS(HttpStatus.BAD_REQUEST, "IS004", "보유 포인트가 부족합니다.");
+    INSUFFICIENT_POINTS(HttpStatus.BAD_REQUEST, "IS004", "보유 포인트가 부족합니다."),
+    INSPECTION_IMAGE_NOT_FOUND(HttpStatus.NOT_FOUND, "IS005", "검수 대상 이미지를 찾을 수 없습니다.");
 
     private final HttpStatus status;
     private final String code;
