@@ -8,7 +8,7 @@ import java.util.List;
 
 /**
  * 데이터셋 생성 요청 DTO.
- * POST /api/v1/community/datasets 요청 바디로 사용된다.
+ * POST /api/v1/datasets 요청 바디로 사용된다.
  * (커뮤니티/내 자산 페이지 모두 이 API 하나를 공유하며, isPublic 값으로 공개 범위를 구분한다)
  */
 @Getter
