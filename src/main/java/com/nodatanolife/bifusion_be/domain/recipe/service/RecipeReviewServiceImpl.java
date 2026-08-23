@@ -1,5 +1,8 @@
 package com.nodatanolife.bifusion_be.domain.recipe.service;
 
+import com.nodatanolife.bifusion_be.domain.notification.service.NotificationService;
+import com.nodatanolife.bifusion_be.domain.notification.entity.NotificationType;
+import com.nodatanolife.bifusion_be.domain.notification.entity.TargetType;
 import com.nodatanolife.bifusion_be.domain.recipe.dto.request.RecipeReviewRequest;
 import com.nodatanolife.bifusion_be.domain.recipe.dto.request.RecipeReviewUpdateRequest;
 import com.nodatanolife.bifusion_be.domain.recipe.dto.response.RecipeReviewResponse;
@@ -31,6 +34,7 @@ public class RecipeReviewServiceImpl implements RecipeReviewService {
     private final RecipeReviewRepository recipeReviewRepository;
     private final RecipeRepository recipeRepository;
     private final UserRepository userRepository;
+    private final NotificationService notificationService;
 
     @Override
     public RecipeReviewResponse createReview(Long recipeId, Long userId, RecipeReviewRequest request) {
@@ -47,6 +51,17 @@ public class RecipeReviewServiceImpl implements RecipeReviewService {
         );
 
         RecipeReview saved = recipeReviewRepository.save(review);
+
+        if (!recipe.getUser().getUserId().equals(userId)) {
+            notificationService.create(
+                    recipe.getUser(),
+                    NotificationType.RECIPE_REVIEW,
+                    "새로운 리뷰/댓글이 등록되었습니다",
+                    user.getNickname() + "님이 \"" + recipe.getTitle() + "\"에 새로운 리뷰를 남겼습니다.",
+                    TargetType.RECIPE,
+                    recipe.getRecipeId()
+            );
+        }
 
         return RecipeReviewResponse.from(saved);
     }

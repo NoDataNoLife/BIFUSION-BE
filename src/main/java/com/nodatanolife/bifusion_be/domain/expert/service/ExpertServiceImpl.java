@@ -200,4 +200,6 @@ public class ExpertServiceImpl implements ExpertService {
             throw new BusinessException(ErrorCode.EXPERT_FILE_INVALID);
         }
     }
+
+    // TODO: EXPERT_APPROVED / EXPERT_REJECTED 알림 연동 필요
 }
