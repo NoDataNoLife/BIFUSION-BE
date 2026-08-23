@@ -174,7 +174,7 @@ public class InspectionServiceImpl implements InspectionService {
     private void validateTargetOwnership(User user, InspectionTargetType targetType, Long targetId) {
         switch (targetType) {
             case RECIPE -> {
-                Recipe recipe = recipeRepository.findById(targetId)
+                Recipe recipe = recipeRepository.findByRecipeIdAndDeletedAtIsNull(targetId)
                         .orElseThrow(() -> new BusinessException(ErrorCode.INSPECTION_TARGET_NOT_FOUND));
                 if (!recipe.getUser().getUserId().equals(user.getUserId())) {
                     throw new BusinessException(ErrorCode.INSPECTION_FORBIDDEN);

@@ -18,7 +18,8 @@ public record MyRecipeListResponse(
         Double rating,
         Long forkCount,
         Long viewCount,
-        @PresignedUrl String bannerImageUrl
+        @PresignedUrl String bannerImageUrl,
+        boolean isDeleted
 ) {
     public static MyRecipeListResponse from(Recipe recipe, InspectionSummary verificationSummary) {
         return new MyRecipeListResponse(
@@ -29,7 +30,8 @@ public record MyRecipeListResponse(
                 recipe.getRating().doubleValue(),
                 recipe.getForkCount().longValue(),
                 recipe.getViewCount().longValue(),
-                recipe.getThumbnailUrl()
+                recipe.getThumbnailUrl(),
+                recipe.isDeleted()
         );
     }
 }

@@ -19,4 +19,5 @@ public enum NotificationType {
     RECRUITMENT_APPLY,
     RECRUITMENT_ACCEPTED,
     RECRUITMENT_REJECTED
+
 }
