@@ -2,8 +2,10 @@ package com.nodatanolife.bifusion_be.domain.dataset.service;
 
 import com.nodatanolife.bifusion_be.domain.dataset.dto.response.DatasetDetailResponse;
 import com.nodatanolife.bifusion_be.domain.dataset.dto.request.DatasetCreateRequest;
+import com.nodatanolife.bifusion_be.domain.dataset.dto.request.DatasetUpdateRequest;
 import com.nodatanolife.bifusion_be.domain.dataset.dto.response.DatasetCreateResponse;
 import com.nodatanolife.bifusion_be.domain.dataset.dto.response.DatasetListResponse;
+import com.nodatanolife.bifusion_be.domain.dataset.dto.response.DatasetUpdateResponse;
 import com.nodatanolife.bifusion_be.domain.dataset.dto.response.MyDatasetListResponse;
 import com.nodatanolife.bifusion_be.domain.dataset.entity.DatasetType;
 import com.nodatanolife.bifusion_be.domain.user.entity.User;
@@ -42,4 +44,10 @@ public interface DatasetService {
      * 데이터셋을 soft delete한다. 작성자 본인만 삭제할 수 있다.
      */
     void deleteDataset(Long userId, Long datasetId);
+
+    /**
+     * 데이터셋 제목/설명을 수정한다. 작성자 본인만 수정할 수 있으며,
+     * title/description을 부분 수정이 아닌 전체 덮어쓰기 방식으로 반영한다.
+     */
+    DatasetUpdateResponse updateDataset(Long userId, Long datasetId, DatasetUpdateRequest request);
 }
