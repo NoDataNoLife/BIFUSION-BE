@@ -2,6 +2,8 @@ package com.nodatanolife.bifusion_be.domain.expert.entity;
 
 import com.nodatanolife.bifusion_be.domain.user.entity.User;
 import com.nodatanolife.bifusion_be.global.entity.BaseEntity;
+import com.nodatanolife.bifusion_be.global.exception.ErrorCode;
+import com.nodatanolife.bifusion_be.global.exception.business.BusinessException;
 import jakarta.persistence.*;
 import lombok.*;
 import java.time.LocalDateTime;
@@ -95,5 +97,37 @@ public class InspectionRequest extends BaseEntity {
 
     public void anonymizeReviewer(User deletedUser) {
         this.reviewedBy = deletedUser;
+    }
+
+    /**
+     * 검수 최종 승인. PENDING 상태에서만 가능하며, 이미 처리된 건은 예외.
+     */
+    public void approve(User reviewer, String comment) {
+        validateNotProcessed();
+        this.status = InspectionRequestStatus.APPROVED;
+        this.comment = comment;
+        this.reviewedBy = reviewer;
+        this.reviewedAt = LocalDateTime.now();
+    }
+
+    /**
+     * 검수 최종 거절. PENDING 상태에서만 가능하며, 이미 처리된 건은 예외.
+     */
+    public void reject(User reviewer, String comment) {
+        validateNotProcessed();
+        this.status = InspectionRequestStatus.REJECTED;
+        this.comment = comment;
+        this.reviewedBy = reviewer;
+        this.reviewedAt = LocalDateTime.now();
+    }
+
+    /**
+     * 이미 승인/거절로 확정된 검수 건에 대한 후속 변경(이미지 코멘트 등)을 막을 때 사용.
+     * approve/reject 자체의 상태 전이 가드도 겸한다.
+     */
+    public void validateNotProcessed() {
+        if (this.status != InspectionRequestStatus.PENDING) {
+            throw new BusinessException(ErrorCode.INSPECTION_ALREADY_PROCESSED);
+        }
     }
 }

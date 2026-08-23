@@ -2,7 +2,10 @@ package com.nodatanolife.bifusion_be.domain.expert.controller;
 
 import com.nodatanolife.bifusion_be.domain.expert.dto.request.DraftCommentRequest;
 import com.nodatanolife.bifusion_be.domain.expert.dto.request.ImageCommentRequest;
+import com.nodatanolife.bifusion_be.domain.expert.dto.request.InspectionApproveRequest;
 import com.nodatanolife.bifusion_be.domain.expert.dto.request.InspectionCreateRequest;
+import com.nodatanolife.bifusion_be.domain.expert.dto.request.InspectionRejectRequest;
+import com.nodatanolife.bifusion_be.domain.expert.dto.response.InspectionDecisionResponse;
 import com.nodatanolife.bifusion_be.domain.expert.dto.response.InspectionDetailResponse;
 import com.nodatanolife.bifusion_be.domain.expert.dto.response.InspectionDraftResponse;
 import com.nodatanolife.bifusion_be.domain.expert.dto.response.InspectionImageCommentResponse;
@@ -19,7 +22,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
-@Tag(name = "Inspection", description = "전문가 검수 신청 API")
+@Tag(name = "Inspection", description = "전문가 검수 신청/처리 API. 조회·처리 API는 전문가 인증(APPROVED) 아니면 403, 존재하지 않거나 본인에게 배정되지 않은 검수 요청이면 404.")
 @RestController
 @RequestMapping("/api/v1/inspections")
 @RequiredArgsConstructor
@@ -57,14 +60,10 @@ public class InspectionController {
     @Operation(
             summary = "검수 중인 job 상세 조회",
             description = """
-                    전문가가 검수 대기/진행 중인 특정 검수 요청 하나를 상세로 조회합니다.
+                    검수 대기/진행 중인 요청 하나를 상세 조회합니다. inspectionId는 검수 시작 API(PATCH /api/v1/experts/me/tasks/{taskId}/start)와 동일한 리소스입니다.
 
-                    - inspectionId: 검수 시작 API(PATCH /api/v1/experts/me/tasks/{taskId}/start)와 동일한 리소스 ID입니다.
-                    - 전문가 인증(APPROVED)을 받지 않은 사용자가 요청하면 403이 반환됩니다.
-                    - 존재하지 않거나 본인에게 배정되지 않은 검수 요청이면 404가 반환됩니다.
-                    - expertComment는 이전에 임시 저장한 코멘트이며, 없으면 null입니다.
-                    - sampleImages.images의 각 항목은 imageUrl뿐 아니라 label(분류 라벨)과 comment(이미지별 검수 의견)도 함께 내려줍니다.
-                      "이미지 정밀 검수" 모달을 열 때 별도 API 호출 없이 바로 채울 수 있도록 상세 조회 시점에 전부 포함합니다.
+                    - expertComment: 확정 코멘트(승인/거절 시 저장된 값)가 있으면 그 값, 없으면 draft 값
+                    - sampleImages.images[]에 label/comment까지 포함 ("이미지 정밀 검수" 모달 프리페치용)
                     """
     )
     @GetMapping("/{inspectionId}")
@@ -79,12 +78,8 @@ public class InspectionController {
     @Operation(
             summary = "검수 최종 코멘트 임시 저장",
             description = """
-                    검수 상세 화면 상단의 "임시 저장" 버튼에서 호출합니다.
-
-                    - 승인/거절 등 검수 상태(status)는 변경하지 않고 expertComment만 저장합니다.
-                    - 임시 저장이므로 빈 문자열도 그대로 허용합니다.
-                    - 전문가 인증(APPROVED)을 받지 않은 사용자가 요청하면 403이 반환됩니다.
-                    - 존재하지 않거나 본인에게 배정되지 않은 검수 요청이면 404가 반환됩니다.
+                    상세 화면 상단 "임시 저장" 버튼. status는 바꾸지 않고 expertComment만 저장합니다(빈 문자열 허용).
+                    이미 승인/거절로 확정된 건은 400.
                     """
     )
     @PatchMapping("/{inspectionId}/draft")
@@ -101,12 +96,8 @@ public class InspectionController {
     @Operation(
             summary = "이미지별 검수 의견 저장",
             description = """
-                    "이미지 정밀 검수" 모달의 "코멘트 저장" 버튼에서 호출합니다.
-
-                    - 임시 저장이므로 빈 문자열도 그대로 허용합니다.
-                    - 전문가 인증(APPROVED)을 받지 않은 사용자가 요청하면 403이 반환됩니다.
-                    - 존재하지 않거나 본인에게 배정되지 않은 검수 요청이면 404가 반환됩니다.
-                    - imageId가 해당 검수 건의 샘플 이미지가 아니면 404가 반환됩니다.
+                    "이미지 정밀 검수" 모달의 "코멘트 저장" 버튼. draft 개념 없이 바로 저장됩니다(빈 문자열 허용).
+                    imageId가 해당 검수 건의 샘플 이미지가 아니면 404, 이미 승인/거절로 확정된 건은 400.
                     """
     )
     @PatchMapping("/{inspectionId}/images/{imageId}/comment")
@@ -119,5 +110,41 @@ public class InspectionController {
         InspectionImageCommentResponse response = inspectionService.saveImageComment(
                 principal.getUser(), inspectionId, imageId, request.getComment());
         return CommonResponse.success(response, "이미지 코멘트 저장 완료");
+    }
+
+    @Operation(
+            summary = "검수 최종 승인",
+            description = """
+                    하단 "최종 승인하기" 버튼. PENDING만 가능(아니면 400). expertComment는 선택값(비면 코멘트 없이 승인).
+                    draft는 폐기되고 요청값이 최종 코멘트로 확정됩니다.
+                    """
+    )
+    @PatchMapping("/{inspectionId}/approve")
+    public CommonResponse<InspectionDecisionResponse> approveInspection(
+            @AuthenticationPrincipal CustomOAuth2User principal,
+            @PathVariable Long inspectionId,
+            @RequestBody @Valid InspectionApproveRequest request
+    ) {
+        InspectionDecisionResponse response = inspectionService.approveInspection(
+                principal.getUser(), inspectionId, request.getExpertComment());
+        return CommonResponse.success(response, "검수 승인 완료");
+    }
+
+    @Operation(
+            summary = "검수 최종 거절",
+            description = """
+                    하단 "거절하기" 버튼. PENDING만 가능(아니면 400). expertComment(거절 사유)는 필수(비면 400).
+                    draft는 폐기되고 요청값이 최종 코멘트로 확정됩니다.
+                    """
+    )
+    @PatchMapping("/{inspectionId}/reject")
+    public CommonResponse<InspectionDecisionResponse> rejectInspection(
+            @AuthenticationPrincipal CustomOAuth2User principal,
+            @PathVariable Long inspectionId,
+            @RequestBody @Valid InspectionRejectRequest request
+    ) {
+        InspectionDecisionResponse response = inspectionService.rejectInspection(
+                principal.getUser(), inspectionId, request.getExpertComment());
+        return CommonResponse.success(response, "검수 거절 완료");
     }
 }

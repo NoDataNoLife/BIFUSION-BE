@@ -3,6 +3,7 @@ package com.nodatanolife.bifusion_be.domain.expert.service;
 import com.nodatanolife.bifusion_be.domain.dataset.entity.Dataset;
 import com.nodatanolife.bifusion_be.domain.dataset.repository.DatasetRepository;
 import com.nodatanolife.bifusion_be.domain.expert.dto.request.InspectionCreateRequest;
+import com.nodatanolife.bifusion_be.domain.expert.dto.response.InspectionDecisionResponse;
 import com.nodatanolife.bifusion_be.domain.expert.dto.response.InspectionDetailResponse;
 import com.nodatanolife.bifusion_be.domain.expert.dto.response.InspectionDraftResponse;
 import com.nodatanolife.bifusion_be.domain.expert.dto.response.InspectionImageCommentResponse;
@@ -111,10 +112,12 @@ public class InspectionServiceImpl implements InspectionService {
      * 검수 최종 코멘트 임시 저장 (상세 화면 상단 "임시 저장" 버튼)
      * 승인/거절 상태(InspectionRequest.status)는 건드리지 않고 ExpertTask.draftFeedback만 갱신한다.
      * 임시 저장이므로 빈 문자열/null도 그대로 허용한다.
+     * 검수가 이미 승인/거절로 확정된 건은 400(INSPECTION_ALREADY_PROCESSED)으로 막는다.
      */
     @Override
     public InspectionDraftResponse saveDraftComment(User expert, Long inspectionId, String expertComment) {
         ExpertTask task = getOwnedAugmentedDataTask(expert, inspectionId);
+        task.getInspectionRequest().validateNotProcessed();
 
         task.saveDraftComment(expertComment);
         expertTaskRepository.saveAndFlush(task);
@@ -125,10 +128,12 @@ public class InspectionServiceImpl implements InspectionService {
     /**
      * 이미지별 검수 의견 저장 ("이미지 정밀 검수" 모달의 "코멘트 저장" 버튼)
      * imageId는 해당 검수 건(inspectionId)의 AugmentationConfig에 속한 샘플 이미지여야 한다.
+     * 검수가 이미 승인/거절로 확정된 건은 400(INSPECTION_ALREADY_PROCESSED)으로 막는다.
      */
     @Override
     public InspectionImageCommentResponse saveImageComment(User expert, Long inspectionId, Long imageId, String comment) {
         ExpertTask task = getOwnedAugmentedDataTask(expert, inspectionId);
+        task.getInspectionRequest().validateNotProcessed();
         AugmentationConfig config = getAugmentationConfig(task);
 
         AugmentationSampleImage image = augmentationSampleImageRepository
@@ -139,6 +144,39 @@ public class InspectionServiceImpl implements InspectionService {
         augmentationSampleImageRepository.saveAndFlush(image);
 
         return InspectionImageCommentResponse.from(image);
+    }
+
+    /**
+     * 검수 최종 승인 (하단 "최종 승인하기" 버튼)
+     * PENDING 상태에서만 가능하며, 이미 처리된 건은 400(INSPECTION_ALREADY_PROCESSED)으로 막는다.
+     * expertComment는 draft 값과 무관하게 요청 바디로 받은 값만 최종 코멘트로 확정한다.
+     * 확정과 동시에 ExpertTask도 COMPLETED로 전환하고, feedback에 최종 코멘트를 옮기고 draftFeedback은 비운다.
+     */
+    @Override
+    public InspectionDecisionResponse approveInspection(User expert, Long inspectionId, String expertComment) {
+        ExpertTask task = getOwnedAugmentedDataTask(expert, inspectionId);
+        InspectionRequest inspectionRequest = task.getInspectionRequest();
+
+        inspectionRequest.approve(expert, expertComment);
+        task.complete(expertComment);
+
+        return InspectionDecisionResponse.from(task, inspectionRequest);
+    }
+
+    /**
+     * 검수 최종 거절 (하단 "거절하기" 버튼)
+     * PENDING 상태에서만 가능하며, 이미 처리된 건은 400(INSPECTION_ALREADY_PROCESSED)으로 막는다.
+     * expertComment(거절 사유)는 컨트롤러 단 validation(@NotBlank)으로 필수 처리한다.
+     */
+    @Override
+    public InspectionDecisionResponse rejectInspection(User expert, Long inspectionId, String expertComment) {
+        ExpertTask task = getOwnedAugmentedDataTask(expert, inspectionId);
+        InspectionRequest inspectionRequest = task.getInspectionRequest();
+
+        inspectionRequest.reject(expert, expertComment);
+        task.complete(expertComment);
+
+        return InspectionDecisionResponse.from(task, inspectionRequest);
     }
 
     /**

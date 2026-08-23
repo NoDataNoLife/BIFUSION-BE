@@ -103,7 +103,7 @@ public record InspectionDetailResponse(
                 Requester.from(inspectionRequest.getUser(), inspectionRequest.getAppliedAt()),
                 AugmentationParams.from(config),
                 SampleImages.from(config, images),
-                task.getDraftFeedback()
+                task.getFeedback() != null ? task.getFeedback() : task.getDraftFeedback()
         );
     }
 }
