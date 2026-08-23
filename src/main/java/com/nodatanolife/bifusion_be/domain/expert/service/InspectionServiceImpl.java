@@ -1,7 +1,5 @@
 package com.nodatanolife.bifusion_be.domain.expert.service;
 
-import com.nodatanolife.bifusion_be.domain.dataset.entity.Dataset;
-import com.nodatanolife.bifusion_be.domain.dataset.repository.DatasetRepository;
 import com.nodatanolife.bifusion_be.domain.expert.dto.request.InspectionCreateRequest;
 import com.nodatanolife.bifusion_be.domain.expert.dto.response.InspectionDecisionResponse;
 import com.nodatanolife.bifusion_be.domain.expert.dto.response.InspectionDetailResponse;
@@ -19,8 +17,6 @@ import com.nodatanolife.bifusion_be.domain.job.entity.AugmentationConfig;
 import com.nodatanolife.bifusion_be.domain.job.entity.AugmentationSampleImage;
 import com.nodatanolife.bifusion_be.domain.job.repository.AugmentationConfigRepository;
 import com.nodatanolife.bifusion_be.domain.job.repository.AugmentationSampleImageRepository;
-import com.nodatanolife.bifusion_be.domain.recipe.entity.Recipe;
-import com.nodatanolife.bifusion_be.domain.recipe.repository.RecipeRepository;
 import com.nodatanolife.bifusion_be.domain.user.entity.RewardHistory;
 import com.nodatanolife.bifusion_be.domain.user.entity.User;
 import com.nodatanolife.bifusion_be.domain.user.repository.RewardHistoryRepository;
@@ -43,10 +39,8 @@ public class InspectionServiceImpl implements InspectionService {
     private static final double PLATFORM_FEE_EXCLUDED_RATE = 0.9;
 
     private final InspectionRequestRepository inspectionRequestRepository;
-    private final DatasetRepository datasetRepository;
     private final AugmentationConfigRepository augmentationConfigRepository;
     private final AugmentationSampleImageRepository augmentationSampleImageRepository;
-    private final RecipeRepository recipeRepository;
     private final UserRepository userRepository;
     private final ExpertApplicationRepository expertApplicationRepository;
     private final ExpertTaskRepository expertTaskRepository;
@@ -54,15 +48,16 @@ public class InspectionServiceImpl implements InspectionService {
 
     /**
      * 전문가 검수 신청
-     * - 대상(RECIPE/UPLOADED_DATA/AUGMENTED_DATA)의 존재 여부와 본인 소유 여부를 먼저 검증한다.
+     * - 현재는 AUGMENTED_DATA만 지원한다. RECIPE/UPLOADED_DATA는 승인/거절할 방법이 없어(이 도메인의
+     *   검수 처리 플로우 전체가 ExpertTask 기준 AUGMENTED_DATA만 지원) 신청 자체를 막는다.
+     *   InspectionTargetType 자체는 Dataset/Recipe의 기존 검수 결과 조회 기능이 여전히 참조하고 있어
+     *   (기존 RECIPE/UPLOADED_DATA row도 남아있어) enum에서 제거하지 않는다.
+     * - 대상(AugmentationConfig)의 존재 여부와 본인(Job) 소유 여부를 먼저 검증한다.
      * - 같은 사용자 + 같은 대상 조합의 신청이 이미 있으면 409로 막는다. (existsBy 사전 체크)
      * - existsBy 체크만으로는 동시 요청을 완전히 막을 수 없어, DB unique constraint 위반도
      *   같은 409 예외로 변환해 이중으로 방어한다.
      * - 보유 포인트가 리워드 포인트보다 부족하면 400으로 막는다.
      * - 포인트 차감 → 검증 신청 생성을 한 트랜잭션(클래스 레벨 @Transactional)으로 처리한다.
-     *   InspectionRequest는 생성 시 status=PENDING으로 저장되며, 대상(Recipe/Dataset)의 검증 상태는
-     *   별도 컬럼으로 중복 저장하지 않고 InspectionResultService가 이 status를 조회 시점에 읽어 파생시킨다.
-     * - 실제 검수 처리(점수/코멘트 기록)는 전문가/관리자가 이후 status를 APPROVED/REJECTED로 변경하는 별도 플로우에서 이루어진다.
      * - 파라미터로 받은 user(인증 필터에서 조회한 엔티티)는 이 트랜잭션 밖에서 로드된 상태라 그대로 변경 메서드를
      *   호출해도 영속화가 보장되지 않는다. userId로 다시 조회한 관리 대상 엔티티에 포인트를 차감한다.
      */
@@ -72,7 +67,11 @@ public class InspectionServiceImpl implements InspectionService {
         Long targetId = request.getTargetId();
         Integer rewardPoints = request.getRewardPoints();
 
-        validateTargetOwnership(user, targetType, targetId);
+        if (targetType != InspectionTargetType.AUGMENTED_DATA) {
+            throw new BusinessException(ErrorCode.INSPECTION_TARGET_TYPE_NOT_SUPPORTED);
+        }
+
+        validateAugmentedDataOwnership(user, targetId);
 
         if (inspectionRequestRepository.existsByUserAndTargetTypeAndTargetId(user, targetType, targetId)) {
             throw new BusinessException(ErrorCode.INSPECTION_ALREADY_EXISTS);
@@ -234,33 +233,15 @@ public class InspectionServiceImpl implements InspectionService {
     }
 
     /**
-     * targetType별로 대상 엔티티를 조회해 존재 여부(404)와 소유자 일치 여부(403)를 검증한다.
+     * 대상 AugmentationConfig의 존재 여부(404)와 소유자 일치 여부(403)를 검증한다.
+     * 증강 데이터는 소유자 정보가 직접 없어 상위 Job의 소유자로 판단한다.
      * 검수는 본인이 소유한 콘텐츠에 대해서만 신청할 수 있다.
      */
-    private void validateTargetOwnership(User user, InspectionTargetType targetType, Long targetId) {
-        switch (targetType) {
-            case RECIPE -> {
-                Recipe recipe = recipeRepository.findById(targetId)
-                        .orElseThrow(() -> new BusinessException(ErrorCode.INSPECTION_TARGET_NOT_FOUND));
-                if (!recipe.getUser().getUserId().equals(user.getUserId())) {
-                    throw new BusinessException(ErrorCode.INSPECTION_FORBIDDEN);
-                }
-            }
-            case UPLOADED_DATA -> {
-                Dataset dataset = datasetRepository.findById(targetId)
-                        .orElseThrow(() -> new BusinessException(ErrorCode.INSPECTION_TARGET_NOT_FOUND));
-                if (!dataset.getUser().getUserId().equals(user.getUserId())) {
-                    throw new BusinessException(ErrorCode.INSPECTION_FORBIDDEN);
-                }
-            }
-            case AUGMENTED_DATA -> {
-                // 증강 데이터는 소유자 정보가 직접 없어 상위 Job의 소유자로 판단한다.
-                AugmentationConfig config = augmentationConfigRepository.findById(targetId)
-                        .orElseThrow(() -> new BusinessException(ErrorCode.INSPECTION_TARGET_NOT_FOUND));
-                if (!config.getJob().getUser().getUserId().equals(user.getUserId())) {
-                    throw new BusinessException(ErrorCode.INSPECTION_FORBIDDEN);
-                }
-            }
+    private void validateAugmentedDataOwnership(User user, Long targetId) {
+        AugmentationConfig config = augmentationConfigRepository.findById(targetId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.INSPECTION_TARGET_NOT_FOUND));
+        if (!config.getJob().getUser().getUserId().equals(user.getUserId())) {
+            throw new BusinessException(ErrorCode.INSPECTION_FORBIDDEN);
         }
     }
 }
