@@ -31,4 +31,8 @@ public class AugmentationSampleImage extends BaseEntity {
 
     @Column(name = "comment")
     private String comment;
+
+    public void saveComment(String comment) {
+        this.comment = comment;
+    }
 }
