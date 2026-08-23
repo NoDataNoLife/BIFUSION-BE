@@ -197,4 +197,31 @@ public class Dataset extends BaseEntity {
     public void delete() {
         markDeleted();
     }
+
+    /**
+     * 데이터셋 정보 수정. 프론트가 기존 값을 불러와 채운 폼 전체를 다시 제출하는 방식이라
+     * 부분 수정(null 무시)이 아닌 전달받은 값 그대로 덮어쓴다 (title/description은 필수라 항상 값이 있음).
+     */
+    public void update(String title, String description, String category, String license,
+                        String format, String imageType, String resolution, String classes,
+                        String usageExample) {
+        this.title = title;
+        this.description = description;
+        this.category = category;
+        this.license = license;
+        this.format = format;
+        this.imageType = imageType;
+        this.resolution = resolution;
+        this.classes = classes;
+        this.usageExample = usageExample;
+    }
+
+    /**
+     * 첨부 파일 교체. 수정 요청에 새 fileId가 포함된 경우에만 호출되며,
+     * 생략 시(기존 파일 유지) 이 메서드는 호출되지 않는다.
+     */
+    public void updateFile(File file) {
+        this.file = file;
+        this.fileUrl = file.getFileUrl();
+    }
 }

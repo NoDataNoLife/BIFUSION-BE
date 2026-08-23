@@ -30,8 +30,8 @@ public class AssetDatasetController {
             description = "로그인한 본인이 작성한 데이터셋만 조회합니다. 커뮤니티 목록과 달리 "
                     + "isPublic 값(공개/비공개)과 무관하게 본인 소유 데이터셋이 전부 노출됩니다. "
                     + "type(UPLOADED: 직접 업로드한 원본 데이터 / AUGMENTED: 증강 파이프라인으로 생성된 파생 데이터), "
-                    + "page, size 파라미터로 조회합니다. 생성/상세/삭제는 이 컨트롤러가 아니라 "
-                    + "커뮤니티 데이터셋 API(POST·GET·DELETE /api/v1/community/datasets)를 그대로 사용합니다."
+                    + "page, size 파라미터로 조회합니다. 생성/상세/수정/삭제는 이 컨트롤러가 아니라 "
+                    + "단건 리소스 API(POST·GET·PUT·DELETE /api/v1/datasets)를 그대로 사용합니다."
     )
     @GetMapping
     public CommonResponse<PageResponse<MyDatasetListResponse>> getMyDatasetList(
