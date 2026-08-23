@@ -66,6 +66,7 @@ public enum ErrorCode {
      * Dataset
      * ================================ */
     INVALID_DATASET_LIST_TYPE(HttpStatus.BAD_REQUEST, "DS001", "유효하지 않은 데이터셋 목록 조회 타입입니다."),
+    DATASET_NOT_FOUND(HttpStatus.NOT_FOUND, "DS002", "데이터셋을 찾을 수 없습니다."),
 
     /* ================================
      * Collaboration / Project

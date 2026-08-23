@@ -9,8 +9,10 @@ import com.nodatanolife.bifusion_be.domain.tag.repository.TagRepository;
 import com.nodatanolife.bifusion_be.domain.tag.repository.TagMappingRepository;
 import com.nodatanolife.bifusion_be.domain.dataset.dto.response.DatasetDetailResponse;
 import com.nodatanolife.bifusion_be.domain.dataset.dto.request.DatasetCreateRequest;
+import com.nodatanolife.bifusion_be.domain.dataset.dto.request.DatasetUpdateRequest;
 import com.nodatanolife.bifusion_be.domain.dataset.dto.response.DatasetCreateResponse;
 import com.nodatanolife.bifusion_be.domain.dataset.dto.response.DatasetListResponse;
+import com.nodatanolife.bifusion_be.domain.dataset.dto.response.DatasetUpdateResponse;
 import com.nodatanolife.bifusion_be.domain.dataset.dto.response.MyDatasetListResponse;
 import com.nodatanolife.bifusion_be.domain.dataset.entity.Dataset;
 import com.nodatanolife.bifusion_be.domain.dataset.entity.DatasetType;
@@ -201,5 +203,54 @@ public class DatasetServiceImpl implements DatasetService {
         }
 
         dataset.delete();
+    }
+
+    /**
+     * 데이터셋 수정. 작성자 본인만 수정할 수 있고, soft delete된 데이터셋은 조회 대상에서 제외해 404로 처리한다.
+     * 프론트가 기존 값을 불러와 채운 폼 전체를 다시 제출하는 방식이라 title/description을 포함한
+     * 대부분의 필드는 전달받은 값 그대로 덮어쓴다. fileId가 있을 때만 첨부 파일을 교체하고,
+     * 태그는 항상 요청 값으로 전체 재구성한다.
+     */
+    @Override
+    public DatasetUpdateResponse updateDataset(Long userId, Long datasetId, DatasetUpdateRequest request) {
+        Dataset dataset = datasetRepository.findById(datasetId)
+                .filter(d -> !d.isDeleted())
+                .orElseThrow(() -> new BusinessException(ErrorCode.DATASET_NOT_FOUND));
+
+        if (!dataset.getUser().getUserId().equals(userId)) {
+            throw new BusinessException(ErrorCode.POST_ACCESS_DENIED);
+        }
+
+        if (request.getFileId() != null) {
+            File file = fileRepository.findById(request.getFileId())
+                    .orElseThrow(() -> new BusinessException(ErrorCode.RESOURCE_NOT_FOUND));
+            if (!file.getUser().getUserId().equals(userId)) {
+                throw new BusinessException(ErrorCode.FILE_READ_FAILED);
+            }
+            file.markAsPermanent();
+            dataset.updateFile(file);
+        }
+
+        dataset.update(
+                request.getTitle(),
+                request.getDescription(),
+                request.getCategory(),
+                request.getLicense(),
+                request.getFormat(),
+                request.getImageType(),
+                request.getResolution(),
+                request.getClasses(),
+                request.getUsageExample()
+        );
+
+        tagMappingRepository.deleteAllByTargetTypeAndTargetId("DATASET", datasetId);
+        List<String> tagNames = request.getTags() != null ? request.getTags() : List.of();
+        for (String tagName : tagNames) {
+            Tag tag = tagRepository.findByName(tagName)
+                    .orElseGet(() -> tagRepository.save(Tag.create(tagName)));
+            tagMappingRepository.save(TagMapping.create(tag, datasetId, "DATASET"));
+        }
+
+        return DatasetUpdateResponse.from(dataset, tagNames);
     }
 }
