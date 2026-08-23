@@ -10,6 +10,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.util.List;
+import java.util.Optional;
 
 public interface RecipeRepository extends JpaRepository<Recipe, Long> {
 
@@ -24,20 +25,22 @@ public interface RecipeRepository extends JpaRepository<Recipe, Long> {
      * 공개 여부와 무관하게 본인 소유 레시피 전체를 대상으로 한다.
      */
     @EntityGraph(attributePaths = "user")
-    Page<Recipe> findAllByForkedFromIsNullAndUser_UserId(Long userId, Pageable pageable);
+    Page<Recipe> findAllByForkedFromIsNullAndUser_UserIdAndDeletedAtIsNull(Long userId, Pageable pageable);
 
     /**
      * "내 자산" 목록 중 FORKED(포크해온 것) 조회용. forkedFrom이 있는 레시피만 대상.
      */
     @EntityGraph(attributePaths = "user")
-    Page<Recipe> findAllByForkedFromIsNotNullAndUser_UserId(Long userId, Pageable pageable);
+    Page<Recipe> findAllByForkedFromIsNotNullAndUser_UserIdAndDeletedAtIsNull(Long userId, Pageable pageable);
 
     /**
      * 커뮤니티 목록 조회용. isPublic = true인 레시피만 대상으로 하여
      * 비공개(내 자산 전용/포크 사본) 레시피가 커뮤니티 목록에 노출되지 않도록 막는다.
      * keyword는 제목 또는 짧은 설명에 대해 대소문자 무시 부분 일치로 검색한다.
      */
-    @Query("SELECT r FROM Recipe r WHERE r.isPublic = true AND " +
+    @Query("SELECT r FROM Recipe r WHERE r.isPublic = true AND r.deletedAt IS NULL AND" +
             "(:keyword IS NULL OR :keyword = '' OR LOWER(r.title) LIKE LOWER(CONCAT('%', :keyword, '%')) OR LOWER(r.shortDescription) LIKE LOWER(CONCAT('%', :keyword, '%')))")
     Page<Recipe> searchRecipes(@Param("keyword") String keyword, Pageable pageable);
+
+    Optional<Recipe> findByRecipeIdAndDeletedAtIsNull(Long recipeId);
 }

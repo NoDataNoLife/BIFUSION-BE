@@ -1,5 +1,7 @@
 package com.nodatanolife.bifusion_be.domain.recipe.service;
 
+import com.nodatanolife.bifusion_be.domain.expert.entity.InspectionRequestStatus;
+import com.nodatanolife.bifusion_be.domain.expert.repository.InspectionRequestRepository;
 import com.nodatanolife.bifusion_be.domain.expert.dto.response.InspectionSummary;
 import com.nodatanolife.bifusion_be.domain.expert.entity.InspectionTargetType;
 import com.nodatanolife.bifusion_be.domain.expert.service.InspectionResultService;
@@ -38,6 +40,7 @@ public class RecipeServiceImpl implements RecipeService {
     private final RecipeReviewRepository recipeReviewRepository;
     private final RecipeForkHistoryRepository recipeForkHistoryRepository;
     private final UserRepository userRepository;
+    private final InspectionRequestRepository inspectionRequestRepository;
 
     /**
      * 회원 탈퇴 시 레시피 익명화
@@ -62,7 +65,7 @@ public class RecipeServiceImpl implements RecipeService {
     @Override
     @Transactional(readOnly = true)
     public RecipeDetailResponse getRecipeDetail(Long recipeId, Long userId) {
-        Recipe recipe = recipeRepository.findById(recipeId)
+        Recipe recipe = recipeRepository.findByRecipeIdAndDeletedAtIsNull(recipeId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.RESOURCE_NOT_FOUND));
 
         if (!recipe.getIsPublic() && !recipe.getUser().getUserId().equals(userId)) {
@@ -88,7 +91,7 @@ public class RecipeServiceImpl implements RecipeService {
 
         Recipe forkedFrom = null;
         if (request.forkedFromId() != null) {
-            forkedFrom = recipeRepository.findById(request.forkedFromId())
+            forkedFrom = recipeRepository.findByRecipeIdAndDeletedAtIsNull(request.forkedFromId())
                     .orElseThrow(() -> new BusinessException(ErrorCode.RESOURCE_NOT_FOUND));
             forkedFrom.increaseForkCount();
         }
@@ -109,8 +112,8 @@ public class RecipeServiceImpl implements RecipeService {
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
 
         Page<Recipe> recipePage = switch (type) {
-            case MINE -> recipeRepository.findAllByForkedFromIsNullAndUser_UserId(userId, pageable);
-            case FORKED -> recipeRepository.findAllByForkedFromIsNotNullAndUser_UserId(userId, pageable);
+            case MINE -> recipeRepository.findAllByForkedFromIsNullAndUser_UserIdAndDeletedAtIsNull(userId, pageable);
+            case FORKED -> recipeRepository.findAllByForkedFromIsNotNullAndUser_UserIdAndDeletedAtIsNull(userId, pageable);
         };
 
         List<Long> ids = recipePage.getContent().stream().map(Recipe::getRecipeId).toList();
@@ -149,5 +152,28 @@ public class RecipeServiceImpl implements RecipeService {
                 recipe,
                 verificationMap.getOrDefault(recipe.getRecipeId(), InspectionSummary.none())
         ));
+    }
+
+    @Override
+    @Transactional
+    public void deleteRecipe(Long recipeId, Long userId) {
+        Recipe recipe = recipeRepository.findByRecipeIdAndDeletedAtIsNull(recipeId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.RESOURCE_NOT_FOUND));
+
+        if (!recipe.getUser().getUserId().equals(userId)) {
+            throw new BusinessException(ErrorCode.FORBIDDEN_RECIPE_ACCESS);
+        }
+        //  검수 진행 중(PENDING) 상태인 레시피는 삭제 차단
+        boolean hasPendingInspection = inspectionRequestRepository
+                .existsByUserAndTargetTypeAndTargetIdAndStatus(
+                        recipe.getUser(),
+                        InspectionTargetType.RECIPE,
+                        recipeId,
+                        InspectionRequestStatus.PENDING
+                );
+        if (hasPendingInspection) {
+            throw new BusinessException(ErrorCode.INSPECTION_IN_PROGRESS);
+        }
+        recipe.delete();
     }
 }

@@ -43,8 +43,8 @@ public class RecipeReviewServiceImpl implements RecipeReviewService {
      */
     @Override
     public RecipeReviewResponse createReview(Long recipeId, Long userId, RecipeReviewRequest request) {
-        Recipe recipe = recipeRepository.findById(recipeId)
-                .orElseThrow(() -> new BusinessException(ErrorCode.RECIPE_NOT_FOUND));
+        Recipe recipe = recipeRepository.findByRecipeIdAndDeletedAtIsNull(recipeId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.RESOURCE_NOT_FOUND));
 
         RecipeReview parent = resolveParent(recipeId, request.parentReviewId());
         validateRating(parent, request.rating());
@@ -69,6 +69,8 @@ public class RecipeReviewServiceImpl implements RecipeReviewService {
         }
 
         return RecipeReviewResponse.from(saved);
+
+
     }
 
     /**
@@ -113,9 +115,8 @@ public class RecipeReviewServiceImpl implements RecipeReviewService {
     @Override
     @Transactional(readOnly = true)
     public Page<RecipeReviewResponse> getReviews(Long recipeId, int page, int size) {
-        if (!recipeRepository.existsById(recipeId)) {
-            throw new BusinessException(ErrorCode.RECIPE_NOT_FOUND);
-        }
+        recipeRepository.findByRecipeIdAndDeletedAtIsNull(recipeId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.RESOURCE_NOT_FOUND));
 
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.ASC, "createdAt"));
         Page<RecipeReview> topLevelReviews = recipeReviewRepository.findAllByRecipe_RecipeIdAndParentIsNull(recipeId, pageable);
@@ -133,6 +134,7 @@ public class RecipeReviewServiceImpl implements RecipeReviewService {
         return topLevelReviews.map(review ->
                 RecipeReviewResponse.from(review, repliesByParentId.getOrDefault(review.getRecipeReviewId(), List.of()))
         );
+
     }
 
     /**
@@ -186,4 +188,6 @@ public class RecipeReviewServiceImpl implements RecipeReviewService {
             throw new BusinessException(ErrorCode.REPLY_RATING_NOT_ALLOWED);
         }
     }
+
+
 }

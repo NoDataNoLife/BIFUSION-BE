@@ -217,4 +217,7 @@ public class Recipe extends BaseEntity {
         this.forkCount = this.forkCount + 1;
     }
 
+    public void delete() {
+        this.markDeleted();
+    }
 }
