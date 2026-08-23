@@ -58,4 +58,8 @@ public class ExpertTask extends BaseEntity {
         this.status = "IN_PROGRESS";
         this.startedAt = LocalDateTime.now();
     }
+
+    public void saveDraftComment(String comment) {
+        this.draftFeedback = comment;
+    }
 }

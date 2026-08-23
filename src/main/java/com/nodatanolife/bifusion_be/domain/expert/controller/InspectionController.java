@@ -1,7 +1,9 @@
 package com.nodatanolife.bifusion_be.domain.expert.controller;
 
+import com.nodatanolife.bifusion_be.domain.expert.dto.request.DraftCommentRequest;
 import com.nodatanolife.bifusion_be.domain.expert.dto.request.InspectionCreateRequest;
 import com.nodatanolife.bifusion_be.domain.expert.dto.response.InspectionDetailResponse;
+import com.nodatanolife.bifusion_be.domain.expert.dto.response.InspectionDraftResponse;
 import com.nodatanolife.bifusion_be.domain.expert.dto.response.InspectionResponse;
 import com.nodatanolife.bifusion_be.domain.expert.service.InspectionService;
 import com.nodatanolife.bifusion_be.domain.user.entity.User;
@@ -70,5 +72,27 @@ public class InspectionController {
     ) {
         InspectionDetailResponse response = inspectionService.getInspectionDetail(principal.getUser(), inspectionId);
         return CommonResponse.success(response, "검수 상세 조회 성공");
+    }
+
+    @Operation(
+            summary = "검수 최종 코멘트 임시 저장",
+            description = """
+                    검수 상세 화면 상단의 "임시 저장" 버튼에서 호출합니다.
+
+                    - 승인/거절 등 검수 상태(status)는 변경하지 않고 expertComment만 저장합니다.
+                    - 임시 저장이므로 빈 문자열도 그대로 허용합니다.
+                    - 전문가 인증(APPROVED)을 받지 않은 사용자가 요청하면 403이 반환됩니다.
+                    - 존재하지 않거나 본인에게 배정되지 않은 검수 요청이면 404가 반환됩니다.
+                    """
+    )
+    @PatchMapping("/{inspectionId}/draft")
+    public CommonResponse<InspectionDraftResponse> saveDraft(
+            @AuthenticationPrincipal CustomOAuth2User principal,
+            @PathVariable Long inspectionId,
+            @RequestBody @Valid DraftCommentRequest request
+    ) {
+        InspectionDraftResponse response = inspectionService.saveDraftComment(
+                principal.getUser(), inspectionId, request.getExpertComment());
+        return CommonResponse.success(response, "임시 저장 완료");
     }
 }

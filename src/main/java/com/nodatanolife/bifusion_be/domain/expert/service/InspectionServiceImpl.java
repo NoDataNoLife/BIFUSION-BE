@@ -4,6 +4,7 @@ import com.nodatanolife.bifusion_be.domain.dataset.entity.Dataset;
 import com.nodatanolife.bifusion_be.domain.dataset.repository.DatasetRepository;
 import com.nodatanolife.bifusion_be.domain.expert.dto.request.InspectionCreateRequest;
 import com.nodatanolife.bifusion_be.domain.expert.dto.response.InspectionDetailResponse;
+import com.nodatanolife.bifusion_be.domain.expert.dto.response.InspectionDraftResponse;
 import com.nodatanolife.bifusion_be.domain.expert.dto.response.InspectionResponse;
 import com.nodatanolife.bifusion_be.domain.expert.entity.ExpertApplicationStatus;
 import com.nodatanolife.bifusion_be.domain.expert.entity.ExpertTask;
@@ -96,6 +97,37 @@ public class InspectionServiceImpl implements InspectionService {
     @Override
     @Transactional(readOnly = true)
     public InspectionDetailResponse getInspectionDetail(User expert, Long inspectionId) {
+        ExpertTask task = getOwnedAugmentedDataTask(expert, inspectionId);
+        AugmentationConfig config = getAugmentationConfig(task);
+
+        List<AugmentationSampleImage> images = augmentationSampleImageRepository
+                .findAllByAugmentationConfigOrderByAugmentationSampleImageIdAsc(config);
+
+        return InspectionDetailResponse.from(task, config, images);
+    }
+
+    /**
+     * 검수 최종 코멘트 임시 저장 (상세 화면 상단 "임시 저장" 버튼)
+     * 승인/거절 상태(InspectionRequest.status)는 건드리지 않고 ExpertTask.draftFeedback만 갱신한다.
+     * 임시 저장이므로 빈 문자열/null도 그대로 허용한다.
+     */
+    @Override
+    public InspectionDraftResponse saveDraftComment(User expert, Long inspectionId, String expertComment) {
+        ExpertTask task = getOwnedAugmentedDataTask(expert, inspectionId);
+
+        task.saveDraftComment(expertComment);
+        expertTaskRepository.saveAndFlush(task);
+
+        return InspectionDraftResponse.from(task);
+    }
+
+    /**
+     * inspectionId(ExpertTask.expertTaskId)로 "본인에게 배정된 AUGMENTED_DATA 검수 건"을 조회한다.
+     * - 전문가 인증(APPROVED)을 받지 않은 사용자는 403.
+     * - 존재하지 않거나 본인에게 배정되지 않은 task, 또는 AUGMENTED_DATA가 아닌 검수 건은
+     *   startTask와 동일하게 404(EXPERT_TASK_NOT_FOUND)로 처리한다.
+     */
+    private ExpertTask getOwnedAugmentedDataTask(User expert, Long inspectionId) {
         if (!expertApplicationRepository.existsByUserAndStatus(expert, ExpertApplicationStatus.APPROVED)) {
             throw new BusinessException(ErrorCode.EXPERT_NOT_CERTIFIED);
         }
@@ -103,18 +135,16 @@ public class InspectionServiceImpl implements InspectionService {
         ExpertTask task = expertTaskRepository.findByExpertTaskIdAndExpert(inspectionId, expert)
                 .orElseThrow(() -> new BusinessException(ErrorCode.EXPERT_TASK_NOT_FOUND));
 
-        InspectionRequest inspectionRequest = task.getInspectionRequest();
-        if (inspectionRequest.getTargetType() != InspectionTargetType.AUGMENTED_DATA) {
+        if (task.getInspectionRequest().getTargetType() != InspectionTargetType.AUGMENTED_DATA) {
             throw new BusinessException(ErrorCode.EXPERT_TASK_NOT_FOUND);
         }
 
-        AugmentationConfig config = augmentationConfigRepository.findById(inspectionRequest.getTargetId())
+        return task;
+    }
+
+    private AugmentationConfig getAugmentationConfig(ExpertTask task) {
+        return augmentationConfigRepository.findById(task.getInspectionRequest().getTargetId())
                 .orElseThrow(() -> new BusinessException(ErrorCode.INSPECTION_TARGET_NOT_FOUND));
-
-        List<AugmentationSampleImage> images = augmentationSampleImageRepository
-                .findAllByAugmentationConfigOrderByAugmentationSampleImageIdAsc(config);
-
-        return InspectionDetailResponse.from(task, config, images);
     }
 
     /**
