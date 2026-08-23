@@ -1,5 +1,8 @@
 package com.nodatanolife.bifusion_be.domain.recruitment.service;
 
+import com.nodatanolife.bifusion_be.domain.notification.service.NotificationService;
+import com.nodatanolife.bifusion_be.domain.notification.entity.NotificationType;
+import com.nodatanolife.bifusion_be.domain.notification.entity.TargetType;
 import com.nodatanolife.bifusion_be.domain.recruitment.dto.response.RecruitmentDetailResponse;
 import com.nodatanolife.bifusion_be.domain.recruitment.dto.request.RecruitApplicationStatusRequest;
 import com.nodatanolife.bifusion_be.domain.recruitment.dto.response.RecruitApplicationStatusResponse;
@@ -44,6 +47,7 @@ public class RecruitServiceImpl implements RecruitService {
     private final TagRepository tagRepository;
     private final TagMappingRepository tagMappingRepository;
     private final UserRepository userRepository;
+    private final NotificationService notificationService;
 
     /**
      * 회원 탈퇴 시 채용 공고 및 지원 내역 익명화
@@ -108,6 +112,15 @@ public class RecruitServiceImpl implements RecruitService {
         );
         recruitApplicationRepository.save(application);
 
+        notificationService.create(
+                recruit.getUser(),
+                NotificationType.RECRUITMENT_APPLY,
+                "새로운 지원서가 도착했습니다",
+                user.getNickname() + "님이 \"" + recruit.getJobTitle() + "\" 공고에 지원했습니다.",
+                TargetType.RECRUITMENT,
+                recruit.getRecruitId()
+        );
+
         return RecruitApplyResponse.from(application);
     }
 
@@ -145,6 +158,25 @@ public class RecruitServiceImpl implements RecruitService {
         }
 
         application.updateStatus(request.getStatus());
+
+        NotificationType notificationType = request.getStatus() == RecruitApplicationStatus.ACCEPTED
+                ? NotificationType.RECRUITMENT_ACCEPTED
+                : NotificationType.RECRUITMENT_REJECTED;
+        String title = request.getStatus() == RecruitApplicationStatus.ACCEPTED
+                ? "지원 합격 안내"
+                : "지원 결과 안내";
+        String content = "\"" + application.getRecruit().getJobTitle() + "\" 공고 지원 결과: "
+                + (request.getStatus() == RecruitApplicationStatus.ACCEPTED ? "합격하셨습니다." : "아쉽게도 불합격하셨습니다.");
+
+        notificationService.create(
+                application.getUser(),
+                notificationType,
+                title,
+                content,
+                TargetType.RECRUITMENT,
+                application.getRecruit().getRecruitId()
+        );
+
 
         return RecruitApplicationStatusResponse.from(application);
     }

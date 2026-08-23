@@ -20,19 +20,51 @@ public class Notification extends BaseCreatedEntity {
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
-    @Column(name = "target_id")
-    private Long targetId;
-
-    @Column(name = "target_type", length = 50)
-    private String targetType;
+    @Enumerated(EnumType.STRING)
+    @Column(name = "type", nullable = false, length = 50)
+    private NotificationType type;
 
     @Column(name = "title")
     private String title;
 
-    @Column(name = "is_read")
-    private Boolean isRead;
-
     @Column(name = "content")
     private String content;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "target_type", length = 50)
+    private TargetType targetType;
+
+    @Column(name = "target_id")
+    private Long targetId;
+
+    @Column(name = "is_read", nullable = false)
+    private Boolean isRead;
+
+    @Builder(access = AccessLevel.PRIVATE)
+    private Notification(User user, NotificationType type, String title, String content,
+                         TargetType targetType, Long targetId) {
+        this.user = user;
+        this.type = type;
+        this.title = title;
+        this.content = content;
+        this.targetType = targetType;
+        this.targetId = targetId;
+        this.isRead = false;
+    }
+
+    public static Notification create(User user, NotificationType type, String title, String content,
+                                      TargetType targetType, Long targetId) {
+        return Notification.builder()
+                .user(user)
+                .type(type)
+                .title(title)
+                .content(content)
+                .targetType(targetType)
+                .targetId(targetId)
+                .build();
+    }
+
+    public void markAsRead() {
+        this.isRead = true;
+    }
 }
