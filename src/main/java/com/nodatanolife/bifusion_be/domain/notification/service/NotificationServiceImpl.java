@@ -58,6 +58,24 @@ public class NotificationServiceImpl implements NotificationService {
     }
 
     @Override
+    public void hardDeleteNotifications(Long userId, Long notificationId) {
+        User user = userRepository.getReferenceById(userId);
+
+        if (notificationId != null) {
+            Notification notification = notificationRepository.findById(notificationId)
+                    .orElseThrow(() -> new BusinessException(ErrorCode.NOTIFICATION_NOT_FOUND));
+
+            if (!notification.getUser().getUserId().equals(userId)) {
+                throw new BusinessException(ErrorCode.FORBIDDEN_NOTIFICATION_ACCESS);
+            }
+
+            notificationRepository.delete(notification);
+        } else {
+            notificationRepository.deleteByUser(user);
+        }
+    }
+
+    @Override
     public void softDeleteNotifications(Long userId, Long notificationId) {
         User user = userRepository.getReferenceById(userId);
 
@@ -65,7 +83,7 @@ public class NotificationServiceImpl implements NotificationService {
             Notification notification = notificationRepository
                     .findByNotificationIdAndUserAndIsDeletedFalse(notificationId, user)
                     .orElseThrow(() -> new BusinessException(ErrorCode.RESOURCE_NOT_FOUND));
-            notification.delete();
+            notification.softDelete();
         } else {
             notificationRepository.softDeleteAllByUser(user);
         }

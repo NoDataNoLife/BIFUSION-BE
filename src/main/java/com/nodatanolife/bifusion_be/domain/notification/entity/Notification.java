@@ -72,7 +72,7 @@ public class Notification extends BaseCreatedEntity {
         this.isRead = true;
     }
 
-    public void delete() {
+    public void softDelete() {
         this.isDeleted = true;
     }
 
