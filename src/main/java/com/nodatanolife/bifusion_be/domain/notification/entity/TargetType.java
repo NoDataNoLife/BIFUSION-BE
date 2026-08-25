@@ -6,5 +6,6 @@ public enum TargetType {
     RECIPE,
     DATASET,
     QNA,
-    RECRUITMENT
+    RECRUITMENT,
+    EXPERT
 }

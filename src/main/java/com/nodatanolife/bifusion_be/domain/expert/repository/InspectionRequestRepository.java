@@ -1,6 +1,5 @@
 package com.nodatanolife.bifusion_be.domain.expert.repository;
 
-import com.nodatanolife.bifusion_be.domain.expert.entity.InspectionRequestStatus;
 import com.nodatanolife.bifusion_be.domain.expert.entity.InspectionRequest;
 import com.nodatanolife.bifusion_be.domain.expert.entity.InspectionTargetType;
 import com.nodatanolife.bifusion_be.domain.user.entity.User;
@@ -15,16 +14,9 @@ public interface InspectionRequestRepository extends JpaRepository<InspectionReq
 
     List<InspectionRequest> findAllByReviewedBy(User reviewedBy);
 
-    boolean existsByUserAndTargetTypeAndTargetId(User user, InspectionTargetType targetType, Long targetId);
+    Optional<InspectionRequest> findByUserAndTargetTypeAndTargetId(User user, InspectionTargetType targetType, Long targetId);
 
     Optional<InspectionRequest> findFirstByTargetTypeAndTargetIdOrderByAppliedAtDesc(InspectionTargetType targetType, Long targetId);
 
     List<InspectionRequest> findAllByTargetTypeAndTargetIdIn(InspectionTargetType targetType, List<Long> targetIds);
-
-    boolean existsByUserAndTargetTypeAndTargetIdAndStatus(
-            User user,
-            InspectionTargetType targetType,
-            Long targetId,
-            InspectionRequestStatus status
-    );
 }

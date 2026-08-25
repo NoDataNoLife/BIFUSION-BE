@@ -1,7 +1,5 @@
 package com.nodatanolife.bifusion_be.domain.recipe.service;
 
-import com.nodatanolife.bifusion_be.domain.expert.entity.InspectionRequestStatus;
-import com.nodatanolife.bifusion_be.domain.expert.repository.InspectionRequestRepository;
 import com.nodatanolife.bifusion_be.domain.expert.dto.response.InspectionSummary;
 import com.nodatanolife.bifusion_be.domain.expert.entity.InspectionTargetType;
 import com.nodatanolife.bifusion_be.domain.expert.service.InspectionResultService;
@@ -40,7 +38,6 @@ public class RecipeServiceImpl implements RecipeService {
     private final RecipeReviewRepository recipeReviewRepository;
     private final RecipeForkHistoryRepository recipeForkHistoryRepository;
     private final UserRepository userRepository;
-    private final InspectionRequestRepository inspectionRequestRepository;
 
     /**
      * 회원 탈퇴 시 레시피 익명화
@@ -163,17 +160,10 @@ public class RecipeServiceImpl implements RecipeService {
         if (!recipe.getUser().getUserId().equals(userId)) {
             throw new BusinessException(ErrorCode.FORBIDDEN_RECIPE_ACCESS);
         }
-        //  검수 진행 중(PENDING) 상태인 레시피는 삭제 차단
-        boolean hasPendingInspection = inspectionRequestRepository
-                .existsByUserAndTargetTypeAndTargetIdAndStatus(
-                        recipe.getUser(),
-                        InspectionTargetType.RECIPE,
-                        recipeId,
-                        InspectionRequestStatus.PENDING
-                );
-        if (hasPendingInspection) {
-            throw new BusinessException(ErrorCode.INSPECTION_IN_PROGRESS);
-        }
+        // 검수 신청(POST /api/v1/inspections)이 AUGMENTED_DATA로만 제한되어 RECIPE 타입 검수 요청은
+        // 더 이상 생성되지 않고, 기존 RECIPE 타입 요청도 승인/거절될 방법이 없어(검수 처리 플로우 전체가
+        // AUGMENTED_DATA 기준) PENDING인 채로 영원히 남는다. 따라서 "검수 진행 중이면 삭제 금지"를 그대로
+        // 적용하면 과거에 RECIPE 검수를 신청했던 레시피는 영구히 삭제 불가능해지므로 이 체크는 두지 않는다.
         recipe.delete();
     }
 }

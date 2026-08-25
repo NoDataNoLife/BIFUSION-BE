@@ -30,4 +30,20 @@ public class RewardHistory extends BaseCreatedEntity {
     @Column(name = "type", length = 20)
     private String type;
 
+    @Builder
+    private RewardHistory(User user, ExpertTask expertTask, Integer amount, String type) {
+        this.user = user;
+        this.expertTask = expertTask;
+        this.amount = amount;
+        this.type = type;
+    }
+
+    public static RewardHistory create(User user, ExpertTask expertTask, Integer amount, String type) {
+        return RewardHistory.builder()
+                .user(user)
+                .expertTask(expertTask)
+                .amount(amount)
+                .type(type)
+                .build();
+    }
 }
