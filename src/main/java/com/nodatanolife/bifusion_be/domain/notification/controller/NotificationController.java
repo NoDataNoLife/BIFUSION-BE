@@ -23,7 +23,13 @@ public class NotificationController {
 
     private final NotificationService notificationService;
 
-    @Operation(summary = "알림 목록 조회", description = "category(전문가/검수, 데이터 증강, 팀/프로젝트, 커뮤니티), isRead, keyword, page, size 파라미터로 조회합니다.")
+    @Operation(
+            summary = "알림 목록 조회",
+            description = """
+                    category(전문가/검수, 데이터 증강, 팀/프로젝트, 커뮤니티), isRead, keyword로 필터링해 페이지 조회합니다.
+                    소프트 삭제된 알림은 결과에서 제외됩니다.
+                    """
+    )
     @GetMapping
     public CommonResponse<PageResponse<NotificationResponse>> getNotifications(
             @AuthenticationPrincipal CustomOAuth2User userDetails,
@@ -39,7 +45,13 @@ public class NotificationController {
         return CommonResponse.success(PageResponse.from(result), "알림 목록 조회 성공!");
     }
 
-    @Operation(summary = "알림 전체목록 삭제(hard)", description = "notificationId 있으면 개별 삭제, 없으면 전체 삭제(hard delete)")
+    @Operation(
+            summary = "알림 전체목록 삭제(hard) - 알림 전체목록",
+            description = """
+                    notificationId가 있으면 해당 알림 하나만, 없으면 본인 알림 전체를 영구 삭제(hard delete)합니다.
+                    개별 삭제 시 존재하지 않으면 404, 본인 알림이 아니면 403이 반환됩니다.
+                    """
+    )
     @DeleteMapping
     public CommonResponse<Void> hardDeleteNotifications(
             @AuthenticationPrincipal CustomOAuth2User userDetails,
@@ -49,7 +61,14 @@ public class NotificationController {
         return CommonResponse.success(null, "알림을 삭제했습니다.");
     }
 
-    @Operation(summary = "알림 팝업 삭제(soft)", description = "notificationId 있으면 개별 삭제, 없으면 전체 삭제(soft delete)")
+    @Operation(
+            summary = "알림 팝업 삭제(soft) - 알림창",
+            description = """
+                    notificationId가 있으면 해당 알림 하나만, 없으면 본인 알림 전체를 소프트 삭제(isDeleted=true)합니다.
+                    실제로 삭제되지 않고 목록 조회/안읽음 카운트에서만 제외됩니다.
+                    개별 삭제 시 존재하지 않거나 본인 알림이 아니거나 이미 삭제된 경우 404가 반환됩니다.
+                    """
+    )
     @DeleteMapping("/popup")
     public CommonResponse<Void> softDeleteNotifications(
             @AuthenticationPrincipal CustomOAuth2User userDetails,

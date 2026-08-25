@@ -83,7 +83,7 @@ public class NotificationServiceImpl implements NotificationService {
             Notification notification = notificationRepository
                     .findByNotificationIdAndUserAndIsDeletedFalse(notificationId, user)
                     .orElseThrow(() -> new BusinessException(ErrorCode.RESOURCE_NOT_FOUND));
-            notification.delete();
+            notification.softDelete();
         } else {
             notificationRepository.softDeleteAllByUser(user);
         }

@@ -12,7 +12,9 @@ public enum NotificationCategory {
             NotificationType.RECIPE_APPROVED,
             NotificationType.RECIPE_REJECTED,
             NotificationType.DATASET_VERIFIED,
-            NotificationType.DATASET_VERIFY_REJECTED
+            NotificationType.DATASET_VERIFY_REJECTED,
+            NotificationType.AUGMENTATION_INSPECTION_APPROVED,
+            NotificationType.AUGMENTATION_INSPECTION_REJECTED
     )),
     AUGMENTATION(List.of(
             NotificationType.AUGMENTATION_SUCCESS,
