@@ -1,6 +1,7 @@
 package com.nodatanolife.bifusion_be.domain.expert.service;
 
 import com.nodatanolife.bifusion_be.domain.expert.dto.request.InspectionCreateRequest;
+import com.nodatanolife.bifusion_be.domain.expert.dto.response.InspectionDecisionResponse;
 import com.nodatanolife.bifusion_be.domain.expert.dto.response.InspectionDetailResponse;
 import com.nodatanolife.bifusion_be.domain.expert.dto.response.InspectionDraftResponse;
 import com.nodatanolife.bifusion_be.domain.expert.dto.response.InspectionImageCommentResponse;
@@ -16,4 +17,8 @@ public interface InspectionService {
     InspectionDraftResponse saveDraftComment(User expert, Long inspectionId, String expertComment);
 
     InspectionImageCommentResponse saveImageComment(User expert, Long inspectionId, Long imageId, String comment);
+
+    InspectionDecisionResponse approveInspection(User expert, Long inspectionId, String expertComment);
+
+    InspectionDecisionResponse rejectInspection(User expert, Long inspectionId, String expertComment);
 }
