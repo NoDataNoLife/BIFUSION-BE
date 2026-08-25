@@ -134,6 +134,15 @@ public class User extends BaseEntity {
         int current = this.points == null ? 0 : this.points;
         this.points = current - amount;
     }
+
+    /**
+     * 전문가 검수 완료(승인/거절) 시 리워드 포인트 지급
+     * reward_balance 컬럼이 NULL인 레거시 데이터를 방어하기 위해 null을 0으로 취급한다.
+     */
+    public void addPoints(int amount) {
+        int current = this.points == null ? 0 : this.points;
+        this.points = current + amount;
+    }
     /**
      * 플랜 변경
      */

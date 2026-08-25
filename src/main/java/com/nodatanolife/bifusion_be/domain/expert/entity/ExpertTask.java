@@ -62,4 +62,15 @@ public class ExpertTask extends BaseEntity {
     public void saveDraftComment(String comment) {
         this.draftFeedback = comment;
     }
+
+    /**
+     * 검수 최종 승인/거절 시 호출. 최종 코멘트를 feedback에 확정하고,
+     * 더 이상 유효하지 않은 임시 저장값(draftFeedback)은 비운다.
+     */
+    public void complete(String finalComment) {
+        this.status = "COMPLETED";
+        this.completedAt = LocalDateTime.now();
+        this.feedback = finalComment;
+        this.draftFeedback = null;
+    }
 }

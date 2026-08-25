@@ -129,7 +129,8 @@ public enum ErrorCode {
     INSPECTION_ALREADY_EXISTS(HttpStatus.CONFLICT, "IS003", "이미 해당 대상에 대한 검수 신청이 존재합니다."),
     INSUFFICIENT_POINTS(HttpStatus.BAD_REQUEST, "IS004", "보유 포인트가 부족합니다."),
     INSPECTION_IMAGE_NOT_FOUND(HttpStatus.NOT_FOUND, "IS005", "검수 대상 이미지를 찾을 수 없습니다."),
-    INSPECTION_IN_PROGRESS(HttpStatus.CONFLICT, "IS006", "검수가 진행 중인 대상은 삭제할 수 없습니다.");
+    INSPECTION_ALREADY_PROCESSED(HttpStatus.BAD_REQUEST, "IS006", "이미 승인 또는 거절 처리된 검수 요청입니다."),
+    INSPECTION_TARGET_TYPE_NOT_SUPPORTED(HttpStatus.BAD_REQUEST, "IS007", "현재 지원하지 않는 검수 대상 종류입니다.");
 
     private final HttpStatus status;
     private final String code;
