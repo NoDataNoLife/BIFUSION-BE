@@ -18,6 +18,9 @@ import com.nodatanolife.bifusion_be.domain.job.entity.AugmentationConfig;
 import com.nodatanolife.bifusion_be.domain.job.entity.AugmentationSampleImage;
 import com.nodatanolife.bifusion_be.domain.job.repository.AugmentationConfigRepository;
 import com.nodatanolife.bifusion_be.domain.job.repository.AugmentationSampleImageRepository;
+import com.nodatanolife.bifusion_be.domain.notification.entity.NotificationType;
+import com.nodatanolife.bifusion_be.domain.notification.entity.TargetType;
+import com.nodatanolife.bifusion_be.domain.notification.service.NotificationService;
 import com.nodatanolife.bifusion_be.domain.user.entity.RewardHistory;
 import com.nodatanolife.bifusion_be.domain.user.entity.User;
 import com.nodatanolife.bifusion_be.domain.user.repository.RewardHistoryRepository;
@@ -47,6 +50,7 @@ public class InspectionServiceImpl implements InspectionService {
     private final ExpertApplicationRepository expertApplicationRepository;
     private final ExpertTaskRepository expertTaskRepository;
     private final RewardHistoryRepository rewardHistoryRepository;
+    private final NotificationService notificationService;
 
     /**
      * 전문가 검수 신청
@@ -171,15 +175,26 @@ public class InspectionServiceImpl implements InspectionService {
      * expertComment는 draft 값과 무관하게 요청 바디로 받은 값만 최종 코멘트로 확정한다.
      * 확정과 동시에 ExpertTask도 COMPLETED로 전환하고, feedback에 최종 코멘트를 옮기고 draftFeedback은 비운다.
      * 승인/거절 여부와 무관하게 검수 자체는 완료된 것이므로 ExpertTask.reward만큼 전문가에게 즉시 포인트를 지급한다.
+     * 요청자(대상 소유자)에게 승인 알림을 보낸다.
      */
     @Override
     public InspectionDecisionResponse approveInspection(User expert, Long inspectionId, String expertComment) {
         ExpertTask task = getOwnedAugmentedDataTask(expert, inspectionId);
         InspectionRequest inspectionRequest = task.getInspectionRequest();
+        AugmentationConfig config = getAugmentationConfig(task);
 
         inspectionRequest.approve(expert, expertComment);
         task.complete(expertComment);
         payExpertReward(expert, task);
+
+        notificationService.create(
+                inspectionRequest.getUser(),
+                NotificationType.AUGMENTATION_INSPECTION_APPROVED,
+                "검수 승인 안내",
+                "\"" + config.getJob().getProject().getTitle() + "\" 증강 데이터 검수가 승인되었습니다.",
+                TargetType.JOB,
+                config.getJob().getJobId()
+        );
 
         return InspectionDecisionResponse.from(task, inspectionRequest);
     }
@@ -189,15 +204,26 @@ public class InspectionServiceImpl implements InspectionService {
      * PENDING 상태에서만 가능하며, 이미 처리된 건은 400(INSPECTION_ALREADY_PROCESSED)으로 막는다.
      * expertComment(거절 사유)는 컨트롤러 단 validation(@NotBlank)으로 필수 처리한다.
      * 승인/거절 여부와 무관하게 검수 자체는 완료된 것이므로 ExpertTask.reward만큼 전문가에게 즉시 포인트를 지급한다.
+     * 요청자(대상 소유자)에게 거절 알림을 보낸다.
      */
     @Override
     public InspectionDecisionResponse rejectInspection(User expert, Long inspectionId, String expertComment) {
         ExpertTask task = getOwnedAugmentedDataTask(expert, inspectionId);
         InspectionRequest inspectionRequest = task.getInspectionRequest();
+        AugmentationConfig config = getAugmentationConfig(task);
 
         inspectionRequest.reject(expert, expertComment);
         task.complete(expertComment);
         payExpertReward(expert, task);
+
+        notificationService.create(
+                inspectionRequest.getUser(),
+                NotificationType.AUGMENTATION_INSPECTION_REJECTED,
+                "검수 거절 안내",
+                "\"" + config.getJob().getProject().getTitle() + "\" 증강 데이터 검수가 거절되었습니다. 사유: " + expertComment,
+                TargetType.JOB,
+                config.getJob().getJobId()
+        );
 
         return InspectionDecisionResponse.from(task, inspectionRequest);
     }
