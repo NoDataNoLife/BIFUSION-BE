@@ -74,4 +74,18 @@ public class NotificationServiceImpl implements NotificationService {
             notificationRepository.deleteByUser(user);
         }
     }
+
+    @Override
+    public void softDeleteNotifications(Long userId, Long notificationId) {
+        User user = userRepository.getReferenceById(userId);
+
+        if (notificationId != null) {
+            Notification notification = notificationRepository
+                    .findByNotificationIdAndUserAndIsDeletedFalse(notificationId, user)
+                    .orElseThrow(() -> new BusinessException(ErrorCode.RESOURCE_NOT_FOUND));
+            notification.delete();
+        } else {
+            notificationRepository.softDeleteAllByUser(user);
+        }
+    }
 }

@@ -19,4 +19,6 @@ public interface NotificationService {
             Long userId, NotificationCategory category, Boolean isRead, String keyword, Pageable pageable);
 
     void hardDeleteNotifications(Long userId, Long notificationId);
+
+    void softDeleteNotifications(Long userId, Long notificationId);
 }
