@@ -130,4 +130,25 @@ public class InspectionRequest extends BaseEntity {
             throw new BusinessException(ErrorCode.INSPECTION_ALREADY_PROCESSED);
         }
     }
+
+    /**
+     * REJECTED로 종료된 검수 요청을 재사용해 PENDING으로 되돌린다.
+     * (user, target_type, target_id) 조합에 DB unique 제약이 걸려있어 새 row를 insert할 수 없으므로,
+     * 거절된 기존 row를 재신청 시점의 값으로 초기화해 재사용한다.
+     * 이전 거절 이력(사유/거절일시)은 보존하지 않는다 — 재신청 시 그대로 덮어써 사라진다.
+     * PENDING/APPROVED 상태에서는 이미 유효한 신청이 있는 것이므로 예외.
+     */
+    public void reapply(String reason, Integer rewardPoints) {
+        if (this.status != InspectionRequestStatus.REJECTED) {
+            throw new BusinessException(ErrorCode.INSPECTION_ALREADY_EXISTS);
+        }
+        this.status = InspectionRequestStatus.PENDING;
+        this.reason = reason;
+        this.rewardPoints = rewardPoints;
+        this.score = null;
+        this.comment = null;
+        this.reviewedBy = null;
+        this.reviewedAt = null;
+        this.appliedAt = LocalDateTime.now();
+    }
 }

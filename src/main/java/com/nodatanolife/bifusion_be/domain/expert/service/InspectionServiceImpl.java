@@ -9,6 +9,7 @@ import com.nodatanolife.bifusion_be.domain.expert.dto.response.InspectionRespons
 import com.nodatanolife.bifusion_be.domain.expert.entity.ExpertApplicationStatus;
 import com.nodatanolife.bifusion_be.domain.expert.entity.ExpertTask;
 import com.nodatanolife.bifusion_be.domain.expert.entity.InspectionRequest;
+import com.nodatanolife.bifusion_be.domain.expert.entity.InspectionRequestStatus;
 import com.nodatanolife.bifusion_be.domain.expert.entity.InspectionTargetType;
 import com.nodatanolife.bifusion_be.domain.expert.repository.ExpertApplicationRepository;
 import com.nodatanolife.bifusion_be.domain.expert.repository.ExpertTaskRepository;
@@ -29,6 +30,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -53,8 +55,11 @@ public class InspectionServiceImpl implements InspectionService {
      *   InspectionTargetType 자체는 Dataset/Recipe의 기존 검수 결과 조회 기능이 여전히 참조하고 있어
      *   (기존 RECIPE/UPLOADED_DATA row도 남아있어) enum에서 제거하지 않는다.
      * - 대상(AugmentationConfig)의 존재 여부와 본인(Job) 소유 여부를 먼저 검증한다.
-     * - 같은 사용자 + 같은 대상 조합의 신청이 이미 있으면 409로 막는다. (existsBy 사전 체크)
-     * - existsBy 체크만으로는 동시 요청을 완전히 막을 수 없어, DB unique constraint 위반도
+     * - 같은 사용자 + 같은 대상 조합의 신청이 이미 PENDING/APPROVED로 존재하면 409로 막는다.
+     * - REJECTED로 종료된 기존 신청이 있으면, (user, target_type, target_id) DB unique 제약 때문에
+     *   새 row를 insert할 수 없어 그 row를 재사용(InspectionRequest.reapply)해 PENDING으로 되돌린다.
+     *   이전 거절 이력은 보존하지 않는다.
+     * - existsBy 체크만으로는 동시 요청을 완전히 막을 수 없어, 신규 생성 시의 DB unique constraint 위반도
      *   같은 409 예외로 변환해 이중으로 방어한다.
      * - 보유 포인트가 리워드 포인트보다 부족하면 400으로 막는다.
      * - 포인트 차감 → 검증 신청 생성을 한 트랜잭션(클래스 레벨 @Transactional)으로 처리한다.
@@ -73,7 +78,10 @@ public class InspectionServiceImpl implements InspectionService {
 
         validateAugmentedDataOwnership(user, targetId);
 
-        if (inspectionRequestRepository.existsByUserAndTargetTypeAndTargetId(user, targetType, targetId)) {
+        Optional<InspectionRequest> existing = inspectionRequestRepository
+                .findByUserAndTargetTypeAndTargetId(user, targetType, targetId);
+
+        if (existing.isPresent() && existing.get().getStatus() != InspectionRequestStatus.REJECTED) {
             throw new BusinessException(ErrorCode.INSPECTION_ALREADY_EXISTS);
         }
 
@@ -83,6 +91,12 @@ public class InspectionServiceImpl implements InspectionService {
             throw new BusinessException(ErrorCode.INSUFFICIENT_POINTS);
         }
         managedUser.deductPoints(rewardPoints);
+
+        if (existing.isPresent()) {
+            InspectionRequest reused = existing.get();
+            reused.reapply(request.getReason(), rewardPoints);
+            return InspectionResponse.from(inspectionRequestRepository.save(reused));
+        }
 
         InspectionRequest inspectionRequest = InspectionRequest.create(managedUser, targetType, targetId, request.getReason(), rewardPoints);
         try {
@@ -244,6 +258,4 @@ public class InspectionServiceImpl implements InspectionService {
             throw new BusinessException(ErrorCode.INSPECTION_FORBIDDEN);
         }
     }
-
-    // TODO: 검수 승인/반려 처리 로직 완성 후 RECIPE_APPROVED/REJECTED, DATASET_VERIFIED/VERIFY_REJECTED 알림 연동 필요
 }
