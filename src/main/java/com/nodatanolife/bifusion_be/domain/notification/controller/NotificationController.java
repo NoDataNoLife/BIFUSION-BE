@@ -38,4 +38,14 @@ public class NotificationController {
                 userDetails.getUser().getUserId(), category, isRead, keyword, pageable);
         return CommonResponse.success(PageResponse.from(result), "알림 목록 조회 성공!");
     }
+
+    @Operation(summary = "알림 팝업 삭제(soft)", description = "notificationId 있으면 개별 삭제, 없으면 전체 삭제(soft delete)")
+    @DeleteMapping("/popup")
+    public CommonResponse<Void> softDeleteNotifications(
+            @AuthenticationPrincipal CustomOAuth2User userDetails,
+            @RequestParam(required = false) Long notificationId
+    ) {
+        notificationService.softDeleteNotifications(userDetails.getUser().getUserId(), notificationId);
+        return CommonResponse.success(null, "알림을 삭제했습니다.");
+    }
 }
