@@ -9,6 +9,8 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import org.springframework.data.jpa.repository.Modifying;
+import java.util.Optional;
 import java.util.List;
 
 
@@ -19,6 +21,7 @@ public interface NotificationRepository extends JpaRepository<Notification, Long
     @Query("""
         SELECT n FROM Notification n
         WHERE n.user = :user
+          AND n.isDeleted = false
           AND (:types IS NULL OR n.type IN :types)
           AND (:isRead IS NULL OR n.isRead = :isRead)
           AND (:keyword IS NULL
@@ -35,4 +38,12 @@ public interface NotificationRepository extends JpaRepository<Notification, Long
     );
 
     long countByUserAndIsReadFalse(User user);
+
+    Optional<Notification> findByNotificationIdAndUserAndIsDeletedFalse(Long notificationId, User user);
+
+    @Modifying(clearAutomatically = true)
+    @Query("UPDATE Notification n SET n.isDeleted = true WHERE n.user = :user AND n.isDeleted = false")
+    void softDeleteAllByUser(@Param("user") User user);
+
+
 }
