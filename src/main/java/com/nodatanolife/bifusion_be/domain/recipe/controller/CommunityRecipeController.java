@@ -102,4 +102,27 @@ public class CommunityRecipeController {
         return CommonResponse.success(response, "내 레시피 보관함에 저장 성공!");
     }
 
+    @Operation(
+            summary = "레시피 삭제",
+            description = """
+            지정한 레시피를 삭제합니다(soft delete). 작성자 본인만 삭제할 수 있으며, \
+            본인이 아닌 사용자가 요청하면 접근이 거부됩니다(403).
+
+            삭제 시 다음과 같이 처리됩니다.
+            - 전문가 검수가 진행 중(PENDING)인 레시피는 삭제할 수 없습니다(409).
+            - 삭제 후에는 레시피 목록 조회, 상세 조회, 검색, 포크 조회에서 노출되지 않습니다.
+            - 삭제된 레시피에는 리뷰를 조회하거나 새로 작성할 수 없으며, 요청 시 404로 처리됩니다.
+            - 삭제된 레시피는 마이페이지 노출 설정 변경 대상에서 제외되며, 요청 시 404(ACTIVITY_NOT_FOUND)로 처리됩니다.
+            - 삭제된 레시피는 전문가 검수 신청 대상에서 제외되며, 요청 시 404(INSPECTION_TARGET_NOT_FOUND)로 처리됩니다."""
+    )
+    @DeleteMapping("/{recipeId}")
+    public CommonResponse<Void> deleteRecipe(
+            @PathVariable Long recipeId,
+            @AuthenticationPrincipal CustomOAuth2User oAuth2User
+    ) {
+        recipeService.deleteRecipe(recipeId, oAuth2User.getUser().getUserId());
+
+        return CommonResponse.success(null, "레시피 삭제 성공!");
+    }
+
 }

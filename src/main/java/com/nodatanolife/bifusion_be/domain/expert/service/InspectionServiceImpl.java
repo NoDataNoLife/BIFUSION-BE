@@ -244,4 +244,6 @@ public class InspectionServiceImpl implements InspectionService {
             throw new BusinessException(ErrorCode.INSPECTION_FORBIDDEN);
         }
     }
+
+    // TODO: 검수 승인/반려 처리 로직 완성 후 RECIPE_APPROVED/REJECTED, DATASET_VERIFIED/VERIFY_REJECTED 알림 연동 필요
 }

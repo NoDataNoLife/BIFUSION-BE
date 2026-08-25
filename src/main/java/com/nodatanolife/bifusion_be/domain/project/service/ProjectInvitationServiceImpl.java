@@ -1,5 +1,8 @@
 package com.nodatanolife.bifusion_be.domain.project.service;
 
+import com.nodatanolife.bifusion_be.domain.notification.service.NotificationService;
+import com.nodatanolife.bifusion_be.domain.notification.entity.NotificationType;
+import com.nodatanolife.bifusion_be.domain.notification.entity.TargetType;
 import com.nodatanolife.bifusion_be.domain.project.entity.ProjectRole;
 import com.nodatanolife.bifusion_be.domain.project.dto.response.InvitationRespondResponse;
 import com.nodatanolife.bifusion_be.domain.project.dto.response.ProjectInvitationResponse;
@@ -38,6 +41,7 @@ public class ProjectInvitationServiceImpl implements ProjectInvitationService {
     private final UserRepository userRepository;
     private final ProjectMemberRepository projectMemberRepository;
     private final MailService mailService;
+    private final NotificationService notificationService;
 
     /**
      * 프로젝트 초대 생성
@@ -108,6 +112,14 @@ public class ProjectInvitationServiceImpl implements ProjectInvitationService {
 
         if (inviteeOpt.isPresent()) {
             mailService.sendInvitationMail(email, project.getTitle(), inviter.getName());
+            notificationService.create(
+                    inviteeOpt.get(),
+                    NotificationType.PROJECT_INVITATION,
+                    "새로운 팀 프로젝트 초대",
+                    inviter.getName() + "님이 \"" + project.getTitle() + "\" 프로젝트로 초대했습니다.",
+                    TargetType.PROJECT,
+                    project.getProjectId()
+            );
         } else {
             mailService.sendSignUpInvitationMail(email, project.getTitle(), inviter.getName());
         }
@@ -153,9 +165,28 @@ public class ProjectInvitationServiceImpl implements ProjectInvitationService {
                         invitation.getRole()
                 );
                 projectMemberRepository.save(member);
+                notificationService.create(
+                        invitation.getInviter(),
+                        NotificationType.INVITATION_ACCEPTED,
+                        "초대 수락 알림",
+                        invitation.getInvitee().getName() + "님이 \"" + invitation.getProject().getTitle() + "\" 초대를 수락했습니다.",
+                        TargetType.PROJECT,
+                        invitation.getProject().getProjectId()
+                );
             }
             // 6. REJECT — 초대 status를 REJECTED로 갱신
-            case REJECT -> invitation.reject();
+            case REJECT -> {
+                invitation.reject();
+
+            notificationService.create(
+                    invitation.getInviter(),
+                    NotificationType.INVITATION_REJECTED,
+                    "초대 거절 알림",
+                    invitation.getInvitee().getName() + "님이 \"" + invitation.getProject().getTitle() + "\" 초대를 거절했습니다.",
+                    TargetType.PROJECT,
+                    invitation.getProject().getProjectId()
+            );
+            }
         }
 
         return InvitationRespondResponse.from(invitation);

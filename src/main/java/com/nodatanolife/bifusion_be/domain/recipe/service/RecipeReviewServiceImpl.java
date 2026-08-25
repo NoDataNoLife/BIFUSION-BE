@@ -1,5 +1,8 @@
 package com.nodatanolife.bifusion_be.domain.recipe.service;
 
+import com.nodatanolife.bifusion_be.domain.notification.service.NotificationService;
+import com.nodatanolife.bifusion_be.domain.notification.entity.NotificationType;
+import com.nodatanolife.bifusion_be.domain.notification.entity.TargetType;
 import com.nodatanolife.bifusion_be.domain.recipe.dto.request.RecipeReviewRequest;
 import com.nodatanolife.bifusion_be.domain.recipe.dto.request.RecipeReviewUpdateRequest;
 import com.nodatanolife.bifusion_be.domain.recipe.dto.response.RecipeReviewResponse;
@@ -31,6 +34,7 @@ public class RecipeReviewServiceImpl implements RecipeReviewService {
     private final RecipeReviewRepository recipeReviewRepository;
     private final RecipeRepository recipeRepository;
     private final UserRepository userRepository;
+    private final NotificationService notificationService;
 
     /**
      * 댓글/대댓글 작성.
@@ -39,8 +43,8 @@ public class RecipeReviewServiceImpl implements RecipeReviewService {
      */
     @Override
     public RecipeReviewResponse createReview(Long recipeId, Long userId, RecipeReviewRequest request) {
-        Recipe recipe = recipeRepository.findById(recipeId)
-                .orElseThrow(() -> new BusinessException(ErrorCode.RECIPE_NOT_FOUND));
+        Recipe recipe = recipeRepository.findByRecipeIdAndDeletedAtIsNull(recipeId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.RESOURCE_NOT_FOUND));
 
         RecipeReview parent = resolveParent(recipeId, request.parentReviewId());
         validateRating(parent, request.rating());
@@ -53,7 +57,20 @@ public class RecipeReviewServiceImpl implements RecipeReviewService {
 
         RecipeReview saved = recipeReviewRepository.save(review);
 
+        if (!recipe.getUser().getUserId().equals(userId)) {
+            notificationService.create(
+                    recipe.getUser(),
+                    NotificationType.RECIPE_REVIEW,
+                    "새로운 리뷰/댓글이 등록되었습니다",
+                    user.getNickname() + "님이 \"" + recipe.getTitle() + "\"에 새로운 리뷰를 남겼습니다.",
+                    TargetType.RECIPE,
+                    recipe.getRecipeId()
+            );
+        }
+
         return RecipeReviewResponse.from(saved);
+
+
     }
 
     /**
@@ -98,9 +115,8 @@ public class RecipeReviewServiceImpl implements RecipeReviewService {
     @Override
     @Transactional(readOnly = true)
     public Page<RecipeReviewResponse> getReviews(Long recipeId, int page, int size) {
-        if (!recipeRepository.existsById(recipeId)) {
-            throw new BusinessException(ErrorCode.RECIPE_NOT_FOUND);
-        }
+        recipeRepository.findByRecipeIdAndDeletedAtIsNull(recipeId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.RESOURCE_NOT_FOUND));
 
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.ASC, "createdAt"));
         Page<RecipeReview> topLevelReviews = recipeReviewRepository.findAllByRecipe_RecipeIdAndParentIsNull(recipeId, pageable);
@@ -118,6 +134,7 @@ public class RecipeReviewServiceImpl implements RecipeReviewService {
         return topLevelReviews.map(review ->
                 RecipeReviewResponse.from(review, repliesByParentId.getOrDefault(review.getRecipeReviewId(), List.of()))
         );
+
     }
 
     /**
@@ -171,4 +188,6 @@ public class RecipeReviewServiceImpl implements RecipeReviewService {
             throw new BusinessException(ErrorCode.REPLY_RATING_NOT_ALLOWED);
         }
     }
+
+
 }

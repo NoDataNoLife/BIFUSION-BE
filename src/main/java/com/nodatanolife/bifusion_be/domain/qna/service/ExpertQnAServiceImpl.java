@@ -1,5 +1,8 @@
 package com.nodatanolife.bifusion_be.domain.qna.service;
 
+import com.nodatanolife.bifusion_be.domain.notification.service.NotificationService;
+import com.nodatanolife.bifusion_be.domain.notification.entity.NotificationType;
+import com.nodatanolife.bifusion_be.domain.notification.entity.TargetType;
 import com.nodatanolife.bifusion_be.domain.qna.dto.response.ExpertQnADetailResponse;
 import com.nodatanolife.bifusion_be.domain.qna.dto.request.ExpertQnAAnswerRequest;
 import com.nodatanolife.bifusion_be.domain.qna.dto.response.ExpertQnAAnswerResponse;
@@ -43,6 +46,7 @@ public class ExpertQnAServiceImpl implements ExpertQnAService {
     private final TagMappingRepository tagMappingRepository;
     private final UserRepository userRepository;
     private final ExpertService expertService;
+    private final NotificationService notificationService;
 
     /**
      * 회원 탈퇴 시 전문가 Q&A 익명화
@@ -70,6 +74,15 @@ public class ExpertQnAServiceImpl implements ExpertQnAService {
         expertQnAAnswerRepository.save(answer);
 
         qna.addExpertReply();
+
+        notificationService.create(
+                qna.getUser(),
+                NotificationType.QNA_ANSWERED,
+                "질문에 답변이 등록되었습니다",
+                "\"" + qna.getTitle() + "\" 질문에 전문가 답변이 등록되었습니다.",
+                TargetType.QNA,
+                qna.getExpertQnAId()
+        );
 
         return ExpertQnAAnswerResponse.from(answer, isExpert);
     }

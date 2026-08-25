@@ -31,7 +31,8 @@ public record RecipeDetailResponse(
         Overview overview,
         Settings settings,
         InspectionStatus inspectionStatus,
-        InspectionResultResponse inspectionResult
+        InspectionResultResponse inspectionResult,
+        boolean isDeleted
 ) {
     /**
      * 작성자 정보.
@@ -102,7 +103,8 @@ public record RecipeDetailResponse(
                 Overview.from(recipe),
                 Settings.from(recipe),
                 verificationSummary.status(),
-                verificationSummary.result()
+                verificationSummary.result(),
+                recipe.isDeleted()
         );
     }
 }
