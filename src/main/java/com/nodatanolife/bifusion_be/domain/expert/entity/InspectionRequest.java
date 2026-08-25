@@ -57,9 +57,6 @@ public class InspectionRequest extends BaseEntity {
     @Column(name = "comment")
     private String comment;
 
-    @Column(name = "rejection_reason")
-    private String rejectionReason;
-
     @Column(name = "applied_at")
     private LocalDateTime appliedAt;
 
