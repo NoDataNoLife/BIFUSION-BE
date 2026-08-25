@@ -120,6 +120,7 @@ public enum ErrorCode {
     ACTIVITY_NOT_FOUND(HttpStatus.NOT_FOUND, "AC001", "활동 콘텐츠를 찾을 수 없습니다."),
     ACTIVITY_ACCESS_DENIED(HttpStatus.FORBIDDEN, "AC002", "본인 소유의 활동만 변경할 수 있습니다."),
     ACTIVITY_PRIVATE_CONTENT_CANNOT_BE_PUBLIC(HttpStatus.BAD_REQUEST, "AC003", "비공개 콘텐츠는 마이페이지에 공개할 수 없습니다."),
+    ACTIVITY_INVALID_CURSOR(HttpStatus.BAD_REQUEST, "AC004", "유효하지 않은 커서 값입니다."),
 
     /* ================================
      * Inspection (전문가 검수 신청)
