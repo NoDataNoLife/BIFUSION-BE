@@ -26,6 +26,16 @@ public interface RecruitApplicationRepository extends JpaRepository<RecruitAppli
             @Param("status") RecruitApplicationStatus status
     );
 
+    /**
+     * 마이페이지 "내 활동" 지원자 수(전체 상태) 배치 집계용. countByRecruitIdsAndStatus와 달리
+     * status로 필터링하지 않고 접수된 지원 건수 전체를 센다.
+     */
+    @Query("SELECT ra.recruit.recruitId AS recruitId, COUNT(ra) AS count " +
+            "FROM RecruitApplication ra " +
+            "WHERE ra.recruit.recruitId IN :recruitIds " +
+            "GROUP BY ra.recruit.recruitId")
+    List<RecruitMemberCount> countByRecruitIds(@Param("recruitIds") List<Long> recruitIds);
+
     interface RecruitMemberCount {
         Long getRecruitId();
         Long getCount();

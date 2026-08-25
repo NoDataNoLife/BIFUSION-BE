@@ -18,6 +18,8 @@ import com.nodatanolife.bifusion_be.domain.project.dto.response.ProjectVisibilit
 import com.nodatanolife.bifusion_be.domain.project.service.ProjectService;
 import com.nodatanolife.bifusion_be.domain.user.dto.request.ActivityVisibilityUpdateRequest;
 import com.nodatanolife.bifusion_be.domain.user.dto.response.ActivityVisibilityUpdateResponse;
+import com.nodatanolife.bifusion_be.domain.user.dto.response.MyActivityListResponse;
+import com.nodatanolife.bifusion_be.domain.user.service.MyActivityService;
 import com.nodatanolife.bifusion_be.domain.user.service.MyActivityVisibilityService;
 import com.nodatanolife.bifusion_be.domain.user.service.UserService;
 import com.nodatanolife.bifusion_be.global.response.CommonResponse;
@@ -38,6 +40,7 @@ public class UserController {
     private final UserService userService;
     private final ProjectService projectService;
     private final MyActivityVisibilityService myActivityVisibilityService;
+    private final MyActivityService myActivityService;
     private final CookieUtil cookieUtil;
 
     @Operation(
@@ -215,5 +218,31 @@ public class UserController {
                 principal.getUser().getUserId(), request);
 
         return CommonResponse.success(response, "활동 공개여부 변경 성공!");
+    }
+
+    @Operation(
+            summary = "내 활동 목록 조회 (커서 기반)",
+            description = """
+                    본인이 생성한 레시피/데이터셋/Q&A/팀원 모집 게시글을 최신순으로 통합 조회합니다.
+                    본인 조회이므로 공개/비공개, 마이페이지 노출 설정과 무관하게 소유한 항목을 모두 반환합니다.
+                    cursor는 이전 응답의 nextCursor를 그대로 전달하면 되며, 최초 조회 시 생략합니다.
+
+                    응답 items는 type별로 실제 존재하는 필드만 내려가는 서로 다른 구조입니다 (null로 채우지 않음).
+                    - RECIPE(RecipeItem): thumbnailUrl, likeCount, commentCount(댓글+대댓글 합산), forkCount
+                    - DATASET(DatasetItem): thumbnailUrl, likeCount, downloadCount
+                    - QNA(QnaItem): commentCount(전문가 답변 수. 답변엔 대댓글 개념이 없어 전체 답변 수와 동일)
+                    - RECRUITMENT(RecruitItem): commentCount(지원자 수, 상태 무관 전체 지원 건수)
+                    모든 타입 공통: activityId, type, title, description, isPublic, createdAt"""
+    )
+    @GetMapping("/mypage/activities")
+    public CommonResponse<MyActivityListResponse> getMyActivities(
+            @AuthenticationPrincipal CustomOAuth2User principal,
+            @RequestParam(required = false) String cursor,
+            @RequestParam(defaultValue = "10") int size) {
+
+        MyActivityListResponse response = myActivityService.getMyActivities(
+                principal.getUser().getUserId(), cursor, size);
+
+        return CommonResponse.success(response, "내 활동 목록 조회 성공!");
     }
 }
