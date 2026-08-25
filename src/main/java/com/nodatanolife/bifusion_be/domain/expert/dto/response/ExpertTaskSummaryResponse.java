@@ -25,7 +25,8 @@ public record ExpertTaskSummaryResponse(
                 task.getStatus(),
                 inspectionRequest.getStatus() == InspectionRequestStatus.PENDING ? null : inspectionRequest.getStatus(),
                 RequesterResponse.from(inspectionRequest.getUser()),
-                config.getJob().getProject().getTitle(),
+                config != null && config.getJob() != null && config.getJob().getProject() != null
+                        ? config.getJob().getProject().getTitle() : "알 수 없는 프로젝트",
                 inspectionRequest.getAppliedAt() != null ? inspectionRequest.getAppliedAt().toLocalDate() : null,
                 task.getUpdatedAt()
         );
