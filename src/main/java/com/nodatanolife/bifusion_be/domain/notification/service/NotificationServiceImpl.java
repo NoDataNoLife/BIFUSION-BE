@@ -6,18 +6,17 @@ import com.nodatanolife.bifusion_be.domain.notification.entity.Notification;
 import com.nodatanolife.bifusion_be.domain.notification.entity.NotificationType;
 import com.nodatanolife.bifusion_be.domain.notification.entity.TargetType;
 import com.nodatanolife.bifusion_be.domain.notification.repository.NotificationRepository;
-import com.nodatanolife.bifusion_be.domain.user.repository.UserRepository;
 import com.nodatanolife.bifusion_be.domain.user.entity.User;
+import com.nodatanolife.bifusion_be.domain.user.repository.UserRepository;
+import com.nodatanolife.bifusion_be.global.exception.ErrorCode;
+import com.nodatanolife.bifusion_be.global.exception.business.BusinessException;
 import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import com.nodatanolife.bifusion_be.global.exception.business.BusinessException;
-import com.nodatanolife.bifusion_be.global.exception.ErrorCode;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
-
 
 @Service
 @RequiredArgsConstructor
@@ -43,6 +42,21 @@ public class NotificationServiceImpl implements NotificationService {
     @Override
     public void deleteByUser(User user) {
         notificationRepository.deleteByUser(user);
+    }
+
+    @Override
+    public void markAsRead(Long userId, Long notificationId) {
+        User user = userRepository.getReferenceById(userId);
+        Notification notification = notificationRepository.findByNotificationIdAndUser(notificationId, user)
+                .orElseThrow(() -> new BusinessException(ErrorCode.RESOURCE_NOT_FOUND));
+
+        notification.markAsRead();
+    }
+
+    @Override
+    public void markAllAsRead(Long userId) {
+        User user = userRepository.getReferenceById(userId);
+        notificationRepository.markAllAsRead(user);
     }
 
     @Override

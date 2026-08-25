@@ -15,6 +15,9 @@ public interface NotificationService {
 
     void deleteByUser(User user);
 
+    void markAsRead(Long userId, Long notificationId);
+    void markAllAsRead(Long userId);
+
     Page<NotificationResponse> getNotifications(
             Long userId, NotificationCategory category, Boolean isRead, String keyword, Pageable pageable);
 
