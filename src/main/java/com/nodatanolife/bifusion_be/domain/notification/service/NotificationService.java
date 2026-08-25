@@ -10,4 +10,7 @@ public interface NotificationService {
                 TargetType targetType, Long targetId);
 
     void deleteByUser(User user);
+
+    void markAsRead(Long userId, Long notificationId);
+    void markAllAsRead(Long userId);
 }
