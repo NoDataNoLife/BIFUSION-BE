@@ -13,6 +13,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import com.nodatanolife.bifusion_be.global.exception.business.BusinessException;
+import com.nodatanolife.bifusion_be.global.exception.ErrorCode;
 
 import java.util.List;
 
@@ -53,5 +55,23 @@ public class NotificationServiceImpl implements NotificationService {
 
         return notificationRepository.findByFilters(user, types, isRead, keyword, pageable)
                 .map(NotificationResponse::from);
+    }
+
+    @Override
+    public void hardDeleteNotifications(Long userId, Long notificationId) {
+        User user = userRepository.getReferenceById(userId);
+
+        if (notificationId != null) {
+            Notification notification = notificationRepository.findById(notificationId)
+                    .orElseThrow(() -> new BusinessException(ErrorCode.NOTIFICATION_NOT_FOUND));
+
+            if (!notification.getUser().getUserId().equals(userId)) {
+                throw new BusinessException(ErrorCode.FORBIDDEN_NOTIFICATION_ACCESS);
+            }
+
+            notificationRepository.delete(notification);
+        } else {
+            notificationRepository.deleteByUser(user);
+        }
     }
 }
