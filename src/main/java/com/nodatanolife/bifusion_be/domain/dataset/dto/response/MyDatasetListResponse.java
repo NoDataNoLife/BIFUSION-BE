@@ -30,7 +30,7 @@ public record MyDatasetListResponse(
                 verificationSummary.status() == InspectionStatus.COMPLETED,
                 dataset.getBannerImageUrl(),
                 dataset.getFile() != null ? dataset.getFile().getFileSize() : null,
-                dataset.getFileCount().longValue(),
+                dataset.getFileCount() != null ? dataset.getFileCount().longValue() : 0L,
                 dataset.getCreatedAt().toLocalDate(),
                 dataset.getFormat() != null ? List.of(dataset.getFormat()) : List.of()
         );
