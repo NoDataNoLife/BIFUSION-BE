@@ -27,9 +27,9 @@ public record MyRecipeListResponse(
                 recipe.getTitle(),
                 recipe.getShortDescription(),
                 verificationSummary.status() == InspectionStatus.COMPLETED,
-                recipe.getRating().doubleValue(),
-                recipe.getForkCount().longValue(),
-                recipe.getViewCount().longValue(),
+                recipe.getRating() != null ? recipe.getRating().doubleValue() : 0.0,
+                recipe.getForkCount() != null ? recipe.getForkCount().longValue() : 0L,
+                recipe.getViewCount() != null ? recipe.getViewCount().longValue() : 0L,
                 recipe.getThumbnailUrl(),
                 recipe.isDeleted()
         );
