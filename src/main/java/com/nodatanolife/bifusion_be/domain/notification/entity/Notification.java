@@ -40,6 +40,10 @@ public class Notification extends BaseCreatedEntity {
     @Column(name = "is_read", nullable = false)
     private Boolean isRead;
 
+    @Column(name = "is_deleted", nullable = false)
+    @org.hibernate.annotations.ColumnDefault("false")
+    private Boolean isDeleted = false;
+
     @Builder(access = AccessLevel.PRIVATE)
     private Notification(User user, NotificationType type, String title, String content,
                          TargetType targetType, Long targetId) {
@@ -67,4 +71,9 @@ public class Notification extends BaseCreatedEntity {
     public void markAsRead() {
         this.isRead = true;
     }
+
+    public void delete() {
+        this.isDeleted = true;
+    }
+
 }
