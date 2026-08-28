@@ -1,6 +1,12 @@
 package com.nodatanolife.bifusion_be.domain.user.service;
 
-
+import com.nodatanolife.bifusion_be.domain.recipe.service.RecipeReviewService;
+import com.nodatanolife.bifusion_be.domain.recipe.entity.Recipe;
+import com.nodatanolife.bifusion_be.domain.project.dto.response.MyProjectsResponse;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
+import java.util.Map;
 import com.nodatanolife.bifusion_be.domain.user.dto.response.*;
 import com.nodatanolife.bifusion_be.domain.user.dto.response.WebsiteUpdateResponse;
 import com.nodatanolife.bifusion_be.domain.user.entity.SubscriptionTier;
@@ -39,6 +45,8 @@ public class UserServiceImpl implements UserService {
     private final UserRepository userRepository;
 
     private final SubscriptionRepository subscriptionRepository;
+
+    private final RecipeReviewService recipeReviewService;
     // 인증
     private final AuthService authService;
 
@@ -83,7 +91,38 @@ public class UserServiceImpl implements UserService {
     public MyPageBasicResponse getMyPageBasic(Long userId) {
         User user = userRepository.findById(userId).orElseThrow(UserNotFoundException::new);
         boolean isExpert = expertService.resolveStatus(user) == ExpertApplicationStatus.APPROVED;
-        return MyPageBasicResponse.from(user, isExpert);
+
+        List<MyPageBasicResponse.PublicActivityResponse> activities = new ArrayList<>();
+
+        // Recipe(쇼케이스) - 댓글 수 배치 집계 필요
+        List<Recipe> recipes = recipeService.getPublicRecipesByUser(userId);
+        Map<Long, Long> commentCounts = recipeReviewService.countCommentsByRecipeIds(
+                recipes.stream().map(Recipe::getRecipeId).toList());
+        activities.addAll(recipes.stream()
+                .map(r -> MyPageBasicResponse.PublicActivityResponse.ofShowcase(r, commentCounts.getOrDefault(r.getRecipeId(), 0L)))
+                .toList());
+
+        activities.addAll(datasetService.getPublicDatasetsByUser(userId).stream()
+                .map(MyPageBasicResponse.PublicActivityResponse::ofDataset).toList());
+
+        activities.addAll(expertQnAService.getPublicQnasByUser(userId).stream()
+                .map(MyPageBasicResponse.PublicActivityResponse::ofQna).toList());
+
+        activities.addAll(recruitService.getPublicRecruitsByUser(userId).stream()
+                .map(MyPageBasicResponse.PublicActivityResponse::ofRecruitment).toList());
+
+        MyProjectsResponse projects = projectService.getMyProjects(user.getEmail(), null, 50, true);
+        activities.addAll(projects.items().stream()
+                .map(item -> MyPageBasicResponse.PublicActivityResponse.ofProject(item, user.getCreatedAt()))
+                .toList());
+
+        activities.sort((a, b) -> {
+            if (a.createdAt() == null && b.createdAt() == null) return 0;
+            if (a.createdAt() == null) return 1;
+            if (b.createdAt() == null) return -1;
+            return b.createdAt().compareTo(a.createdAt());
+        });
+        return MyPageBasicResponse.from(user, isExpert, activities);
     }
 
     /**

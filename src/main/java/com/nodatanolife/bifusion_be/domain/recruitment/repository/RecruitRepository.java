@@ -35,4 +35,7 @@ public interface RecruitRepository extends JpaRepository<Recruit, Long> {
             @Param("cursorId") Long cursorId,
             Pageable pageable
     );
+
+    @Query("SELECT r FROM Recruit r JOIN FETCH r.user WHERE r.user.userId = :userId AND r.isPublic = true AND r.deletedAt IS NULL ORDER BY r.createdAt DESC")
+    List<Recruit> findPublicByUserId(@Param("userId") Long userId);
 }

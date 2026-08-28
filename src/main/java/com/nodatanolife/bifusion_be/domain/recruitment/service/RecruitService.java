@@ -1,5 +1,7 @@
 package com.nodatanolife.bifusion_be.domain.recruitment.service;
 
+import com.nodatanolife.bifusion_be.domain.recruitment.entity.Recruit;
+import java.util.List;
 import com.nodatanolife.bifusion_be.domain.recruitment.dto.response.RecruitmentDetailResponse;
 import com.nodatanolife.bifusion_be.domain.recruitment.dto.request.RecruitApplicationStatusRequest;
 import com.nodatanolife.bifusion_be.domain.recruitment.dto.response.RecruitApplicationStatusResponse;
@@ -33,4 +35,5 @@ public interface RecruitService {
 
     void deleteRecruitment(Long recruitmentId, Long userId);
 
+    List<Recruit> getPublicRecruitsByUser(Long userId);
 }

@@ -53,4 +53,8 @@ public interface DatasetRepository extends JpaRepository<Dataset, Long> {
             @Param("cursorId") Long cursorId,
             Pageable pageable
     );
+
+    @Query("SELECT d FROM Dataset d JOIN FETCH d.user WHERE d.user.userId = :userId AND d.isPublic = true AND d.deletedAt IS NULL ORDER BY d.createdAt DESC")
+    List<Dataset> findPublicByUserId(@Param("userId") Long userId);
+
 }

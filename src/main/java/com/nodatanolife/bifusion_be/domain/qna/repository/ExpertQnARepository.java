@@ -47,4 +47,7 @@ public interface ExpertQnARepository extends JpaRepository<ExpertQnA, Long> {
             @Param("cursorId") Long cursorId,
             Pageable pageable
     );
+
+    @Query("SELECT q FROM ExpertQnA q JOIN FETCH q.user WHERE q.user.userId = :userId AND q.isPublic = true AND q.deletedAt IS NULL ORDER BY q.createdAt DESC")
+    List<ExpertQnA> findPublicByUserId(@Param("userId") Long userId);
 }

@@ -62,4 +62,7 @@ public interface RecipeRepository extends JpaRepository<Recipe, Long> {
             @Param("cursorId") Long cursorId,
             Pageable pageable
     );
+
+    @Query("SELECT r FROM Recipe r JOIN FETCH r.user WHERE r.user.userId = :userId AND r.isPublic = true AND r.deletedAt IS NULL ORDER BY r.createdAt DESC")
+    List<Recipe> findPublicByUserId(@Param("userId") Long userId);
 }

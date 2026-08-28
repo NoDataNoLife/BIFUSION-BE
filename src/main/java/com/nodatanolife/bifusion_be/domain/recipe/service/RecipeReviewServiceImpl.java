@@ -1,5 +1,8 @@
 package com.nodatanolife.bifusion_be.domain.recipe.service;
 
+import java.util.Map;
+import java.util.stream.Collectors;
+import com.nodatanolife.bifusion_be.domain.recipe.repository.RecipeReviewRepository;
 import com.nodatanolife.bifusion_be.domain.notification.service.NotificationService;
 import com.nodatanolife.bifusion_be.domain.notification.entity.NotificationType;
 import com.nodatanolife.bifusion_be.domain.notification.entity.TargetType;
@@ -187,6 +190,19 @@ public class RecipeReviewServiceImpl implements RecipeReviewService {
         if (parent != null && rating != null) {
             throw new BusinessException(ErrorCode.REPLY_RATING_NOT_ALLOWED);
         }
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Map<Long, Long> countCommentsByRecipeIds(List<Long> recipeIds) {
+        if (recipeIds.isEmpty()) {
+            return Map.of();
+        }
+        return recipeReviewRepository.countByRecipeIds(recipeIds).stream()
+                .collect(Collectors.toMap(
+                        RecipeReviewRepository.RecipeReviewCount::getRecipeId,
+                        RecipeReviewRepository.RecipeReviewCount::getCount
+                ));
     }
 
 
