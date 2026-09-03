@@ -208,7 +208,7 @@ public class ExpertServiceImpl implements ExpertService {
                 .map(t -> t.getInspectionRequest().getTargetId())
                 .toList();
         Map<Long, AugmentationConfig> configById = augmentationConfigRepository.findAllById(targetIds).stream()
-                .collect(Collectors.toMap(AugmentationConfig::getAugmentationConfigId, c -> c));
+                .collect(Collectors.toMap(AugmentationConfig::getAugmentationConfigId, c -> c, (existing, replacement) -> existing));
 
         Map<String, List<ExpertTaskSummaryResponse>> grouped = tasks.stream()
                 .map(t -> ExpertTaskSummaryResponse.of(t, configById.get(t.getInspectionRequest().getTargetId())))
