@@ -83,6 +83,9 @@ public class ProjectInvitationServiceImpl implements ProjectInvitationService {
             ProjectInvitation latest = latestOpt.get();
 
             switch (latest.getStatus()) {
+                case null -> {
+                    // legacy null status row — EXPIRED/REJECTED와 동일하게 새 초대 생성으로 진행
+                }
                 case ACCEPTED ->
                     throw new BusinessException(ErrorCode.INVITATION_ALREADY_MEMBER);
 

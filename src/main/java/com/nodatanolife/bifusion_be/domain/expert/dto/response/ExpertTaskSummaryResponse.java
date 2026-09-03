@@ -34,6 +34,9 @@ public record ExpertTaskSummaryResponse(
 
     public record RequesterResponse(Long userId, String nickname, String email) {
         public static RequesterResponse from(User user) {
+            if (user == null) {
+                return new RequesterResponse(null, "알 수 없는 사용자", null);
+            }
             return new RequesterResponse(user.getUserId(), user.getNickname(), user.getEmail());
         }
     }

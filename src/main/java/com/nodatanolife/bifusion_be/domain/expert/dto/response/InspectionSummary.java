@@ -18,6 +18,9 @@ public record InspectionSummary(
     }
 
     public static InspectionSummary of(InspectionRequest inspectionRequest) {
+        if (inspectionRequest.getStatus() == null) {
+            return NONE;
+        }
         return switch (inspectionRequest.getStatus()) {
             case PENDING -> new InspectionSummary(InspectionStatus.PENDING, null);
             case APPROVED -> new InspectionSummary(InspectionStatus.COMPLETED, InspectionResultResponse.from(inspectionRequest));
