@@ -3,6 +3,7 @@ package com.nodatanolife.bifusion_be.domain.project.dto.response;
 import com.nodatanolife.bifusion_be.domain.file.presign.PresignedUrl;
 import com.nodatanolife.bifusion_be.domain.project.entity.ProjectMember;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 public record MyProjectsResponse(
@@ -16,7 +17,8 @@ public record MyProjectsResponse(
             String title,
             @PresignedUrl String bannerImageUrl,
             Boolean isPublic,
-            String role
+            String role,
+            LocalDateTime createdAt
     ) {}
 
     public static MyProjectsResponse of(
@@ -31,7 +33,8 @@ public record MyProjectsResponse(
                         m.getProject().getTitle(),
                         m.getProject().getBannerImageUrl(),
                         m.getIsPublic(),
-                        m.getRole().name()
+                        m.getRole().name(),
+                        m.getCreatedAt()
                 ))
                 .toList();
 

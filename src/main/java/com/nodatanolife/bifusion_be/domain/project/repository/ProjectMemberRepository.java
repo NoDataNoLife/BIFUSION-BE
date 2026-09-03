@@ -71,7 +71,5 @@ public interface ProjectMemberRepository extends JpaRepository<ProjectMember, Lo
             Pageable pageable
     );
 
-    @Query("SELECT pm FROM ProjectMember pm JOIN FETCH pm.project WHERE pm.user.userId = :userId AND pm.isPublic = true ORDER BY pm.joinedAt DESC")
-    List<ProjectMember> findPublicByUserId(@Param("userId") Long userId);
 
 }

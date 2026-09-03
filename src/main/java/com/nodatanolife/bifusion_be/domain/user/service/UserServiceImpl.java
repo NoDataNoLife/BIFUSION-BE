@@ -88,7 +88,7 @@ public class UserServiceImpl implements UserService {
      */
     @Override
     @Transactional(readOnly = true)
-    public MyPageBasicResponse getMyPageBasic(Long userId) {
+    public MyPageBasicResponse getMyPageBasic(Long userId, int size) {
         User user = userRepository.findById(userId).orElseThrow(UserNotFoundException::new);
         boolean isExpert = expertService.resolveStatus(user) == ExpertApplicationStatus.APPROVED;
 
@@ -111,9 +111,9 @@ public class UserServiceImpl implements UserService {
         activities.addAll(recruitService.getPublicRecruitsByUser(userId).stream()
                 .map(MyPageBasicResponse.PublicActivityResponse::ofRecruitment).toList());
 
-        MyProjectsResponse projects = projectService.getMyProjects(user.getEmail(), null, 50, true);
+        MyProjectsResponse projects = projectService.getMyProjects(user.getEmail(), null, size, true);
         activities.addAll(projects.items().stream()
-                .map(item -> MyPageBasicResponse.PublicActivityResponse.ofProject(item, user.getCreatedAt()))
+                .map(item -> MyPageBasicResponse.PublicActivityResponse.ofProject(item, item.createdAt()))
                 .toList());
 
         activities.sort((a, b) -> {

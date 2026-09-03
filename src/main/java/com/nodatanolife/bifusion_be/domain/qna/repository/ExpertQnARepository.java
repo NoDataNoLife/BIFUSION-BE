@@ -48,6 +48,6 @@ public interface ExpertQnARepository extends JpaRepository<ExpertQnA, Long> {
             Pageable pageable
     );
 
-    @Query("SELECT q FROM ExpertQnA q JOIN FETCH q.user WHERE q.user.userId = :userId AND q.isPublic = true AND q.deletedAt IS NULL ORDER BY q.createdAt DESC")
+    @Query("SELECT q FROM ExpertQnA q JOIN FETCH q.user WHERE q.user.userId = :userId AND q.isPublic = true AND q.isMyPageVisible = true AND q.deletedAt IS NULL ORDER BY q.createdAt DESC")
     List<ExpertQnA> findPublicByUserId(@Param("userId") Long userId);
 }

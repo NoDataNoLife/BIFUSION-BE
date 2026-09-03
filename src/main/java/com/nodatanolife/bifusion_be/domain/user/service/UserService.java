@@ -11,7 +11,7 @@ public interface UserService {
 
     UserResponse getMe(Long userId);
 
-    MyPageBasicResponse getMyPageBasic(Long userId);
+    MyPageBasicResponse getMyPageBasic(Long userId, int size);
 
     NicknameUpdateResponse updateNickname(Long userId, String nickname);
 

@@ -36,6 +36,6 @@ public interface RecruitRepository extends JpaRepository<Recruit, Long> {
             Pageable pageable
     );
 
-    @Query("SELECT r FROM Recruit r JOIN FETCH r.user WHERE r.user.userId = :userId AND r.isPublic = true AND r.deletedAt IS NULL ORDER BY r.createdAt DESC")
+    @Query("SELECT r FROM Recruit r JOIN FETCH r.user WHERE r.user.userId = :userId AND r.isPublic = true AND r.isMyPageVisible = true AND r.deletedAt IS NULL ORDER BY r.createdAt DESC")
     List<Recruit> findPublicByUserId(@Param("userId") Long userId);
 }
