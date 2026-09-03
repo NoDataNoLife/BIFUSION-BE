@@ -40,7 +40,9 @@ public class InspectionResultServiceImpl implements InspectionResultService {
                 .collect(Collectors.groupingBy(
                         InspectionRequest::getTargetId,
                         Collectors.collectingAndThen(
-                                Collectors.maxBy(Comparator.comparing(InspectionRequest::getAppliedAt)),
+                                Collectors.maxBy(Comparator.comparing(
+                                        InspectionRequest::getAppliedAt,
+                                        Comparator.nullsLast(Comparator.naturalOrder()))),
                                 latest -> latest.map(InspectionSummary::of).orElseGet(InspectionSummary::none)
                         )
                 ));
