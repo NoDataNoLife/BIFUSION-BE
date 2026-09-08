@@ -94,27 +94,76 @@ public class UserServiceImpl implements UserService {
 
         List<MyPageBasicResponse.PublicActivityResponse> activities = new ArrayList<>();
 
-        // Recipe(쇼케이스) - 댓글 수 배치 집계 필요
+// 1. RECIPE (쇼케이스)
         List<Recipe> recipes = recipeService.getPublicRecipesByUser(userId);
         Map<Long, Long> commentCounts = recipeReviewService.countCommentsByRecipeIds(
                 recipes.stream().map(Recipe::getRecipeId).toList());
+
         activities.addAll(recipes.stream()
-                .map(r -> MyPageBasicResponse.PublicActivityResponse.ofShowcase(r, commentCounts.getOrDefault(r.getRecipeId(), 0L)))
-                .toList());
+                .map(r -> new MyPageBasicResponse.PublicActivityResponse.RecipeItem(
+                        r.getRecipeId(),
+                        "RECIPE",
+                        r.getTitle(),
+                        r.getShortDescription(),
+                        r.getThumbnailUrl(),
+                        r.getIsPublic(),
+                        r.getLikeCount(),
+                        commentCounts.getOrDefault(r.getRecipeId(), 0L),
+                        r.getForkCount(),
+                        r.getCreatedAt()
+                )).toList());
 
+        // 2. DATASET
         activities.addAll(datasetService.getPublicDatasetsByUser(userId).stream()
-                .map(MyPageBasicResponse.PublicActivityResponse::ofDataset).toList());
+                .map(d -> new MyPageBasicResponse.PublicActivityResponse.DatasetItem(
+                        d.getDatasetId(),
+                        "DATASET",
+                        d.getTitle(),
+                        d.getDescription(),
+                        null,
+                        d.getIsPublic(),
+                        d.getLikeCount(),
+                        d.getDownloadCount(),
+                        d.getCreatedAt()
+                )).toList());
 
+        // 3. QNA
         activities.addAll(expertQnAService.getPublicQnasByUser(userId).stream()
-                .map(MyPageBasicResponse.PublicActivityResponse::ofQna).toList());
+                .map(q -> new MyPageBasicResponse.PublicActivityResponse.QnaItem(
+                        q.getExpertQnAId(),
+                        "QNA",
+                        q.getTitle(),
+                        q.getContent(),
+                        q.getIsPublic(),
+                        q.getAnswerCount(), // commentCount로 매핑 (전문가 답변 수)
+                        q.getCreatedAt()
+                )).toList());
 
+        // 4. RECRUITMENT
         activities.addAll(recruitService.getPublicRecruitsByUser(userId).stream()
-                .map(MyPageBasicResponse.PublicActivityResponse::ofRecruitment).toList());
+                .map(r -> new MyPageBasicResponse.PublicActivityResponse.RecruitItem(
+                        r.getRecruitId(),
+                        "RECRUITMENT",
+                        r.getJobTitle(),
+                        r.getDescription(),
+                        r.getIsPublic(),
+                        0, // 지원자 수 필드/로직에 맞춰 매핑 (없으면 기본값 0)
+                        r.getCreatedAt()
+                )).toList());
 
+        // 5. PROJECT
         MyProjectsResponse projects = projectService.getMyProjects(user.getEmail(), null, size, true);
         activities.addAll(projects.items().stream()
-                .map(item -> MyPageBasicResponse.PublicActivityResponse.ofProject(item, item.createdAt()))
-                .toList());
+                .map(item -> new MyPageBasicResponse.PublicActivityResponse.ProjectItem(
+                        item.projectId(),
+                        "PROJECT",
+                        item.title(),
+                        null,
+                        true, // isPublic (공개 프로젝트)
+                        item.bannerImageUrl(),
+                        item.role(),
+                        item.createdAt()
+                )).toList());
 
         activities.sort((a, b) -> {
             if (a.createdAt() == null && b.createdAt() == null) return 0;
@@ -122,7 +171,12 @@ public class UserServiceImpl implements UserService {
             if (b.createdAt() == null) return -1;
             return b.createdAt().compareTo(a.createdAt());
         });
-        return MyPageBasicResponse.from(user, isExpert, activities);
+
+        List<MyPageBasicResponse.PublicActivityResponse> pagedActivities = activities.stream()
+                .limit(size)
+                .toList();
+
+        return MyPageBasicResponse.from(user, isExpert, pagedActivities);
     }
 
     /**
