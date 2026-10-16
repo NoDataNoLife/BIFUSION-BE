@@ -17,7 +17,10 @@ public interface JobPollingService {
     /** 폴링 대상(PENDING·RUNNING) Job. 반환된 엔티티는 판정용 스냅샷으로만 쓴다. */
     List<Job> findPollTargets();
 
-    void fail(Long jobId, JobFailureReason reason, String mlErrorDetail);
+    /**
+     * @return 실제로 실패 처리했으면 true. 이미 종료 상태라 아무것도 하지 않았으면 false
+     */
+    boolean fail(Long jobId, JobFailureReason reason, String mlErrorDetail);
 
     void applyProgress(Long jobId, boolean running, String currentStep);
 
