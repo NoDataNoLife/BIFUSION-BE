@@ -11,6 +11,7 @@ import com.nodatanolife.bifusion_be.domain.job.entity.AugmentationParameters;
 import com.nodatanolife.bifusion_be.domain.job.entity.InferenceConfig;
 import com.nodatanolife.bifusion_be.domain.job.entity.Job;
 import com.nodatanolife.bifusion_be.domain.job.entity.JobFailureReason;
+import com.nodatanolife.bifusion_be.domain.job.entity.JobStatus;
 import com.nodatanolife.bifusion_be.domain.job.entity.JobType;
 import com.nodatanolife.bifusion_be.domain.job.entity.TrainedModel;
 import com.nodatanolife.bifusion_be.domain.job.entity.TrainingConfig;
@@ -22,6 +23,8 @@ import com.nodatanolife.bifusion_be.domain.job.repository.JobRepository;
 import com.nodatanolife.bifusion_be.domain.job.repository.TrainedModelRepository;
 import com.nodatanolife.bifusion_be.domain.job.repository.TrainingConfigRepository;
 import com.nodatanolife.bifusion_be.domain.project.entity.Project;
+import com.nodatanolife.bifusion_be.domain.project.entity.ProjectMember;
+import com.nodatanolife.bifusion_be.domain.project.entity.ProjectRole;
 import com.nodatanolife.bifusion_be.domain.project.repository.ProjectMemberRepository;
 import com.nodatanolife.bifusion_be.domain.project.repository.ProjectRepository;
 import com.nodatanolife.bifusion_be.domain.user.entity.User;
@@ -105,6 +108,32 @@ public class JobCommandServiceImpl implements JobCommandService {
         };
         source.markRetriedBy(retryJob);
         return plan.asRetry();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public JobCancelPlan prepareCancel(Long userId, Long jobId) {
+        Job job = getJob(jobId);
+        ProjectMember member = projectMemberRepository
+                .findByProjectProjectIdAndUserUserId(job.getProject().getProjectId(), userId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.PROJECT_ACCESS_DENIED));
+        // 취소는 다른 사람이 진행 중인 작업을 멈추는 동작이라, 재시도(멤버 누구나)와 달리 본인·관리자로 제한한다.
+        if (!job.isOwnedBy(userId) && member.getRole() != ProjectRole.MANAGER) {
+            throw new BusinessException(ErrorCode.JOB_CANCEL_FORBIDDEN);
+        }
+        job.validateCancellable();
+        return new JobCancelPlan(job.getJobId(), job.getType(), job.getMlJobId(),
+                job.getStatus() == JobStatus.CANCELLED);
+    }
+
+    @Override
+    public void applyCancel(Long jobId) {
+        Job job = getJob(jobId);
+        if (job.getStatus() == JobStatus.CANCELLED) {
+            return;
+        }
+        // 폴러가 먼저 SUCCESS·FAILED로 반영했으면 cancel()이 JOB_ALREADY_FINISHED를 던진다.
+        job.cancel();
     }
 
     @Override

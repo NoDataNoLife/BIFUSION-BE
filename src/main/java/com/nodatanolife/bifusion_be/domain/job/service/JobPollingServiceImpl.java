@@ -62,8 +62,10 @@ public class JobPollingServiceImpl implements JobPollingService {
     }
 
     @Override
-    public void fail(Long jobId, JobFailureReason reason, String mlErrorDetail) {
-        findActiveJob(jobId).ifPresent(job -> job.fail(reason, mlErrorDetail));
+    public boolean fail(Long jobId, JobFailureReason reason, String mlErrorDetail) {
+        Optional<Job> active = findActiveJob(jobId);
+        active.ifPresent(job -> job.fail(reason, mlErrorDetail));
+        return active.isPresent();
     }
 
     @Override

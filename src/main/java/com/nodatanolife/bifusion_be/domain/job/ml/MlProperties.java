@@ -18,6 +18,7 @@ import java.util.List;
  * @param defaults        요청에서 생략된 파라미터를 채울 기본값
  * @param limits          Job 생성 요청의 파라미터 범위·이미지 장수 제한
  * @param polling         ML 작업 상태 폴링 스케줄러 설정
+ * @param cancel          ML 작업 취소 설정
  */
 @ConfigurationProperties(prefix = "ml")
 public record MlProperties(
@@ -29,7 +30,8 @@ public record MlProperties(
         DataSize maxInputSize,
         Defaults defaults,
         Limits limits,
-        Polling polling
+        Polling polling,
+        Cancel cancel
 ) {
 
     public record Defaults(
@@ -76,6 +78,15 @@ public record MlProperties(
             int batchSize,
             Duration launchTimeout,
             Duration runningTimeout
+    ) {
+    }
+
+    /**
+     * @param enabled ML 취소 엔드포인트 사용 여부. ML 배포 전에는 false로 두어
+     *                ML 작업은 계속 도는데 BE만 CANCELLED가 되는 상황(이후 재시도 시 중복 실행)을 막는다.
+     */
+    public record Cancel(
+            boolean enabled
     ) {
     }
 
