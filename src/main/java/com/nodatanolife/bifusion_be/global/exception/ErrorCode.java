@@ -12,6 +12,7 @@ public enum ErrorCode {
     INVALID_REQUEST(HttpStatus.BAD_REQUEST, "C002", "잘못된 요청입니다."),
     INVALID_INPUT_VALUE(HttpStatus.BAD_REQUEST, "C003", "입력값이 올바르지 않습니다."),
     RESOURCE_NOT_FOUND(HttpStatus.NOT_FOUND, "C004", "요청한 리소스를 찾을 수 없습니다."),
+    INVALID_CURSOR(HttpStatus.BAD_REQUEST, "C005", "유효하지 않은 커서 값입니다."),
 
     /* ================================
      * Auth / User
