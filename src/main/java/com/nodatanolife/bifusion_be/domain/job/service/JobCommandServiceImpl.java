@@ -98,14 +98,9 @@ public class JobCommandServiceImpl implements JobCommandService {
                 Stream.concat(request.getNormalFileIds().stream(), request.getAnomalyFileIds().stream()).toList(),
                 false);
 
-        Job job = jobRepository.saveAndFlush(
-                Job.create(project, user, JobType.AUGMENTATION, parameters.seed(), idempotencyKey));
-        augmentationConfigRepository.save(AugmentationConfig.create(
-                job, parameters, request.getNormalFileIds(), request.getAnomalyFileIds()));
-        inputFiles.forEach(file -> file.attachToJob(job.getJobId()));
-
-        return JobLaunchPlan.augmentation(job.getJobId(), parameters,
-                request.getNormalFileIds(), request.getAnomalyFileIds());
+        return saveAugmentation(
+                Job.create(project, user, JobType.AUGMENTATION, parameters.seed(), idempotencyKey),
+                parameters, request.getNormalFileIds(), request.getAnomalyFileIds(), inputFiles);
     }
 
     private JobLaunchPlan createTraining(Project project, User user, TrainingJobCreateRequest request,
@@ -115,11 +110,9 @@ public class JobCommandServiceImpl implements JobCommandService {
         jobRequestValidator.validateTraining(parameters);
         AugmentationConfig source = getReadyDataset(project.getProjectId(), request.getDatasetId());
 
-        Job job = jobRepository.saveAndFlush(
-                Job.create(project, user, JobType.TRAINING, parameters.seed(), idempotencyKey));
-        trainingConfigRepository.save(TrainingConfig.create(job, source, parameters));
-
-        return JobLaunchPlan.training(job.getJobId(), parameters, source.getMlDatasetId());
+        return saveTraining(
+                Job.create(project, user, JobType.TRAINING, parameters.seed(), idempotencyKey),
+                source, parameters);
     }
 
     private JobLaunchPlan createInference(Project project, User user, InferenceJobCreateRequest request,
@@ -130,12 +123,37 @@ public class JobCommandServiceImpl implements JobCommandService {
                 .orElseThrow(() -> new BusinessException(ErrorCode.TRAINED_MODEL_NOT_FOUND));
         List<File> inputFiles = getAttachableFiles(user.getUserId(), request.getFileIds(), false);
 
-        Job job = jobRepository.saveAndFlush(
-                Job.create(project, user, JobType.INFERENCE, null, idempotencyKey));
-        inferenceConfigRepository.save(InferenceConfig.create(job, model, request.getFileIds()));
-        inputFiles.forEach(file -> file.attachToJob(job.getJobId()));
+        return saveInference(
+                Job.create(project, user, JobType.INFERENCE, null, idempotencyKey),
+                model, request.getFileIds(), inputFiles);
+    }
 
-        return JobLaunchPlan.inference(job.getJobId(), model.getMlModelId(), request.getFileIds());
+    /*
+     * 아래 save* 메서드는 검증이 끝난 값으로 Job·Config를 저장하고 입력 파일을 연결한 뒤, ML 실행 계획을 돌려준다.
+     * 값을 어디서 만드는지(요청 DTO 또는 원본 Job)와 무관하게 같은 저장 로직을 쓰기 위해 분리했다.
+     * saveAndFlush: 멱등 키 unique 위반을 이 트랜잭션 안에서 바로 드러내기 위해.
+     */
+
+    private JobLaunchPlan saveAugmentation(Job job, AugmentationParameters parameters,
+                                           List<Long> normalFileIds, List<Long> anomalyFileIds,
+                                           List<File> inputFiles) {
+        Job saved = jobRepository.saveAndFlush(job);
+        augmentationConfigRepository.save(AugmentationConfig.create(saved, parameters, normalFileIds, anomalyFileIds));
+        inputFiles.forEach(file -> file.attachToJob(saved.getJobId()));
+        return JobLaunchPlan.augmentation(saved.getJobId(), parameters, normalFileIds, anomalyFileIds);
+    }
+
+    private JobLaunchPlan saveTraining(Job job, AugmentationConfig source, TrainingParameters parameters) {
+        Job saved = jobRepository.saveAndFlush(job);
+        trainingConfigRepository.save(TrainingConfig.create(saved, source, parameters));
+        return JobLaunchPlan.training(saved.getJobId(), parameters, source.getMlDatasetId());
+    }
+
+    private JobLaunchPlan saveInference(Job job, TrainedModel model, List<Long> inputFileIds, List<File> inputFiles) {
+        Job saved = jobRepository.saveAndFlush(job);
+        inferenceConfigRepository.save(InferenceConfig.create(saved, model, inputFileIds));
+        inputFiles.forEach(file -> file.attachToJob(saved.getJobId()));
+        return JobLaunchPlan.inference(saved.getJobId(), model.getMlModelId(), inputFileIds);
     }
 
     /**

@@ -17,6 +17,7 @@ import org.springframework.util.StringUtils;
 
 import java.util.List;
 import java.util.Map;
+import java.util.function.Function;
 import java.util.stream.Stream;
 
 /**
@@ -40,11 +41,22 @@ public class JobLaunchFacade {
     private final MlClient mlClient;
 
     public JobResponse launch(Long userId, Long projectId, JobCreateRequest request, String idempotencyKey) {
+        return execute(userId, idempotencyKey,
+                key -> jobCommandService.createPending(userId, projectId, request, key));
+    }
+
+    /**
+     * 실행 계획 생성(트랜잭션 1) → ML 실행 요청(트랜잭션 밖) → 결과 반영(트랜잭션 2) → 응답.
+     * 생성과 재시도는 실행 계획을 만드는 방법만 다르고 이 흐름을 그대로 공유한다.
+     *
+     * @param planner 정규화된 멱등 키를 받아 트랜잭션 1을 수행하고 실행 계획을 돌려준다.
+     */
+    private JobResponse execute(Long userId, String idempotencyKey, Function<String, JobLaunchPlan> planner) {
         String key = StringUtils.hasText(idempotencyKey) ? idempotencyKey.strip() : null;
 
         JobLaunchPlan plan;
         try {
-            plan = jobCommandService.createPending(userId, projectId, request, key);
+            plan = planner.apply(key);
         } catch (DataIntegrityViolationException e) {
             // 같은 키로 동시에 들어온 요청: 먼저 커밋된 Job을 돌려준다.
             if (key == null) {
