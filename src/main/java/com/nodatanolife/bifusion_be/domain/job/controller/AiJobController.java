@@ -2,6 +2,9 @@ package com.nodatanolife.bifusion_be.domain.job.controller;
 
 import com.nodatanolife.bifusion_be.domain.job.dto.request.JobCreateRequest;
 import com.nodatanolife.bifusion_be.domain.job.dto.response.JobResponse;
+import com.nodatanolife.bifusion_be.domain.job.dto.response.ProjectJobListResponse;
+import com.nodatanolife.bifusion_be.domain.job.entity.JobStatus;
+import com.nodatanolife.bifusion_be.domain.job.entity.JobType;
 import com.nodatanolife.bifusion_be.domain.job.service.JobCancelFacade;
 import com.nodatanolife.bifusion_be.domain.job.service.JobLaunchFacade;
 import com.nodatanolife.bifusion_be.domain.job.service.JobQueryService;
@@ -39,6 +42,26 @@ public class AiJobController {
         JobResponse response = jobLaunchFacade.launch(
                 principal.getUser().getUserId(), projectId, request, idempotencyKey);
         return CommonResponse.success(response, "작업 요청이 접수되었습니다.");
+    }
+
+    @Operation(
+            summary = "프로젝트 AI 작업 목록",
+            description = "프로젝트의 작업을 최신순으로 조회합니다(커서 기반). type·status·keyword로 거를 수 있으며, "
+                    + "keyword는 JOB-015 형식이나 숫자면 작업 번호, 그 외는 실행자 닉네임으로 검색합니다. "
+                    + "statusCounts는 첫 페이지에서만 내려가며 status 필터는 반영하지 않습니다."
+    )
+    @GetMapping("/projects/{projectId}/jobs")
+    public CommonResponse<ProjectJobListResponse> getProjectJobs(
+            @PathVariable Long projectId,
+            @RequestParam(required = false) JobType type,
+            @RequestParam(required = false) JobStatus status,
+            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) String cursor,
+            @RequestParam(defaultValue = "20") int size,
+            @AuthenticationPrincipal CustomOAuth2User principal
+    ) {
+        return CommonResponse.success(jobQueryService.getProjectJobs(
+                principal.getUser().getUserId(), projectId, type, status, keyword, cursor, size));
     }
 
     @Operation(
