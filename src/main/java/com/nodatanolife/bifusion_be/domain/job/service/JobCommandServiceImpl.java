@@ -11,7 +11,6 @@ import com.nodatanolife.bifusion_be.domain.job.entity.AugmentationParameters;
 import com.nodatanolife.bifusion_be.domain.job.entity.InferenceConfig;
 import com.nodatanolife.bifusion_be.domain.job.entity.Job;
 import com.nodatanolife.bifusion_be.domain.job.entity.JobFailureReason;
-import com.nodatanolife.bifusion_be.domain.job.entity.JobStatus;
 import com.nodatanolife.bifusion_be.domain.job.entity.JobType;
 import com.nodatanolife.bifusion_be.domain.job.entity.TrainedModel;
 import com.nodatanolife.bifusion_be.domain.job.entity.TrainingConfig;
@@ -78,6 +77,36 @@ public class JobCommandServiceImpl implements JobCommandService {
         };
     }
 
+    /**
+     * 재시도 트랜잭션 1. 원본 Job을 행 잠금으로 읽어 동시 재시도를 막고,
+     * 원본의 파라미터 스냅샷(seed 포함)·입력 파일 순서·학습/추론 참조를 그대로 복사해 새 Job을 만든다.
+     * 원본 쪽 재시도 기록(retriedByJobId)과 새 Job의 원본 참조(retryOfJob)는 이 트랜잭션에서 함께 설정한다.
+     */
+    @Override
+    public JobLaunchPlan createRetry(Long userId, Long sourceJobId, String idempotencyKey) {
+        validateIdempotencyKey(idempotencyKey);
+        Job source = jobRepository.findByIdForUpdate(sourceJobId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.JOB_NOT_FOUND));
+        validateProjectMember(source.getProject().getProjectId(), userId);
+
+        if (idempotencyKey != null) {
+            Optional<Job> existing = jobRepository.findByUserUserIdAndIdempotencyKey(userId, idempotencyKey);
+            if (existing.isPresent()) {
+                return toExistingRetryPlan(existing.get(), sourceJobId);
+            }
+        }
+        source.validateRetryable();
+
+        Job retryJob = Job.createRetry(source, userRepository.getReferenceById(userId), idempotencyKey);
+        JobLaunchPlan plan = switch (source.getType()) {
+            case AUGMENTATION -> retryAugmentation(source, retryJob);
+            case TRAINING -> retryTraining(source, retryJob);
+            case INFERENCE -> retryInference(source, retryJob);
+        };
+        source.markRetriedBy(retryJob);
+        return plan.asRetry();
+    }
+
     @Override
     public void markStarted(Long jobId, String mlJobId) {
         getJob(jobId).start(mlJobId);
@@ -94,9 +123,8 @@ public class JobCommandServiceImpl implements JobCommandService {
         AugmentationParameters parameters = request.toParameters()
                 .withDefaults(mlProperties.defaults().augmentation());
         jobRequestValidator.validateAugmentation(parameters, request.getNormalFileIds(), request.getAnomalyFileIds());
-        List<File> inputFiles = getAttachableFiles(user.getUserId(),
-                Stream.concat(request.getNormalFileIds().stream(), request.getAnomalyFileIds().stream()).toList(),
-                false);
+        List<File> inputFiles = getNewInputFiles(user.getUserId(),
+                Stream.concat(request.getNormalFileIds().stream(), request.getAnomalyFileIds().stream()).toList());
 
         return saveAugmentation(
                 Job.create(project, user, JobType.AUGMENTATION, parameters.seed(), idempotencyKey),
@@ -121,11 +149,51 @@ public class JobCommandServiceImpl implements JobCommandService {
         TrainedModel model = trainedModelRepository.findById(request.getModelId())
                 .filter(m -> m.getProject().getProjectId().equals(project.getProjectId()))
                 .orElseThrow(() -> new BusinessException(ErrorCode.TRAINED_MODEL_NOT_FOUND));
-        List<File> inputFiles = getAttachableFiles(user.getUserId(), request.getFileIds(), false);
+        List<File> inputFiles = getNewInputFiles(user.getUserId(), request.getFileIds());
 
         return saveInference(
                 Job.create(project, user, JobType.INFERENCE, null, idempotencyKey),
                 model, request.getFileIds(), inputFiles);
+    }
+
+    private JobLaunchPlan retryAugmentation(Job source, Job retryJob) {
+        AugmentationConfig config = augmentationConfigRepository.findByJobJobId(source.getJobId())
+                .orElseThrow(() -> new BusinessException(ErrorCode.JOB_NOT_FOUND));
+        if (config.getParameters() == null || config.getNormalFileIds() == null || config.getAnomalyFileIds() == null) {
+            // 실행 기록(파라미터 스냅샷·입력 파일 목록)이 없는 예전 Job은 같은 입력으로 다시 실행할 수 없다.
+            throw new BusinessException(ErrorCode.JOB_RETRY_NEEDS_NEW_INPUT);
+        }
+        List<File> inputFiles = getRetryInputFiles(source.getJobId(),
+                Stream.concat(config.getNormalFileIds().stream(), config.getAnomalyFileIds().stream()).toList());
+        return saveAugmentation(retryJob, config.getParameters(),
+                config.getNormalFileIds(), config.getAnomalyFileIds(), inputFiles);
+    }
+
+    private JobLaunchPlan retryTraining(Job source, Job retryJob) {
+        TrainingConfig config = trainingConfigRepository.findByJobJobId(source.getJobId())
+                .orElseThrow(() -> new BusinessException(ErrorCode.JOB_NOT_FOUND));
+        if (config.getParameters() == null) {
+            throw new BusinessException(ErrorCode.JOB_RETRY_NEEDS_NEW_INPUT);
+        }
+        // 원본이 쓰던 증강 데이터가 여전히 학습에 쓸 수 있어야 한다 (생성 API와 같은 기준).
+        if (!config.getAugmentationConfig().isReadyForTraining()) {
+            throw new BusinessException(ErrorCode.DATASET_NOT_READY);
+        }
+        return saveTraining(retryJob, config.getAugmentationConfig(), config.getParameters());
+    }
+
+    private JobLaunchPlan retryInference(Job source, Job retryJob) {
+        InferenceConfig config = inferenceConfigRepository.findByJobJobId(source.getJobId())
+                .orElseThrow(() -> new BusinessException(ErrorCode.JOB_NOT_FOUND));
+        if (config.getInputFileIds() == null) {
+            throw new BusinessException(ErrorCode.JOB_RETRY_NEEDS_NEW_INPUT);
+        }
+        TrainedModel model = config.getTrainedModel();
+        if (model == null) {
+            throw new BusinessException(ErrorCode.TRAINED_MODEL_NOT_FOUND);
+        }
+        List<File> inputFiles = getRetryInputFiles(source.getJobId(), config.getInputFileIds());
+        return saveInference(retryJob, model, config.getInputFileIds(), inputFiles);
     }
 
     /*
@@ -170,45 +238,56 @@ public class JobCommandServiceImpl implements JobCommandService {
     }
 
     /**
-     * 입력 파일 검증: 존재 → 요청자 소유 → 임시 파일(다른 Job에 연결되지 않음) → 선언 용량 합계.
-     * 행 잠금으로 같은 임시 파일이 동시에 두 Job에 연결되지 않게 한다.
-     *
-     * @param allowReuseFromEndedJob true면 FAILED·CANCELLED Job에 연결된 본인 파일도 허용한다.
-     *                               재시도 API용 조건이며, Job 생성 API는 false로 호출한다 (재사용 시 FILE_ALREADY_USED).
+     * Job 생성용 입력 파일 검증: 존재 → 요청자 소유 → 임시 파일(다른 Job에 연결되지 않음) → 선언 용량 합계.
      */
-    private List<File> getAttachableFiles(Long userId, List<Long> fileIds, boolean allowReuseFromEndedJob) {
-        List<File> files = fileRepository.findAllByIdForUpdate(fileIds);
-        if (files.size() != fileIds.size()) {
-            throw new BusinessException(ErrorCode.FILE_NOT_FOUND);
-        }
-        long totalSize = 0;
+    private List<File> getNewInputFiles(Long userId, List<Long> fileIds) {
+        List<File> files = lockFiles(fileIds);
         for (File file : files) {
             if (!file.getUser().getUserId().equals(userId)) {
                 throw new BusinessException(ErrorCode.FILE_ACCESS_DENIED);
             }
-            if (!Boolean.TRUE.equals(file.getIsTemp())
-                    && !(allowReuseFromEndedJob && isInputOfEndedJob(file))) {
+            if (!Boolean.TRUE.equals(file.getIsTemp())) {
                 throw new BusinessException(ErrorCode.FILE_ALREADY_USED);
             }
-            totalSize += file.getFileSize() != null ? file.getFileSize() : 0;
         }
-        if (totalSize > mlProperties.maxInputSize().toBytes()) {
-            throw new BusinessException(ErrorCode.FILE_TOTAL_SIZE_EXCEEDED);
-        }
+        validateTotalSize(files);
         return files;
     }
 
     /**
-     * FAILED·CANCELLED Job의 입력 파일인지. (소유자 검증은 호출 측에서 이미 했다)
-     * 결과 파일(JOB_RESULT)이나 진행 중·성공한 Job의 입력 파일은 해당하지 않는다.
+     * 재시도용 입력 파일 검증: 존재 → 재시도 대상 Job의 입력 파일(JOB 타입으로 연결) → 선언 용량 합계.
+     * 재시도는 프로젝트 멤버 누구나 할 수 있어, 파일 소유자는 비교하지 않는다.
+     * (재시도 대상 Job이 FAILED·CANCELLED인지는 Job.validateRetryable()에서 이미 확인했다)
      */
-    private boolean isInputOfEndedJob(File file) {
-        if (!File.TARGET_TYPE_JOB.equals(file.getTargetType()) || file.getTargetId() == null) {
-            return false;
+    private List<File> getRetryInputFiles(Long sourceJobId, List<Long> fileIds) {
+        List<File> files = lockFiles(fileIds);
+        for (File file : files) {
+            if (!File.TARGET_TYPE_JOB.equals(file.getTargetType()) || !sourceJobId.equals(file.getTargetId())) {
+                throw new BusinessException(ErrorCode.FILE_ALREADY_USED);
+            }
         }
-        return jobRepository.findById(file.getTargetId())
-                .map(job -> job.getStatus() == JobStatus.FAILED || job.getStatus() == JobStatus.CANCELLED)
-                .orElse(false);
+        validateTotalSize(files);
+        return files;
+    }
+
+    /**
+     * 행 잠금으로 같은 파일이 동시에 두 Job에 연결되지 않게 한다.
+     */
+    private List<File> lockFiles(List<Long> fileIds) {
+        List<File> files = fileRepository.findAllByIdForUpdate(fileIds);
+        if (files.size() != fileIds.size()) {
+            throw new BusinessException(ErrorCode.FILE_NOT_FOUND);
+        }
+        return files;
+    }
+
+    private void validateTotalSize(List<File> files) {
+        long totalSize = files.stream()
+                .mapToLong(file -> file.getFileSize() != null ? file.getFileSize() : 0)
+                .sum();
+        if (totalSize > mlProperties.maxInputSize().toBytes()) {
+            throw new BusinessException(ErrorCode.FILE_TOTAL_SIZE_EXCEEDED);
+        }
     }
 
     /**
@@ -216,6 +295,16 @@ public class JobCommandServiceImpl implements JobCommandService {
      */
     private JobLaunchPlan toExistingPlan(Job job, Long projectId, JobType type) {
         if (!job.getProject().getProjectId().equals(projectId) || job.getType() != type) {
+            throw new BusinessException(ErrorCode.IDEMPOTENCY_KEY_REUSED);
+        }
+        return JobLaunchPlan.existing(job.getJobId(), job.getType());
+    }
+
+    /**
+     * 같은 키로 이미 만든 재시도 Job이 있으면 그대로 돌려준다. 다른 Job의 재시도(또는 생성)에 쓴 키면 거절한다.
+     */
+    private JobLaunchPlan toExistingRetryPlan(Job job, Long sourceJobId) {
+        if (!sourceJobId.equals(job.getRetryOfJobId())) {
             throw new BusinessException(ErrorCode.IDEMPOTENCY_KEY_REUSED);
         }
         return JobLaunchPlan.existing(job.getJobId(), job.getType());

@@ -39,6 +39,21 @@ public class AiJobController {
         return CommonResponse.success(response, "작업 요청이 접수되었습니다.");
     }
 
+    @Operation(
+            summary = "AI 작업 재시도",
+            description = "실패·취소된 작업을 같은 설정과 입력 이미지로 다시 실행하고 새 작업을 반환합니다. "
+                    + "응답의 retryable이 true인 가장 최근 작업에서만 가능합니다."
+    )
+    @PostMapping("/jobs/{jobId}/retry")
+    public CommonResponse<JobResponse> retryJob(
+            @PathVariable Long jobId,
+            @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey,
+            @AuthenticationPrincipal CustomOAuth2User principal
+    ) {
+        JobResponse response = jobLaunchFacade.retry(principal.getUser().getUserId(), jobId, idempotencyKey);
+        return CommonResponse.success(response, "작업 재시도 요청이 접수되었습니다.");
+    }
+
     @Operation(summary = "AI 작업 상태 조회", description = "작업 상태와 결과를 조회합니다. 결과는 SUCCESS 상태일 때만 포함됩니다.")
     @GetMapping("/jobs/{jobId}")
     public CommonResponse<JobResponse> getJob(
