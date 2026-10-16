@@ -117,6 +117,10 @@ public enum ErrorCode {
     JOB_NOT_RETRYABLE(HttpStatus.CONFLICT, "J010", "진행 중이거나 완료된 작업은 다시 시도할 수 없습니다."),
     JOB_RETRY_NEEDS_NEW_INPUT(HttpStatus.CONFLICT, "J011", "입력값 문제로 실패한 작업입니다. 이미지를 확인하고 새로 실행해 주세요."),
     JOB_ALREADY_RETRIED(HttpStatus.CONFLICT, "J012", "이미 다시 시도한 작업입니다. 가장 최근 작업에서 다시 시도해 주세요."),
+    JOB_STARTING(HttpStatus.CONFLICT, "J013", "작업을 시작하는 중입니다. 잠시 후 다시 시도해 주세요."),
+    JOB_FINISHED_BEFORE_CANCEL(HttpStatus.CONFLICT, "J014", "작업이 이미 끝나 취소할 수 없습니다. 잠시 후 결과를 확인해 주세요."),
+    JOB_CANCEL_FORBIDDEN(HttpStatus.FORBIDDEN, "J015", "작업을 만든 사람이나 프로젝트 관리자만 취소할 수 있습니다."),
+    JOB_CANCEL_UNAVAILABLE(HttpStatus.SERVICE_UNAVAILABLE, "J016", "현재 작업 취소 기능을 사용할 수 없습니다."),
 
     /* ================================
      * ML 서버 연동

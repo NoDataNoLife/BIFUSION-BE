@@ -17,6 +17,16 @@ public interface JobCommandService {
      */
     JobLaunchPlan createRetry(Long userId, Long sourceJobId, String idempotencyKey);
 
+    /**
+     * 취소 사전 확인: 프로젝트 멤버 → 본인 또는 MANAGER → 취소 가능 상태.
+     */
+    JobCancelPlan prepareCancel(Long userId, Long jobId);
+
+    /**
+     * 취소 반영. Job을 다시 읽어 이미 CANCELLED면 그대로 두고, SUCCESS·FAILED면 JOB_ALREADY_FINISHED.
+     */
+    void applyCancel(Long jobId);
+
     /** 트랜잭션 2: ML 접수 성공 */
     void markStarted(Long jobId, String mlJobId);
 

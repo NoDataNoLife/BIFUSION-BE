@@ -240,6 +240,23 @@ public class Job extends BaseEntity {
         this.retriedByJobId = retryJob.getJobId();
     }
 
+    /**
+     * 취소 요청을 받을 수 있는 상태인지 확인한다. CANCELLED는 같은 요청 반복을 허용하므로 통과한다.
+     * mlJobId 없는 PENDING은 실행 요청이 진행 중이라, BE만 취소하면 접수된 ML 작업을 추적할 수 없어 막는다.
+     */
+    public void validateCancellable() {
+        if (status == JobStatus.SUCCESS || status == JobStatus.FAILED) {
+            throw new BusinessException(ErrorCode.JOB_ALREADY_FINISHED);
+        }
+        if (status == JobStatus.PENDING && mlJobId == null) {
+            throw new BusinessException(ErrorCode.JOB_STARTING);
+        }
+    }
+
+    public boolean isOwnedBy(Long userId) {
+        return user.getUserId().equals(userId);
+    }
+
     public Long getRetryOfJobId() {
         return retryOfJob != null ? retryOfJob.getJobId() : null;
     }

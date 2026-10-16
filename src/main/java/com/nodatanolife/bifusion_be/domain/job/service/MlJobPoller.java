@@ -11,6 +11,7 @@ import com.nodatanolife.bifusion_be.domain.job.ml.dto.response.MlAugmentationRes
 import com.nodatanolife.bifusion_be.domain.job.ml.dto.response.MlInferenceResult;
 import com.nodatanolife.bifusion_be.domain.job.ml.dto.response.MlJobResponse;
 import com.nodatanolife.bifusion_be.domain.job.ml.dto.response.MlTrainingResult;
+import com.nodatanolife.bifusion_be.global.exception.ErrorCode;
 import com.nodatanolife.bifusion_be.global.exception.business.BusinessException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -60,13 +61,16 @@ public class MlJobPoller {
         // ML은 모르는 job_id에도 PENDING을 주므로, ML 조회 없이 시간으로 판정한다.
         if (job.isPendingTimedOut(mlProperties.pendingTimeout(), now)) {
             log.warn("[Polling] PENDING 타임아웃 - jobId: {}, mlJobId: {}", job.getJobId(), job.getMlJobId());
-            jobPollingService.fail(job.getJobId(), JobFailureReason.PENDING_TIMEOUT, null);
+            if (jobPollingService.fail(job.getJobId(), JobFailureReason.PENDING_TIMEOUT, null)) {
+                cancelOnMlQuietly(job, cycle);
+            }
             return;
         }
         if (job.isRunningTimedOut(polling.runningTimeout(), now)) {
-            // TODO: 취소 API 구현 후 ML 작업 취소 호출 (지금은 ML 쪽 작업이 계속 돌 수 있음)
             log.warn("[Polling] RUNNING 타임아웃 - jobId: {}, mlJobId: {}", job.getJobId(), job.getMlJobId());
-            jobPollingService.fail(job.getJobId(), JobFailureReason.RUNNING_TIMEOUT, null);
+            if (jobPollingService.fail(job.getJobId(), JobFailureReason.RUNNING_TIMEOUT, null)) {
+                cancelOnMlQuietly(job, cycle);
+            }
             return;
         }
         if (cycle.isMlUnavailable()) {
@@ -92,6 +96,36 @@ public class MlJobPoller {
                         job.getJobId(), job.getMlJobId());
                 default -> throw e;
             }
+        }
+    }
+
+    /**
+     * 타임아웃으로 실패 처리한 Job의 ML 작업을 멈추도록 취소를 한 번만 시도한다 (트랜잭션 밖).
+     * 결과와 관계없이 Job 상태는 바꾸지 않는다(이미 FAILED). 실패는 로그만 남기고 무시한다.
+     * ml.cancel.enabled=false이거나 이번 주기에 ML 연결 실패가 확인됐으면 시도하지 않는다.
+     */
+    private void cancelOnMlQuietly(Job job, PollingCycle cycle) {
+        if (!mlProperties.cancel().enabled()) {
+            return;
+        }
+        if (cycle.isMlUnavailable()) {
+            log.info("[Polling] ML 연결 불가로 타임아웃 Job의 ML 취소 생략 - jobId: {}, mlJobId: {}",
+                    job.getJobId(), job.getMlJobId());
+            return;
+        }
+        try {
+            switch (job.getType()) {
+                case AUGMENTATION -> mlClient.cancelAugmentation(job.getMlJobId());
+                case TRAINING -> mlClient.cancelTraining(job.getMlJobId());
+                case INFERENCE -> mlClient.cancelInference(job.getMlJobId());
+            }
+            log.info("[Polling] 타임아웃 Job의 ML 취소 요청 완료 - jobId: {}, mlJobId: {}", job.getJobId(), job.getMlJobId());
+        } catch (BusinessException e) {
+            if (e.getErrorCode() == ErrorCode.ML_CONNECTION_FAILED) {
+                cycle.markMlUnavailable();
+            }
+            log.warn("[Polling] 타임아웃 Job의 ML 취소 실패(무시) - jobId: {}, mlJobId: {}, code: {}",
+                    job.getJobId(), job.getMlJobId(), e.getErrorCode());
         }
     }
 

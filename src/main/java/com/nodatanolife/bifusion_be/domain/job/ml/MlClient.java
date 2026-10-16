@@ -15,7 +15,8 @@ import com.nodatanolife.bifusion_be.domain.job.ml.dto.response.MlTrainingResult;
  * - ML_CONNECTION_FAILED : 연결 오류·연결 타임아웃·5xx. ML이 작업을 접수하지 않은 경우.
  * - ML_SUBMIT_TIMEOUT    : 실행 요청의 응답 대기 타임아웃. ML이 이미 접수했을 수 있어 재시도하지 않는다.
  * - ML_REQUEST_INVALID   : 실행 요청 422. BE 요청 형식 버그.
- * - ML_JOB_NOT_FOUND     : 조회·취소 404. ML이 모르는 작업.
+ * - ML_JOB_NOT_FOUND     : 조회·취소 404 + 본문 detail.error_code = JOB_NOT_FOUND. ML이 모르는 작업.
+ *                          그 외 404(경로 없음 등)는 ML_RESPONSE_ERROR.
  * - ML_JOB_ALREADY_FINISHED : 취소 409. 이미 종료된 작업.
  * - ML_RESPONSE_ERROR    : 그 외 4xx, 응답 파싱 실패.
  * ML이 정상 응답으로 FAILED 상태를 준 경우는 예외가 아니며 MlJobResponse.status로 전달된다.
