@@ -166,4 +166,10 @@ public class RecipeServiceImpl implements RecipeService {
         // 적용하면 과거에 RECIPE 검수를 신청했던 레시피는 영구히 삭제 불가능해지므로 이 체크는 두지 않는다.
         recipe.delete();
     }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<Recipe> getPublicRecipesByUser(Long userId) {
+        return recipeRepository.findPublicByUserId(userId);
+    }
 }

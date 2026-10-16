@@ -175,4 +175,10 @@ public class ExpertQnAServiceImpl implements ExpertQnAService {
 
         qna.delete();
     }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<ExpertQnA> getPublicQnasByUser(Long userId) {
+        return expertQnARepository.findPublicByUserId(userId);
+    }
 }

@@ -1,5 +1,7 @@
 package com.nodatanolife.bifusion_be.domain.qna.service;
 
+import com.nodatanolife.bifusion_be.domain.qna.entity.ExpertQnA;
+import java.util.List;
 import com.nodatanolife.bifusion_be.domain.qna.dto.response.ExpertQnADetailResponse;
 import com.nodatanolife.bifusion_be.domain.qna.dto.request.ExpertQnAAnswerRequest;
 import com.nodatanolife.bifusion_be.domain.qna.dto.response.ExpertQnAAnswerResponse;
@@ -22,4 +24,6 @@ public interface ExpertQnAService {
     ExpertQnADetailResponse getQnaDetail(Long qnaId);
 
     void deleteQna(Long userId, Long qnaId);
+
+    List<ExpertQnA> getPublicQnasByUser(Long userId);
 }

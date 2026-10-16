@@ -67,8 +67,9 @@ public class UserController {
     )
     @GetMapping("/users/{userId}")
     public CommonResponse<MyPageBasicResponse> getMyPageBasic(
-            @PathVariable Long userId) {
-        MyPageBasicResponse response = userService.getMyPageBasic(userId);
+            @PathVariable Long userId,
+            @RequestParam(defaultValue = "10") int size) {
+        MyPageBasicResponse response = userService.getMyPageBasic(userId, size);
         return CommonResponse.success(response, "마이페이지 조회 성공!");
     }
 

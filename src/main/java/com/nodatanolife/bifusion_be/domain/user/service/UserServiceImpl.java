@@ -1,6 +1,12 @@
 package com.nodatanolife.bifusion_be.domain.user.service;
 
-
+import com.nodatanolife.bifusion_be.domain.recipe.service.RecipeReviewService;
+import com.nodatanolife.bifusion_be.domain.recipe.entity.Recipe;
+import com.nodatanolife.bifusion_be.domain.project.dto.response.MyProjectsResponse;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
+import java.util.Map;
 import com.nodatanolife.bifusion_be.domain.user.dto.response.*;
 import com.nodatanolife.bifusion_be.domain.user.dto.response.WebsiteUpdateResponse;
 import com.nodatanolife.bifusion_be.domain.user.entity.SubscriptionTier;
@@ -39,6 +45,8 @@ public class UserServiceImpl implements UserService {
     private final UserRepository userRepository;
 
     private final SubscriptionRepository subscriptionRepository;
+
+    private final RecipeReviewService recipeReviewService;
     // 인증
     private final AuthService authService;
 
@@ -80,10 +88,95 @@ public class UserServiceImpl implements UserService {
      */
     @Override
     @Transactional(readOnly = true)
-    public MyPageBasicResponse getMyPageBasic(Long userId) {
+    public MyPageBasicResponse getMyPageBasic(Long userId, int size) {
         User user = userRepository.findById(userId).orElseThrow(UserNotFoundException::new);
         boolean isExpert = expertService.resolveStatus(user) == ExpertApplicationStatus.APPROVED;
-        return MyPageBasicResponse.from(user, isExpert);
+
+        List<MyPageBasicResponse.PublicActivityResponse> activities = new ArrayList<>();
+
+// 1. RECIPE (쇼케이스)
+        List<Recipe> recipes = recipeService.getPublicRecipesByUser(userId);
+        Map<Long, Long> commentCounts = recipeReviewService.countCommentsByRecipeIds(
+                recipes.stream().map(Recipe::getRecipeId).toList());
+
+        activities.addAll(recipes.stream()
+                .map(r -> new MyPageBasicResponse.PublicActivityResponse.RecipeItem(
+                        r.getRecipeId(),
+                        "RECIPE",
+                        r.getTitle(),
+                        r.getShortDescription(),
+                        r.getThumbnailUrl(),
+                        r.getIsPublic(),
+                        r.getLikeCount(),
+                        commentCounts.getOrDefault(r.getRecipeId(), 0L),
+                        r.getForkCount(),
+                        r.getCreatedAt()
+                )).toList());
+
+        // 2. DATASET
+        activities.addAll(datasetService.getPublicDatasetsByUser(userId).stream()
+                .map(d -> new MyPageBasicResponse.PublicActivityResponse.DatasetItem(
+                        d.getDatasetId(),
+                        "DATASET",
+                        d.getTitle(),
+                        d.getDescription(),
+                        null,
+                        d.getIsPublic(),
+                        d.getLikeCount(),
+                        d.getDownloadCount(),
+                        d.getCreatedAt()
+                )).toList());
+
+        // 3. QNA
+        activities.addAll(expertQnAService.getPublicQnasByUser(userId).stream()
+                .map(q -> new MyPageBasicResponse.PublicActivityResponse.QnaItem(
+                        q.getExpertQnAId(),
+                        "QNA",
+                        q.getTitle(),
+                        q.getContent(),
+                        q.getIsPublic(),
+                        q.getAnswerCount(), // commentCount로 매핑 (전문가 답변 수)
+                        q.getCreatedAt()
+                )).toList());
+
+        // 4. RECRUITMENT
+        activities.addAll(recruitService.getPublicRecruitsByUser(userId).stream()
+                .map(r -> new MyPageBasicResponse.PublicActivityResponse.RecruitItem(
+                        r.getRecruitId(),
+                        "RECRUITMENT",
+                        r.getJobTitle(),
+                        r.getDescription(),
+                        r.getIsPublic(),
+                        0, // 지원자 수 필드/로직에 맞춰 매핑 (없으면 기본값 0)
+                        r.getCreatedAt()
+                )).toList());
+
+        // 5. PROJECT
+        MyProjectsResponse projects = projectService.getMyProjects(user.getEmail(), null, size, true);
+        activities.addAll(projects.items().stream()
+                .map(item -> new MyPageBasicResponse.PublicActivityResponse.ProjectItem(
+                        item.projectId(),
+                        "PROJECT",
+                        item.title(),
+                        null,
+                        true, // isPublic (공개 프로젝트)
+                        item.bannerImageUrl(),
+                        item.role(),
+                        item.createdAt()
+                )).toList());
+
+        activities.sort((a, b) -> {
+            if (a.createdAt() == null && b.createdAt() == null) return 0;
+            if (a.createdAt() == null) return 1;
+            if (b.createdAt() == null) return -1;
+            return b.createdAt().compareTo(a.createdAt());
+        });
+
+        List<MyPageBasicResponse.PublicActivityResponse> pagedActivities = activities.stream()
+                .limit(size)
+                .toList();
+
+        return MyPageBasicResponse.from(user, isExpert, pagedActivities);
     }
 
     /**

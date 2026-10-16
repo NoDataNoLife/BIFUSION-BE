@@ -248,4 +248,10 @@ public class RecruitServiceImpl implements RecruitService {
 
         recruit.delete();
     }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<Recruit> getPublicRecruitsByUser(Long userId) {
+        return recruitRepository.findPublicByUserId(userId);
+    }
 }

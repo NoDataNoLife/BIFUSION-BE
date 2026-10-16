@@ -5,15 +5,13 @@ import com.nodatanolife.bifusion_be.domain.user.dto.response.*;
 import com.nodatanolife.bifusion_be.domain.user.dto.request.OnboardingRequest;
 import com.nodatanolife.bifusion_be.domain.user.entity.SubscriptionTier;
 import org.springframework.web.multipart.MultipartFile;
-import com.nodatanolife.bifusion_be.domain.user.entity.SubscriptionTier;
-import org.springframework.web.multipart.MultipartFile;
 
 
 public interface UserService {
 
     UserResponse getMe(Long userId);
 
-    MyPageBasicResponse getMyPageBasic(Long userId);
+    MyPageBasicResponse getMyPageBasic(Long userId, int size);
 
     NicknameUpdateResponse updateNickname(Long userId, String nickname);
 
@@ -32,4 +30,5 @@ public interface UserService {
     void withdraw(Long userId);
 
     UserSearchResponse searchByEmail(String email);
+
 }

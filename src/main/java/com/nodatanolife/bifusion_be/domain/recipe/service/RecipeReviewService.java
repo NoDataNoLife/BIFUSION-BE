@@ -1,5 +1,7 @@
 package com.nodatanolife.bifusion_be.domain.recipe.service;
 
+import java.util.List;
+import java.util.Map;
 import com.nodatanolife.bifusion_be.domain.recipe.dto.request.RecipeReviewRequest;
 import com.nodatanolife.bifusion_be.domain.recipe.dto.request.RecipeReviewUpdateRequest;
 import com.nodatanolife.bifusion_be.domain.recipe.dto.response.RecipeReviewResponse;
@@ -28,4 +30,6 @@ public interface RecipeReviewService {
      * 레시피의 최상위 댓글을 페이지 조회한다. 각 댓글에는 딸린 대댓글이 함께 채워진다.
      */
     Page<RecipeReviewResponse> getReviews(Long recipeId, int page, int size);
+
+    Map<Long, Long> countCommentsByRecipeIds(List<Long> recipeIds);
 }
