@@ -139,15 +139,13 @@ public class JobCommandServiceImpl implements JobCommandService {
     }
 
     /**
-     * 같은 프로젝트의 SUCCESS 증강 Job이고 ML 데이터셋 ID가 있어야 학습에 쓸 수 있다.
+     * 같은 프로젝트의 증강 결과이고 학습에 쓸 수 있어야 한다.
+     * 판정 기준은 증강 데이터셋 목록과 같은 AugmentationConfig.isReadyForTraining()을 쓴다.
      */
     private AugmentationConfig getReadyDataset(Long projectId, Long augmentationJobId) {
         AugmentationConfig source = augmentationConfigRepository.findByJobJobId(augmentationJobId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.DATASET_NOT_READY));
-        Job sourceJob = source.getJob();
-        if (!sourceJob.getProject().getProjectId().equals(projectId)
-                || sourceJob.getStatus() != JobStatus.SUCCESS
-                || source.getMlDatasetId() == null) {
+        if (!source.getJob().getProject().getProjectId().equals(projectId) || !source.isReadyForTraining()) {
             throw new BusinessException(ErrorCode.DATASET_NOT_READY);
         }
         return source;
