@@ -1,5 +1,7 @@
 package com.nodatanolife.bifusion_be.domain.job.ml;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.nodatanolife.bifusion_be.domain.job.ml.dto.request.MlAugmentationRunRequest;
 import com.nodatanolife.bifusion_be.domain.job.ml.dto.request.MlInferenceRunRequest;
 import com.nodatanolife.bifusion_be.domain.job.ml.dto.request.MlTrainingRunRequest;
@@ -39,6 +41,8 @@ public class MlClientImpl implements MlClient {
     private static final String AUGMENTATION = "augmentation";
     private static final String TRAINING = "training";
     private static final String INFERENCE = "inference";
+    private static final String JOB_NOT_FOUND_CODE = "JOB_NOT_FOUND";
+    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
     private final RestClient mlRestClient;
     private final MlProperties mlProperties;
@@ -130,7 +134,7 @@ public class MlClientImpl implements MlClient {
         try {
             return call.get();
         } catch (RestClientResponseException e) {
-            throw new BusinessException(classify(operation, task, e.getStatusCode()));
+            throw new BusinessException(classify(operation, task, e));
         } catch (ResourceAccessException e) {
             if (operation == Operation.RUN && isResponseTimeout(e)) {
                 log.warn("[ML] 실행 요청 응답 대기 타임아웃 - ML 접수 여부 불확실: {}", task);
@@ -168,7 +172,8 @@ public class MlClientImpl implements MlClient {
         return cause.getClass().getSimpleName();
     }
 
-    private ErrorCode classify(Operation operation, String task, HttpStatusCode status) {
+    private ErrorCode classify(Operation operation, String task, RestClientResponseException e) {
+        HttpStatusCode status = e.getStatusCode();
         if (status.is5xxServerError()) {
             logUnavailable(operation, "[ML] 서버 오류 응답 - {} {}: {}", operation, task, status.value());
             return ErrorCode.ML_CONNECTION_FAILED;
@@ -178,13 +183,33 @@ public class MlClientImpl implements MlClient {
             return ErrorCode.ML_REQUEST_INVALID;
         }
         if (operation != Operation.RUN && status.value() == HttpStatus.NOT_FOUND.value()) {
-            return ErrorCode.ML_JOB_NOT_FOUND;
+            if (isJobNotFound(e)) {
+                return ErrorCode.ML_JOB_NOT_FOUND;
+            }
+            // 경로 없음(ML 주소 오설정·엔드포인트 미구현 등)일 수 있어 작업 없음으로 보지 않는다. 호출자는 상태를 바꾸지 않는다.
+            logUnavailable(operation, "[ML] 404 응답에 error_code JOB_NOT_FOUND 없음 - 작업 없음으로 보지 않음, {} {}",
+                    operation, task);
+            return ErrorCode.ML_RESPONSE_ERROR;
         }
         if (operation == Operation.CANCEL && status.value() == HttpStatus.CONFLICT.value()) {
             return ErrorCode.ML_JOB_ALREADY_FINISHED;
         }
         log.error("[ML] 예상하지 못한 응답 - {} {}: {}", operation, task, status.value());
         return ErrorCode.ML_RESPONSE_ERROR;
+    }
+
+    /**
+     * 404 응답 본문이 ML의 "작업 없음" 형식인지 확인한다: {"detail": {"error_code": "JOB_NOT_FOUND", ...}}
+     * FastAPI는 경로가 없을 때도 404({"detail": "Not Found"})를 주므로 상태 코드만으로는 구분할 수 없다.
+     * 본문이 없거나 파싱에 실패하면 false. 본문은 로그에 남기지 않는다.
+     */
+    private static boolean isJobNotFound(RestClientResponseException e) {
+        try {
+            JsonNode errorCode = OBJECT_MAPPER.readTree(e.getResponseBodyAsString()).path("detail").path("error_code");
+            return JOB_NOT_FOUND_CODE.equals(errorCode.asText(null));
+        } catch (Exception parseFailure) {
+            return false;
+        }
     }
 
     private enum Operation {
