@@ -13,6 +13,7 @@ import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
 import software.amazon.awssdk.services.s3.model.GetObjectRequest;
+import software.amazon.awssdk.services.s3.model.NoSuchKeyException;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 import software.amazon.awssdk.services.s3.presigner.S3Presigner;
 import software.amazon.awssdk.services.s3.presigner.model.GetObjectPresignRequest;
@@ -162,8 +163,14 @@ public class S3Service {
     }
 
     public byte[] downloadFile(String prefix, String filename) {
+        return downloadFile(prefix.replaceAll("/+$", "") + "/" + filename);
+    }
+
+    /**
+     * S3 key로 객체를 읽는다. 객체가 없으면(임시 파일 정리 등) FILE_NOT_FOUND.
+     */
+    public byte[] downloadFile(String s3Key) {
         try {
-            String s3Key = prefix.replaceAll("/+$", "") + "/" + filename;
             GetObjectRequest getObjectRequest = GetObjectRequest.builder()
                     .bucket(bucketName)
                     .key(s3Key)
@@ -171,6 +178,8 @@ public class S3Service {
 
             ResponseBytes<?> responseBytes = s3Client.getObjectAsBytes(getObjectRequest);
             return responseBytes.asByteArray();
+        } catch (NoSuchKeyException e) {
+            throw new BusinessException(ErrorCode.FILE_NOT_FOUND);
         } catch (SdkException e) {
             throw new BusinessException(ErrorCode.FILE_DOWNLOAD_FAILED);
         }
