@@ -2,6 +2,7 @@ package com.nodatanolife.bifusion_be.domain.job.controller;
 
 import com.nodatanolife.bifusion_be.domain.job.dto.request.JobCreateRequest;
 import com.nodatanolife.bifusion_be.domain.job.dto.response.JobResponse;
+import com.nodatanolife.bifusion_be.domain.job.service.JobCancelFacade;
 import com.nodatanolife.bifusion_be.domain.job.service.JobLaunchFacade;
 import com.nodatanolife.bifusion_be.domain.job.service.JobQueryService;
 import com.nodatanolife.bifusion_be.global.response.CommonResponse;
@@ -20,6 +21,7 @@ import org.springframework.web.bind.annotation.*;
 public class AiJobController {
 
     private final JobLaunchFacade jobLaunchFacade;
+    private final JobCancelFacade jobCancelFacade;
     private final JobQueryService jobQueryService;
 
     @Operation(
@@ -52,6 +54,20 @@ public class AiJobController {
     ) {
         JobResponse response = jobLaunchFacade.retry(principal.getUser().getUserId(), jobId, idempotencyKey);
         return CommonResponse.success(response, "작업 재시도 요청이 접수되었습니다.");
+    }
+
+    @Operation(
+            summary = "AI 작업 취소",
+            description = "진행 중인 작업을 취소합니다. 작업을 만든 사람이나 프로젝트 관리자만 가능하며, "
+                    + "이미 취소된 작업은 현재 상태를 그대로 반환합니다."
+    )
+    @PostMapping("/jobs/{jobId}/cancel")
+    public CommonResponse<JobResponse> cancelJob(
+            @PathVariable Long jobId,
+            @AuthenticationPrincipal CustomOAuth2User principal
+    ) {
+        return CommonResponse.success(
+                jobCancelFacade.cancel(principal.getUser().getUserId(), jobId), "작업이 취소되었습니다.");
     }
 
     @Operation(summary = "AI 작업 상태 조회", description = "작업 상태와 결과를 조회합니다. 결과는 SUCCESS 상태일 때만 포함됩니다.")
