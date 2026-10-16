@@ -1,6 +1,7 @@
 package com.nodatanolife.bifusion_be.domain.job.entity;
 
 import com.nodatanolife.bifusion_be.domain.file.entity.File;
+import com.nodatanolife.bifusion_be.domain.job.entity.converter.PredictedClassConverter;
 import com.nodatanolife.bifusion_be.global.entity.BaseEntity;
 import jakarta.persistence.*;
 import lombok.*;
@@ -32,7 +33,8 @@ public class InferenceResult extends BaseEntity {
     @Column(name = "sample_index")
     private Integer sampleIndex;
 
-    @Enumerated(EnumType.STRING)
+    // 컨버터로 매핑: @Enumerated는 새 컬럼에 enum 값 목록 CHECK 제약을 만들어 값 추가 시 prod 저장이 막힌다.
+    @Convert(converter = PredictedClassConverter.class)
     @Column(name = "predicted_class", length = 20)
     private PredictedClass predictedClass;
 

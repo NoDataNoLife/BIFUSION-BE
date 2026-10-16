@@ -10,45 +10,50 @@ import java.util.List;
  * (ML 원문은 Job.mlErrorDetail에만 저장하고 어떤 응답에도 포함하지 않는다.)
  *
  * 판정 순서: ML error_code → ML error 시작 문구(입력 오류만) → UNKNOWN
+ * retryable: 입력을 바꾸지 않고 재시도할 수 있는 사유인지 (재시도 API 판정에 사용)
  */
 @Getter
 public enum JobFailureReason {
 
-    NORMAL_IMAGE_INVALID(null, List.of("No valid Normal images"), List.of(),
+    NORMAL_IMAGE_INVALID(false, null, List.of("No valid Normal images"), List.of(),
             "정상 이미지를 읽을 수 없습니다. JPG 또는 PNG 이미지인지 확인해 주세요."),
-    ANOMALY_IMAGE_INVALID(null, List.of("No valid Anomaly images"), List.of(),
+    ANOMALY_IMAGE_INVALID(false, null, List.of("No valid Anomaly images"), List.of(),
             "비정상 이미지를 읽을 수 없습니다. JPG 또는 PNG 이미지인지 확인해 주세요."),
-    INFERENCE_IMAGE_INVALID(null, List.of("No valid input images to diagnose"), List.of(),
+    INFERENCE_IMAGE_INVALID(false, null, List.of("No valid input images to diagnose"), List.of(),
             "분류할 이미지를 읽을 수 없습니다. JPG 또는 PNG 이미지인지 확인해 주세요."),
-    INVALID_IMAGE("INVALID_IMAGE", List.of(), List.of(),
+    INVALID_IMAGE(false, "INVALID_IMAGE", List.of(), List.of(),
             "이미지를 읽을 수 없습니다. JPG 또는 PNG 이미지인지 확인해 주세요."),
     // "train_few_shot: class 0 has no samples in dataset"처럼 앞에 함수명이 붙어 오는 문구는 포함 여부로 판정한다.
-    DATASET_UNAVAILABLE("DATASET_NOT_FOUND", List.of("Dataset not found"), List.of("has no samples in dataset"),
+    DATASET_UNAVAILABLE(false, "DATASET_NOT_FOUND", List.of("Dataset not found"), List.of("has no samples in dataset"),
             "선택한 증강 데이터를 사용할 수 없습니다. 증강 작업을 다시 실행해 주세요."),
-    MODEL_UNAVAILABLE("MODEL_NOT_FOUND", List.of("Trained ProtoNet model not found"), List.of(),
+    MODEL_UNAVAILABLE(false, "MODEL_NOT_FOUND", List.of("Trained ProtoNet model not found"), List.of(),
             "선택한 모델을 사용할 수 없습니다. 학습 작업을 다시 실행해 주세요."),
-    GPU_OUT_OF_MEMORY("GPU_OUT_OF_MEMORY", List.of(), List.of(),
+    GPU_OUT_OF_MEMORY(true, "GPU_OUT_OF_MEMORY", List.of(), List.of(),
             "AI 서버의 메모리가 부족해 작업을 완료하지 못했습니다. 이미지 수를 줄이거나 잠시 후 다시 시도해 주세요."),
-    ML_UNAVAILABLE(null, List.of(), List.of(),
+    ML_UNAVAILABLE(true, null, List.of(), List.of(),
             "AI 서버에 연결할 수 없어 작업을 시작하지 못했습니다. 잠시 후 다시 시도해 주세요."),
     // 실행 요청 응답 대기 중 타임아웃. ML이 이미 접수했을 수 있어 자동 재시도하지 않는다.
-    ML_SUBMIT_UNCERTAIN(null, List.of(), List.of(),
+    ML_SUBMIT_UNCERTAIN(true, null, List.of(), List.of(),
             "AI 서버 응답이 지연되어 작업을 시작하지 못했습니다. 잠시 후 다시 시도해 주세요."),
-    ML_JOB_NOT_FOUND(null, List.of(), List.of(),
+    ML_JOB_NOT_FOUND(true, null, List.of(), List.of(),
             "AI 서버에서 작업 정보를 찾을 수 없어 중단되었습니다. 작업을 다시 실행해 주세요."),
-    RUNNING_TIMEOUT(null, List.of(), List.of(),
+    RUNNING_TIMEOUT(true, null, List.of(), List.of(),
             "작업 시간이 너무 오래 걸려 중단되었습니다. 설정을 확인한 뒤 다시 실행해 주세요."),
-    PENDING_TIMEOUT(null, List.of(), List.of(),
+    PENDING_TIMEOUT(true, null, List.of(), List.of(),
             "대기 시간이 너무 길어 작업이 중단되었습니다. 잠시 후 다시 실행해 주세요."),
-    UNKNOWN(null, List.of(), List.of(),
+    UNKNOWN(true, null, List.of(), List.of(),
             "작업 처리 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.");
 
+    // 같은 입력으로 다시 실행하면 성공할 수 있는 사유인지 (시스템·인프라 오류). 입력 오류는 false.
+    private final boolean retryable;
     private final String mlErrorCode;
     private final List<String> errorPrefixes;
     private final List<String> errorFragments;
     private final String message;
 
-    JobFailureReason(String mlErrorCode, List<String> errorPrefixes, List<String> errorFragments, String message) {
+    JobFailureReason(boolean retryable, String mlErrorCode, List<String> errorPrefixes, List<String> errorFragments,
+                     String message) {
+        this.retryable = retryable;
         this.mlErrorCode = mlErrorCode;
         this.errorPrefixes = errorPrefixes;
         this.errorFragments = errorFragments;
