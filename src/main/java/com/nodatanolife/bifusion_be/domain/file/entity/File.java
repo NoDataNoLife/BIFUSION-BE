@@ -13,6 +13,8 @@ import lombok.*;
 @Builder(access = AccessLevel.PRIVATE)
 public class File extends BaseCreatedEntity {
 
+    public static final String TARGET_TYPE_JOB = "JOB";
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "file_id")
@@ -65,5 +67,14 @@ public class File extends BaseCreatedEntity {
 
     public void markAsPermanent() {
         this.isTemp = false;
+    }
+
+    /**
+     * AI 작업 입력 원본으로 사용된 임시 파일을 영구 보관으로 전환하고 Job에 연결한다.
+     */
+    public void attachToJob(Long jobId) {
+        markAsPermanent();
+        this.targetType = TARGET_TYPE_JOB;
+        this.targetId = jobId;
     }
 }

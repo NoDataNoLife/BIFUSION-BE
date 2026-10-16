@@ -97,6 +97,9 @@ public enum ErrorCode {
     FILE_READ_FAILED(HttpStatus.BAD_REQUEST, "F002", "파일을 읽을 수 없습니다."),
     FILE_DOWNLOAD_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "F003", "파일 다운로드 중 오류가 발생했습니다."),
     FILE_NOT_FOUND(HttpStatus.NOT_FOUND, "F004", "파일을 찾을 수 없습니다."),
+    FILE_ACCESS_DENIED(HttpStatus.FORBIDDEN, "F005", "파일에 대한 권한이 없습니다."),
+    UNSUPPORTED_IMAGE_FORMAT(HttpStatus.BAD_REQUEST, "F006", "JPG 또는 PNG 이미지만 사용할 수 있습니다."),
+    FILE_TOTAL_SIZE_EXCEEDED(HttpStatus.BAD_REQUEST, "F007", "전체 이미지 용량이 허용 범위를 초과했습니다."),
 
     /* ================================
      * Job (AI 작업)
