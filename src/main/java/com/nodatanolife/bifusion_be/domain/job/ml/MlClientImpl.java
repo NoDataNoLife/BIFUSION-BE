@@ -23,6 +23,8 @@ import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestClientResponseException;
 
+import java.net.http.HttpConnectTimeoutException;
+import java.net.http.HttpTimeoutException;
 import java.util.function.Supplier;
 
 /**
@@ -130,12 +132,29 @@ public class MlClientImpl implements MlClient {
         } catch (RestClientResponseException e) {
             throw new BusinessException(classify(operation, task, e.getStatusCode()));
         } catch (ResourceAccessException e) {
-            log.warn("[ML] 연결 실패 - {} {}: {}", operation, task, e.getClass().getSimpleName());
+            if (operation == Operation.RUN && isResponseTimeout(e)) {
+                log.warn("[ML] 실행 요청 응답 대기 타임아웃 - ML 접수 여부 불확실: {}", task);
+                throw new BusinessException(ErrorCode.ML_SUBMIT_TIMEOUT);
+            }
+            log.warn("[ML] 연결 실패 - {} {}: {}", operation, task, rootCauseName(e));
             throw new BusinessException(ErrorCode.ML_CONNECTION_FAILED);
         } catch (RestClientException e) {
             log.error("[ML] 응답 파싱 실패 - {} {}: {}", operation, task, e.getClass().getSimpleName());
             throw new BusinessException(ErrorCode.ML_RESPONSE_ERROR);
         }
+    }
+
+    /**
+     * 연결은 됐지만 응답을 기다리다 시간이 초과된 경우. 연결 타임아웃(HttpConnectTimeoutException)은 제외한다.
+     */
+    private static boolean isResponseTimeout(ResourceAccessException e) {
+        Throwable cause = e.getCause();
+        return cause instanceof HttpTimeoutException && !(cause instanceof HttpConnectTimeoutException);
+    }
+
+    private static String rootCauseName(Throwable e) {
+        Throwable cause = e.getCause() != null ? e.getCause() : e;
+        return cause.getClass().getSimpleName();
     }
 
     private ErrorCode classify(Operation operation, String task, HttpStatusCode status) {

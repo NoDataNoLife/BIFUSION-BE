@@ -8,6 +8,7 @@ import com.nodatanolife.bifusion_be.global.exception.ErrorCode;
 import com.nodatanolife.bifusion_be.global.exception.business.BusinessException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Base64;
@@ -33,9 +34,10 @@ public class MlImageEncodeServiceImpl implements MlImageEncodeService {
      * 1) 파일 존재 확인  2) 요청자 소유 확인  3) 총 용량 상한 확인
      * 4) S3에서 읽어 JPG/PNG 여부를 파일 내용(시그니처)으로 확인  5) Base64 변환
      * file_type은 업로드 시 클라이언트가 보낸 값이라 형식 판정에 사용하지 않는다.
+     * S3 다운로드 동안 DB 커넥션을 점유하지 않도록 트랜잭션 밖에서 실행한다(파일 조회는 리포지토리 자체 트랜잭션).
      */
     @Override
-    @Transactional(readOnly = true)
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
     public Map<Long, String> encodeToBase64(Long userId, List<Long> fileIds) {
         List<Long> distinctIds = fileIds.stream().distinct().toList();
         Map<Long, File> fileById = fileRepository.findAllById(distinctIds).stream()
