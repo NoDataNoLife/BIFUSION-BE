@@ -99,6 +99,12 @@ public enum ErrorCode {
     FILE_NOT_FOUND(HttpStatus.NOT_FOUND, "F004", "파일을 찾을 수 없습니다."),
 
     /* ================================
+     * Job (AI 작업)
+     * ================================ */
+    JOB_ALREADY_FINISHED(HttpStatus.CONFLICT, "J001", "이미 종료된 작업입니다."),
+    JOB_INVALID_STATE(HttpStatus.CONFLICT, "J002", "현재 작업 상태에서는 처리할 수 없습니다."),
+
+    /* ================================
      * Inspection Request
      * ================================ */
     EXPERT_FILE_INVALID(HttpStatus.BAD_REQUEST, "EX001", "허용되지 않은 파일 형식입니다."),
