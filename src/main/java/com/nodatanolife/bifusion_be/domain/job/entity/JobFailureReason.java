@@ -29,6 +29,11 @@ public enum JobFailureReason {
             "선택한 모델을 사용할 수 없습니다. 학습 작업을 다시 실행해 주세요."),
     GPU_OUT_OF_MEMORY("GPU_OUT_OF_MEMORY", List.of(), List.of(),
             "AI 서버의 메모리가 부족해 작업을 완료하지 못했습니다. 이미지 수를 줄이거나 잠시 후 다시 시도해 주세요."),
+    ML_UNAVAILABLE(null, List.of(), List.of(),
+            "AI 서버에 연결할 수 없어 작업을 시작하지 못했습니다. 잠시 후 다시 시도해 주세요."),
+    // 실행 요청 응답 대기 중 타임아웃. ML이 이미 접수했을 수 있어 자동 재시도하지 않는다.
+    ML_SUBMIT_UNCERTAIN(null, List.of(), List.of(),
+            "AI 서버 응답이 지연되어 작업을 시작하지 못했습니다. 잠시 후 다시 시도해 주세요."),
     ML_JOB_NOT_FOUND(null, List.of(), List.of(),
             "AI 서버에서 작업 정보를 찾을 수 없어 중단되었습니다. 작업을 다시 실행해 주세요."),
     PENDING_TIMEOUT(null, List.of(), List.of(),

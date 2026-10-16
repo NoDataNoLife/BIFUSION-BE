@@ -100,12 +100,20 @@ public enum ErrorCode {
     FILE_ACCESS_DENIED(HttpStatus.FORBIDDEN, "F005", "파일에 대한 권한이 없습니다."),
     UNSUPPORTED_IMAGE_FORMAT(HttpStatus.BAD_REQUEST, "F006", "JPG 또는 PNG 이미지만 사용할 수 있습니다."),
     FILE_TOTAL_SIZE_EXCEEDED(HttpStatus.BAD_REQUEST, "F007", "전체 이미지 용량이 허용 범위를 초과했습니다."),
+    FILE_ALREADY_USED(HttpStatus.CONFLICT, "F008", "이미 다른 작업에 사용된 이미지입니다. 이미지를 다시 업로드해 주세요."),
 
     /* ================================
      * Job (AI 작업)
      * ================================ */
     JOB_ALREADY_FINISHED(HttpStatus.CONFLICT, "J001", "이미 종료된 작업입니다."),
     JOB_INVALID_STATE(HttpStatus.CONFLICT, "J002", "현재 작업 상태에서는 처리할 수 없습니다."),
+    JOB_NOT_FOUND(HttpStatus.NOT_FOUND, "J003", "작업을 찾을 수 없습니다."),
+    INVALID_JOB_PARAMETER(HttpStatus.BAD_REQUEST, "J004", "작업 설정값이 허용 범위를 벗어났습니다. 설정을 확인해 주세요."),
+    INVALID_IMAGE_COUNT(HttpStatus.BAD_REQUEST, "J005", "선택한 이미지 수가 허용 범위를 벗어났습니다."),
+    DUPLICATE_INPUT_FILE(HttpStatus.BAD_REQUEST, "J006", "같은 이미지를 중복해서 선택할 수 없습니다."),
+    DATASET_NOT_READY(HttpStatus.BAD_REQUEST, "J007", "학습에 사용할 수 없는 증강 데이터입니다. 완료된 증강 작업을 선택해 주세요."),
+    TRAINED_MODEL_NOT_FOUND(HttpStatus.NOT_FOUND, "J008", "선택한 모델을 찾을 수 없습니다."),
+    IDEMPOTENCY_KEY_REUSED(HttpStatus.CONFLICT, "J009", "이미 다른 작업 요청에 사용된 요청 키입니다."),
 
     /* ================================
      * ML 서버 연동
@@ -116,6 +124,8 @@ public enum ErrorCode {
     ML_RESPONSE_ERROR(HttpStatus.BAD_GATEWAY, "ML003", "AI 서버 응답을 처리하지 못했습니다."),
     ML_JOB_NOT_FOUND(HttpStatus.NOT_FOUND, "ML004", "AI 서버에서 작업을 찾을 수 없습니다."),
     ML_JOB_ALREADY_FINISHED(HttpStatus.CONFLICT, "ML005", "AI 서버에서 이미 종료된 작업입니다."),
+    // 실행 요청 읽기 타임아웃. ML이 이미 접수했을 수 있어 재시도하지 않는다.
+    ML_SUBMIT_TIMEOUT(HttpStatus.SERVICE_UNAVAILABLE, "ML006", "AI 서버 응답이 지연되어 작업을 시작하지 못했습니다. 잠시 후 다시 시도해 주세요."),
 
     /* ================================
      * Inspection Request

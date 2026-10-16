@@ -3,9 +3,11 @@ package com.nodatanolife.bifusion_be.domain.job.ml;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.http.client.SimpleClientHttpRequestFactory;
+import org.springframework.http.client.JdkClientHttpRequestFactory;
 import org.springframework.util.StringUtils;
 import org.springframework.web.client.RestClient;
+
+import java.net.http.HttpClient;
 
 @Configuration
 @EnableConfigurationProperties(MlProperties.class)
@@ -15,8 +17,12 @@ public class MlClientConfig {
 
     @Bean
     public RestClient mlRestClient(RestClient.Builder builder, MlProperties properties) {
-        SimpleClientHttpRequestFactory requestFactory = new SimpleClientHttpRequestFactory();
-        requestFactory.setConnectTimeout(properties.connectTimeout());
+        // JDK HttpClient는 연결 타임아웃(HttpConnectTimeoutException)과 응답 대기 타임아웃(HttpTimeoutException)을
+        // 예외 타입으로 구분해 준다. 실행 요청의 응답 대기 타임아웃은 ML 접수 여부가 불확실하므로 따로 다룬다.
+        HttpClient httpClient = HttpClient.newBuilder()
+                .connectTimeout(properties.connectTimeout())
+                .build();
+        JdkClientHttpRequestFactory requestFactory = new JdkClientHttpRequestFactory(httpClient);
         requestFactory.setReadTimeout(properties.readTimeout());
 
         RestClient.Builder mlBuilder = builder.clone().requestFactory(requestFactory);

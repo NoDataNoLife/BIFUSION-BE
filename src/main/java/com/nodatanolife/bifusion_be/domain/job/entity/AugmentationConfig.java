@@ -7,6 +7,7 @@ import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
 import java.math.BigDecimal;
+import java.util.List;
 
 @Entity
 @Table(name = "augmentation_config")
@@ -50,6 +51,15 @@ public class AugmentationConfig extends BaseEntity {
     @Column(name = "parameters", columnDefinition = "jsonb")
     private AugmentationParameters parameters;
 
+    // 입력 원본 fileId (요청 순서 그대로). 파일 연결이 해제돼도 기록으로 남는다.
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "normal_file_ids", columnDefinition = "jsonb")
+    private List<Long> normalFileIds;
+
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "anomaly_file_ids", columnDefinition = "jsonb")
+    private List<Long> anomalyFileIds;
+
     // ML result.dataset_id. 데이터셋 본체는 RunPod Network Volume에 있고 학습 요청 시 이 값을 전달한다.
     @Column(name = "ml_dataset_id", length = 100)
     private String mlDatasetId;
@@ -68,19 +78,23 @@ public class AugmentationConfig extends BaseEntity {
     private Integer totalSampleCount;
 
     @Builder
-    private AugmentationConfig(Job job, AugmentationParameters parameters, Integer normalCount, Integer anomalyCount) {
+    private AugmentationConfig(Job job, AugmentationParameters parameters,
+                               List<Long> normalFileIds, List<Long> anomalyFileIds) {
         this.job = job;
         this.parameters = parameters;
-        this.normalCount = normalCount;
-        this.anomalyCount = anomalyCount;
+        this.normalFileIds = List.copyOf(normalFileIds);
+        this.anomalyFileIds = List.copyOf(anomalyFileIds);
+        this.normalCount = normalFileIds.size();
+        this.anomalyCount = anomalyFileIds.size();
     }
 
-    public static AugmentationConfig create(Job job, AugmentationParameters parameters, int normalCount, int anomalyCount) {
+    public static AugmentationConfig create(Job job, AugmentationParameters parameters,
+                                            List<Long> normalFileIds, List<Long> anomalyFileIds) {
         return AugmentationConfig.builder()
                 .job(job)
                 .parameters(parameters)
-                .normalCount(normalCount)
-                .anomalyCount(anomalyCount)
+                .normalFileIds(normalFileIds)
+                .anomalyFileIds(anomalyFileIds)
                 .build();
     }
 

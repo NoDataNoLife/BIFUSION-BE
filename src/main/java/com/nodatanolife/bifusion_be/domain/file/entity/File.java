@@ -5,6 +5,8 @@ import com.nodatanolife.bifusion_be.global.entity.BaseCreatedEntity;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.time.LocalDateTime;
+
 @Entity
 @Table(name = "file")
 @Getter
@@ -48,6 +50,11 @@ public class File extends BaseCreatedEntity {
     @Column(name = "file_size")
     private Long fileSize;
 
+    // 임시 보관 시작 시각. 임시 파일 정리는 이 값(없으면 created_at) 기준 1시간이다.
+    // Job 실행 실패로 임시 상태로 되돌린 파일이 곧바로 정리되지 않도록 되돌린 시각으로 다시 설정한다.
+    @Column(name = "temp_since")
+    private LocalDateTime tempSince;
+
     public void anonymize(User deletedUser) {
         this.user = deletedUser;
     }
@@ -62,6 +69,7 @@ public class File extends BaseCreatedEntity {
                 .fileType(fileType)
                 .fileSize(fileSize)
                 .isTemp(true)
+                .tempSince(LocalDateTime.now())
                 .build();
     }
 
@@ -76,5 +84,16 @@ public class File extends BaseCreatedEntity {
         markAsPermanent();
         this.targetType = TARGET_TYPE_JOB;
         this.targetId = jobId;
+    }
+
+    /**
+     * Job 실행이 시작되지 못했을 때 입력 파일을 다시 임시 상태로 되돌린다.
+     * 사용자는 같은 fileId로 재시도할 수 있고, 재시도하지 않으면 임시 파일 정리 대상이 된다.
+     */
+    public void detachFromJob() {
+        this.isTemp = true;
+        this.targetType = null;
+        this.targetId = null;
+        this.tempSince = LocalDateTime.now();
     }
 }
