@@ -114,6 +114,9 @@ public enum ErrorCode {
     DATASET_NOT_READY(HttpStatus.BAD_REQUEST, "J007", "학습에 사용할 수 없는 증강 데이터입니다. 완료된 증강 작업을 선택해 주세요."),
     TRAINED_MODEL_NOT_FOUND(HttpStatus.NOT_FOUND, "J008", "선택한 모델을 찾을 수 없습니다."),
     IDEMPOTENCY_KEY_REUSED(HttpStatus.CONFLICT, "J009", "이미 다른 작업 요청에 사용된 요청 키입니다."),
+    JOB_NOT_RETRYABLE(HttpStatus.CONFLICT, "J010", "진행 중이거나 완료된 작업은 다시 시도할 수 없습니다."),
+    JOB_RETRY_NEEDS_NEW_INPUT(HttpStatus.CONFLICT, "J011", "입력값 문제로 실패한 작업입니다. 이미지를 확인하고 새로 실행해 주세요."),
+    JOB_ALREADY_RETRIED(HttpStatus.CONFLICT, "J012", "이미 다시 시도한 작업입니다. 가장 최근 작업에서 다시 시도해 주세요."),
 
     /* ================================
      * ML 서버 연동

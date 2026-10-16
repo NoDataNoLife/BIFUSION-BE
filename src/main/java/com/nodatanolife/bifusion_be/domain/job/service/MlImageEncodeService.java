@@ -13,4 +13,9 @@ public interface MlImageEncodeService {
      * @return fileId → Base64. 입력 순서를 유지하며 중복 fileId는 한 번만 담긴다.
      */
     Map<Long, String> encodeToBase64(Long userId, List<Long> fileIds);
+
+    /**
+     * 재시도용 변환. 파일 소유자 대신 각 파일이 jobId의 입력 파일(JOB 타입으로 연결)인지 확인한다.
+     */
+    Map<Long, String> encodeJobInputs(Long jobId, List<Long> fileIds);
 }
