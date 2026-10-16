@@ -105,6 +105,16 @@ public enum ErrorCode {
     JOB_INVALID_STATE(HttpStatus.CONFLICT, "J002", "현재 작업 상태에서는 처리할 수 없습니다."),
 
     /* ================================
+     * ML 서버 연동
+     * ML_CONNECTION_FAILED는 일시적 오류(Pod 꺼짐·타임아웃·5xx)이므로 작업 실패로 처리하지 않고 재시도한다.
+     * ================================ */
+    ML_CONNECTION_FAILED(HttpStatus.SERVICE_UNAVAILABLE, "ML001", "AI 서버에 연결할 수 없습니다. 잠시 후 다시 시도해 주세요."),
+    ML_REQUEST_INVALID(HttpStatus.INTERNAL_SERVER_ERROR, "ML002", "AI 작업 요청을 처리하지 못했습니다."),
+    ML_RESPONSE_ERROR(HttpStatus.BAD_GATEWAY, "ML003", "AI 서버 응답을 처리하지 못했습니다."),
+    ML_JOB_NOT_FOUND(HttpStatus.NOT_FOUND, "ML004", "AI 서버에서 작업을 찾을 수 없습니다."),
+    ML_JOB_ALREADY_FINISHED(HttpStatus.CONFLICT, "ML005", "AI 서버에서 이미 종료된 작업입니다."),
+
+    /* ================================
      * Inspection Request
      * ================================ */
     EXPERT_FILE_INVALID(HttpStatus.BAD_REQUEST, "EX001", "허용되지 않은 파일 형식입니다."),
