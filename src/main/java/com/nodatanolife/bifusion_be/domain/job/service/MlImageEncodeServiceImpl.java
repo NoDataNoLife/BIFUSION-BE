@@ -16,6 +16,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 @Service
@@ -39,6 +40,24 @@ public class MlImageEncodeServiceImpl implements MlImageEncodeService {
     @Override
     @Transactional(propagation = Propagation.NOT_SUPPORTED)
     public Map<Long, String> encodeToBase64(Long userId, List<Long> fileIds) {
+        return encode(fileIds, file -> file.getUser().getUserId().equals(userId));
+    }
+
+    /**
+     * 재시도용. 파일 소유자 대신, 각 파일이 이 Job의 입력 파일(JOB 타입으로 연결)인지 확인한다.
+     * 재시도는 프로젝트 멤버 누구나 할 수 있어 재시도한 사람과 파일 소유자가 다를 수 있기 때문이다.
+     */
+    @Override
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
+    public Map<Long, String> encodeJobInputs(Long jobId, List<Long> fileIds) {
+        return encode(fileIds, file -> File.TARGET_TYPE_JOB.equals(file.getTargetType())
+                && jobId.equals(file.getTargetId()));
+    }
+
+    /**
+     * @param authorized 파일 사용 권한 검증. 통과하지 못하면 FILE_ACCESS_DENIED
+     */
+    private Map<Long, String> encode(List<Long> fileIds, Predicate<File> authorized) {
         List<Long> distinctIds = fileIds.stream().distinct().toList();
         Map<Long, File> fileById = fileRepository.findAllById(distinctIds).stream()
                 .collect(Collectors.toMap(File::getFileId, Function.identity()));
@@ -49,7 +68,7 @@ public class MlImageEncodeServiceImpl implements MlImageEncodeService {
         long maxBytes = mlProperties.maxInputSize().toBytes();
         long declaredTotal = 0;
         for (File file : fileById.values()) {
-            if (!file.getUser().getUserId().equals(userId)) {
+            if (!authorized.test(file)) {
                 throw new BusinessException(ErrorCode.FILE_ACCESS_DENIED);
             }
             declaredTotal += file.getFileSize() != null ? file.getFileSize() : 0;

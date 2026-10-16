@@ -1,5 +1,8 @@
 package com.nodatanolife.bifusion_be.domain.job.entity;
 
+import com.nodatanolife.bifusion_be.domain.job.entity.converter.JobFailureReasonConverter;
+import com.nodatanolife.bifusion_be.domain.job.entity.converter.JobStatusConverter;
+import com.nodatanolife.bifusion_be.domain.job.entity.converter.JobTypeConverter;
 import com.nodatanolife.bifusion_be.domain.project.entity.Project;
 import com.nodatanolife.bifusion_be.domain.user.entity.User;
 import com.nodatanolife.bifusion_be.global.entity.BaseEntity;
@@ -21,10 +24,11 @@ import java.time.LocalDateTime;
 @Entity
 @Table(
         name = "job",
-        uniqueConstraints = @UniqueConstraint(
-                name = "uk_job_user_idempotency_key",
-                columnNames = {"user_id", "idempotency_key"}
-        )
+        uniqueConstraints = {
+                @UniqueConstraint(name = "uk_job_user_idempotency_key", columnNames = {"user_id", "idempotency_key"}),
+                // 한 Job에서 재시도가 두 갈래로 생기지 않도록 (A → B → C 한 줄로만)
+                @UniqueConstraint(name = "uk_job_retry_of_job_id", columnNames = {"retry_of_job_id"})
+        }
 )
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
@@ -46,11 +50,12 @@ public class Job extends BaseEntity {
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
-    @Enumerated(EnumType.STRING)
+    // 컨버터로 매핑: @Enumerated는 새 컬럼에 enum 값 목록 CHECK 제약을 만들어 값 추가 시 prod 저장이 막힌다.
+    @Convert(converter = JobTypeConverter.class)
     @Column(name = "type", length = 20, nullable = false)
     private JobType type;
 
-    @Enumerated(EnumType.STRING)
+    @Convert(converter = JobStatusConverter.class)
     @Column(name = "status", length = 20, nullable = false)
     private JobStatus status;
 
@@ -71,6 +76,11 @@ public class Job extends BaseEntity {
     @Column(name = "error_message", length = 500)
     private String errorMessage;
 
+    // 실패 사유 코드. 재시도 가능 여부 판정에 쓴다. 이 컬럼 도입 전에 실패한 Job은 null(재시도 불가).
+    @Convert(converter = JobFailureReasonConverter.class)
+    @Column(name = "failure_reason", length = 50)
+    private JobFailureReason failureReason;
+
     // ML error 원문. 내부 경로·traceback이 포함될 수 있어 어떤 응답 DTO에도 포함하지 않는다.
     @Column(name = "ml_error_detail", columnDefinition = "TEXT")
     private String mlErrorDetail;
@@ -86,17 +96,28 @@ public class Job extends BaseEntity {
     @Column(name = "finished_at")
     private LocalDateTime finishedAt;
 
+    // 이 Job이 어떤 Job의 재시도인지 (원본). 재시도가 아니면 null
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "retry_of_job_id")
+    private Job retryOfJob;
+
+    // 이 Job을 원본으로 만든 재시도 Job의 id. 있으면 이 Job은 더 이상 재시도할 수 없다.
+    // 조회 응답의 retryable을 추가 쿼리 없이 판정하기 위해 원본 쪽에도 기록한다.
+    @Column(name = "retried_by_job_id")
+    private Long retriedByJobId;
+
     @Version
     @Column(name = "version")
     private Long version;
 
     @Builder
-    private Job(Project project, User user, JobType type, String seedNumber, String idempotencyKey) {
+    private Job(Project project, User user, JobType type, String seedNumber, String idempotencyKey, Job retryOfJob) {
         this.project = project;
         this.user = user;
         this.type = type;
         this.seedNumber = seedNumber;
         this.idempotencyKey = idempotencyKey;
+        this.retryOfJob = retryOfJob;
         this.status = JobStatus.PENDING;
     }
 
@@ -107,6 +128,21 @@ public class Job extends BaseEntity {
                 .type(type)
                 .seedNumber(seed != null ? String.valueOf(seed) : null)
                 .idempotencyKey(idempotencyKey)
+                .build();
+    }
+
+    /**
+     * 원본 Job과 같은 프로젝트·종류·시드로 재시도 Job을 만든다. 소유자는 재시도한 사용자다.
+     * 파라미터·입력 파일은 호출 측에서 원본 Config를 그대로 복사한다.
+     */
+    public static Job createRetry(Job source, User user, String idempotencyKey) {
+        return Job.builder()
+                .project(source.getProject())
+                .user(user)
+                .type(source.getType())
+                .seedNumber(source.getSeedNumber())
+                .idempotencyKey(idempotencyKey)
+                .retryOfJob(source)
                 .build();
     }
 
@@ -144,6 +180,7 @@ public class Job extends BaseEntity {
     public void fail(JobFailureReason reason, String mlErrorDetail) {
         validateNotTerminal();
         this.status = JobStatus.FAILED;
+        this.failureReason = reason;
         this.errorMessage = reason.getMessage();
         this.mlErrorDetail = mlErrorDetail;
         this.finishedAt = LocalDateTime.now();
@@ -163,6 +200,48 @@ public class Job extends BaseEntity {
         return status == JobStatus.PENDING
                 && startedAt != null
                 && startedAt.plus(threshold).isBefore(now);
+    }
+
+    /**
+     * 재시도할 수 있는지. 조회 응답의 retryable에 쓰며, 엔티티 필드만으로 판정한다(추가 쿼리 없음).
+     * (FAILED이면서 재시도 가능 사유) 또는 CANCELLED이고, 아직 이 Job을 원본으로 한 재시도가 없어야 한다.
+     */
+    public boolean isRetryable() {
+        if (retriedByJobId != null) {
+            return false;
+        }
+        return status == JobStatus.CANCELLED
+                || (status == JobStatus.FAILED && failureReason != null && failureReason.isRetryable());
+    }
+
+    /**
+     * 재시도할 수 없으면 이유에 맞는 예외를 던진다. 판정 기준은 isRetryable()과 같다.
+     */
+    public void validateRetryable() {
+        if (status != JobStatus.FAILED && status != JobStatus.CANCELLED) {
+            throw new BusinessException(ErrorCode.JOB_NOT_RETRYABLE);
+        }
+        if (retriedByJobId != null) {
+            throw new BusinessException(ErrorCode.JOB_ALREADY_RETRIED);
+        }
+        if (status == JobStatus.FAILED && (failureReason == null || !failureReason.isRetryable())) {
+            throw new BusinessException(ErrorCode.JOB_RETRY_NEEDS_NEW_INPUT);
+        }
+    }
+
+    /**
+     * 이 Job을 원본으로 재시도 Job이 만들어졌음을 기록한다. 재시도 Job 생성과 같은 트랜잭션에서 호출한다.
+     */
+    public void markRetriedBy(Job retryJob) {
+        validateRetryable();
+        if (retryJob.getRetryOfJob() != this) {
+            throw new BusinessException(ErrorCode.JOB_INVALID_STATE);
+        }
+        this.retriedByJobId = retryJob.getJobId();
+    }
+
+    public Long getRetryOfJobId() {
+        return retryOfJob != null ? retryOfJob.getJobId() : null;
     }
 
     /**

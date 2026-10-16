@@ -11,6 +11,12 @@ public interface JobCommandService {
      */
     JobLaunchPlan createPending(Long userId, Long projectId, JobCreateRequest request, String idempotencyKey);
 
+    /**
+     * 재시도 트랜잭션 1: 원본 Job의 실행 입력을 그대로 복사해 새 PENDING Job을 만든다.
+     * 같은 사용자가 같은 멱등 키로 같은 원본을 재시도하면 기존 재시도 Job을 가리키는 계획을 반환한다.
+     */
+    JobLaunchPlan createRetry(Long userId, Long sourceJobId, String idempotencyKey);
+
     /** 트랜잭션 2: ML 접수 성공 */
     void markStarted(Long jobId, String mlJobId);
 

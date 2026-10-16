@@ -17,6 +17,7 @@ import org.springframework.util.StringUtils;
 
 import java.util.List;
 import java.util.Map;
+import java.util.function.Function;
 import java.util.stream.Stream;
 
 /**
@@ -40,11 +41,30 @@ public class JobLaunchFacade {
     private final MlClient mlClient;
 
     public JobResponse launch(Long userId, Long projectId, JobCreateRequest request, String idempotencyKey) {
+        return execute(userId, idempotencyKey,
+                key -> jobCommandService.createPending(userId, projectId, request, key));
+    }
+
+    /**
+     * 실패·취소된 Job을 같은 입력으로 다시 실행한다. 응답·실패 처리(503 등)는 생성과 같다.
+     */
+    public JobResponse retry(Long userId, Long jobId, String idempotencyKey) {
+        return execute(userId, idempotencyKey,
+                key -> jobCommandService.createRetry(userId, jobId, key));
+    }
+
+    /**
+     * 실행 계획 생성(트랜잭션 1) → ML 실행 요청(트랜잭션 밖) → 결과 반영(트랜잭션 2) → 응답.
+     * 생성과 재시도는 실행 계획을 만드는 방법만 다르고 이 흐름을 그대로 공유한다.
+     *
+     * @param planner 정규화된 멱등 키를 받아 트랜잭션 1을 수행하고 실행 계획을 돌려준다.
+     */
+    private JobResponse execute(Long userId, String idempotencyKey, Function<String, JobLaunchPlan> planner) {
         String key = StringUtils.hasText(idempotencyKey) ? idempotencyKey.strip() : null;
 
         JobLaunchPlan plan;
         try {
-            plan = jobCommandService.createPending(userId, projectId, request, key);
+            plan = planner.apply(key);
         } catch (DataIntegrityViolationException e) {
             // 같은 키로 동시에 들어온 요청: 먼저 커밋된 Job을 돌려준다.
             if (key == null) {
@@ -76,7 +96,7 @@ public class JobLaunchFacade {
         return switch (plan.type()) {
             case AUGMENTATION -> {
                 // 정상·비정상을 합쳐 한 번에 변환해야 총 용량 상한이 ML 요청 단위로 적용된다.
-                Map<Long, String> encoded = mlImageEncodeService.encodeToBase64(userId,
+                Map<Long, String> encoded = encode(userId, plan,
                         Stream.concat(plan.normalFileIds().stream(), plan.anomalyFileIds().stream()).toList());
                 yield mlClient.runAugmentation(MlAugmentationRunRequest.from(plan.augmentationParameters(),
                         pick(encoded, plan.normalFileIds()), pick(encoded, plan.anomalyFileIds())));
@@ -84,7 +104,7 @@ public class JobLaunchFacade {
             case TRAINING -> mlClient.runTraining(
                     MlTrainingRunRequest.from(plan.mlDatasetId(), plan.trainingParameters()));
             case INFERENCE -> {
-                Map<Long, String> encoded = mlImageEncodeService.encodeToBase64(userId, plan.inferenceFileIds());
+                Map<Long, String> encoded = encode(userId, plan, plan.inferenceFileIds());
                 yield mlClient.runInference(
                         MlInferenceRunRequest.from(plan.mlModelId(), pick(encoded, plan.inferenceFileIds())));
             }
@@ -122,6 +142,15 @@ public class JobLaunchFacade {
                 throw e;
             }
         }
+    }
+
+    /**
+     * 생성은 파일 소유자 기준, 재시도는 "이 Job의 입력 파일인지" 기준으로 확인한 뒤 변환한다.
+     */
+    private Map<Long, String> encode(Long userId, JobLaunchPlan plan, List<Long> fileIds) {
+        return plan.retry()
+                ? mlImageEncodeService.encodeJobInputs(plan.jobId(), fileIds)
+                : mlImageEncodeService.encodeToBase64(userId, fileIds);
     }
 
     private static List<String> pick(Map<Long, String> encoded, List<Long> fileIds) {
