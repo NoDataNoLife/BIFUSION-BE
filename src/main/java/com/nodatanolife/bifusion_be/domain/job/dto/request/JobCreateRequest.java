@@ -2,6 +2,8 @@ package com.nodatanolife.bifusion_be.domain.job.dto.request;
 
 import com.fasterxml.jackson.annotation.JsonSubTypes;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
+import io.swagger.v3.oas.annotations.media.DiscriminatorMapping;
+import io.swagger.v3.oas.annotations.media.Schema;
 import com.nodatanolife.bifusion_be.domain.job.entity.JobType;
 import jakarta.validation.constraints.NotNull;
 import lombok.AccessLevel;
@@ -14,6 +16,16 @@ import lombok.NoArgsConstructor;
  */
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
+@Schema(
+        description = "AI 작업 실행 요청. type 값에 따라 본문 형식이 달라집니다.",
+        oneOf = {AugmentationJobCreateRequest.class, TrainingJobCreateRequest.class, InferenceJobCreateRequest.class},
+        discriminatorProperty = "type",
+        discriminatorMapping = {
+                @DiscriminatorMapping(value = "AUGMENTATION", schema = AugmentationJobCreateRequest.class),
+                @DiscriminatorMapping(value = "TRAINING", schema = TrainingJobCreateRequest.class),
+                @DiscriminatorMapping(value = "INFERENCE", schema = InferenceJobCreateRequest.class)
+        }
+)
 @JsonTypeInfo(use = JsonTypeInfo.Id.NAME, include = JsonTypeInfo.As.EXISTING_PROPERTY, property = "type", visible = true)
 @JsonSubTypes({
         @JsonSubTypes.Type(value = AugmentationJobCreateRequest.class, name = "AUGMENTATION"),
@@ -22,6 +34,7 @@ import lombok.NoArgsConstructor;
 })
 public abstract class JobCreateRequest {
 
+    @Schema(description = "작업 종류", requiredMode = Schema.RequiredMode.REQUIRED, example = "AUGMENTATION")
     @NotNull(message = "작업 종류는 필수입니다.")
     private JobType type;
 }
