@@ -98,6 +98,14 @@ public class AugmentationConfig extends BaseEntity {
                 .build();
     }
 
+    /**
+     * 학습 데이터로 쓸 수 있는 증강 결과인지. (증강 Job이 SUCCESS이고 ML 데이터셋 ID가 있음)
+     * 학습 요청 검증과 증강 데이터셋 목록이 같은 기준을 쓰도록 이 메서드로만 판정한다.
+     */
+    public boolean isReadyForTraining() {
+        return job.getStatus() == JobStatus.SUCCESS && mlDatasetId != null;
+    }
+
     public void recordResult(String mlDatasetId, String datasetKey, String previewKey,
                              Integer generatedCount, Integer totalSampleCount) {
         this.mlDatasetId = mlDatasetId;

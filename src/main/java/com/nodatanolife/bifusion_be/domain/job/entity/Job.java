@@ -166,6 +166,14 @@ public class Job extends BaseEntity {
     }
 
     /**
+     * 화면 표시용 Job 코드 (예: JOB-015). Job 코드가 필요한 모든 응답은 이 메서드를 써서 형식을 맞춘다.
+     * TODO: 프로젝트별 순번이 필요하면 이 메서드만 변경 (job_code 컬럼은 현재 사용하지 않음)
+     */
+    public String getDisplayCode() {
+        return jobId != null ? "JOB-%03d".formatted(jobId) : null;
+    }
+
+    /**
      * ML 실행 요청 전에 서버가 죽어 mlJobId 없이 남은 PENDING Job인지 판정한다 (생성 시각 기준).
      */
     public boolean isLaunchTimedOut(Duration threshold, LocalDateTime now) {
