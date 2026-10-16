@@ -45,6 +45,12 @@ spring:
             client-secret: ${GOOGLE_CLIENT_SECRET}
             scope: profile, email
 
+  # 폴링 스케줄러(1초 주기)가 임시 파일 정리·초대 만료 스케줄러를 막지 않도록 스레드를 나눈다.
+  task:
+    scheduling:
+      pool:
+        size: 3
+
   jackson:
     date-format: yyyy-MM-dd'T'HH:mm:ss
     serialization:
@@ -106,6 +112,14 @@ ml:
     inference:
       min-images: 1
       max-images: 20
+  # ML 작업 상태 폴링 스케줄러. pending-timeout(위)은 ML 접수 후 PENDING 유지 허용 시간으로 함께 쓴다.
+  polling:
+    interval: 1s
+    batch-size: 50
+    # mlJobId 없는 PENDING Job(실행 요청 전에 서버가 죽은 경우)을 실패로 보는 기준 (생성 시각부터)
+    launch-timeout: 10m
+    # ML이 계속 RUNNING만 돌려줄 때(워커 멈춤)의 상한 (ML 접수 시각부터)
+    running-timeout: 72h
 
 server:
   port: 8080
