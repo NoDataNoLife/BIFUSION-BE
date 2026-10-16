@@ -24,7 +24,7 @@ import java.util.stream.Stream;
  *
  * 1) 트랜잭션 1: 검증 + PENDING Job 생성 + 입력 파일 연결   (JobCommandService.createPending)
  * 2) 트랜잭션 밖: S3 → Base64 변환, ML 실행 요청
- * 3) 트랜잭션 2: 접수 성공이면 start, 실패면 fail + 입력 파일 임시 상태 복구 (markStarted / markFailed)
+ * 3) 트랜잭션 2: 접수 성공이면 start, 실패면 fail (markStarted / markFailed). 실패해도 입력 파일은 Job에 보존한다.
  *
  * 이 클래스 자체는 트랜잭션을 갖지 않는다. 트랜잭션 메서드는 JobCommandService에만 있다.
  * ML 자동 재시도는 하지 않는다 (GPU 작업 중복 위험).
@@ -92,7 +92,7 @@ public class JobLaunchFacade {
     }
 
     /**
-     * 실패 사유를 Job에 기록하고(입력 파일은 임시 상태로 복구) FE 응답을 결정한다.
+     * 실패 사유를 Job에 기록하고 FE 응답을 결정한다. 입력 파일은 Job에 연결된 채로 보존된다.
      * ML 요청 형식 오류(422)만 실패 상태의 Job을 정상 응답하고, 나머지는 원래 ErrorCode로 응답한다.
      */
     private void handleSubmitFailure(Long jobId, BusinessException e) {

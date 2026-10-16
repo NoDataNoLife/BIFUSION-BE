@@ -17,6 +17,7 @@ import java.util.List;
  * @param maxInputSize    Base64 변환 전 입력 이미지 총 용량 상한
  * @param defaults        요청에서 생략된 파라미터를 채울 기본값
  * @param limits          Job 생성 요청의 파라미터 범위·이미지 장수 제한
+ * @param polling         ML 작업 상태 폴링 스케줄러 설정
  */
 @ConfigurationProperties(prefix = "ml")
 public record MlProperties(
@@ -27,7 +28,8 @@ public record MlProperties(
         Duration pendingTimeout,
         DataSize maxInputSize,
         Defaults defaults,
-        Limits limits
+        Limits limits,
+        Polling polling
 ) {
 
     public record Defaults(
@@ -60,6 +62,20 @@ public record MlProperties(
             int maxEpochs,
             int maxQQuery,
             int maxEpisodesPerEpoch
+    ) {
+    }
+
+    /**
+     * @param interval       폴링 주기 (이전 실행이 끝난 뒤부터 잼)
+     * @param batchSize      한 주기에 처리할 최대 Job 수
+     * @param launchTimeout  mlJobId 없는 PENDING Job을 실행 실패로 보는 기준 (생성 시각부터)
+     * @param runningTimeout RUNNING Job의 최대 허용 시간 (ML 접수 시각부터)
+     */
+    public record Polling(
+            Duration interval,
+            int batchSize,
+            Duration launchTimeout,
+            Duration runningTimeout
     ) {
     }
 

@@ -14,6 +14,6 @@ public interface JobCommandService {
     /** 트랜잭션 2: ML 접수 성공 */
     void markStarted(Long jobId, String mlJobId);
 
-    /** 트랜잭션 2: ML 실행 전·접수 단계 실패. 입력 파일을 다시 임시 상태로 되돌린다. */
+    /** 트랜잭션 2: ML 실행 전·접수 단계 실패. 입력 파일은 Job에 연결된 채로 보존한다(재시도 기능 대비). */
     void markFailed(Long jobId, JobFailureReason reason);
 }

@@ -5,8 +5,6 @@ import com.nodatanolife.bifusion_be.global.entity.BaseCreatedEntity;
 import jakarta.persistence.*;
 import lombok.*;
 
-import java.time.LocalDateTime;
-
 @Entity
 @Table(name = "file")
 @Getter
@@ -15,7 +13,12 @@ import java.time.LocalDateTime;
 @Builder(access = AccessLevel.PRIVATE)
 public class File extends BaseCreatedEntity {
 
+    // AI 작업 입력 원본
     public static final String TARGET_TYPE_JOB = "JOB";
+    // AI 작업 결과물(미리보기·다운로드용으로 ML이 우리 S3에 올린 파일). 입력 파일과 구분한다.
+    public static final String TARGET_TYPE_JOB_RESULT = "JOB_RESULT";
+
+    private static final int FILE_TYPE_MAX_LENGTH = 50;
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -50,11 +53,6 @@ public class File extends BaseCreatedEntity {
     @Column(name = "file_size")
     private Long fileSize;
 
-    // 임시 보관 시작 시각. 임시 파일 정리는 이 값(없으면 created_at) 기준 1시간이다.
-    // Job 실행 실패로 임시 상태로 되돌린 파일이 곧바로 정리되지 않도록 되돌린 시각으로 다시 설정한다.
-    @Column(name = "temp_since")
-    private LocalDateTime tempSince;
-
     public void anonymize(User deletedUser) {
         this.user = deletedUser;
     }
@@ -69,7 +67,24 @@ public class File extends BaseCreatedEntity {
                 .fileType(fileType)
                 .fileSize(fileSize)
                 .isTemp(true)
-                .tempSince(LocalDateTime.now())
+                .build();
+    }
+
+    /**
+     * AI 작업 결과 파일. 처음부터 영구 파일이며 Job에 연결된다.
+     * fileUrl에는 S3 key를 저장한다 (presign 시 key로 처리됨). 크기·형식은 조회에 실패하면 null.
+     */
+    public static File createJobResult(User owner, Long jobId, String s3Key, String contentType, Long fileSize) {
+        return File.builder()
+                .user(owner)
+                .fileUrl(s3Key)
+                .s3Key(s3Key)
+                .fileName(s3Key.substring(s3Key.lastIndexOf('/') + 1))
+                .fileType(contentType != null && contentType.length() <= FILE_TYPE_MAX_LENGTH ? contentType : null)
+                .fileSize(fileSize)
+                .isTemp(false)
+                .targetType(TARGET_TYPE_JOB_RESULT)
+                .targetId(jobId)
                 .build();
     }
 
@@ -84,16 +99,5 @@ public class File extends BaseCreatedEntity {
         markAsPermanent();
         this.targetType = TARGET_TYPE_JOB;
         this.targetId = jobId;
-    }
-
-    /**
-     * Job 실행이 시작되지 못했을 때 입력 파일을 다시 임시 상태로 되돌린다.
-     * 사용자는 같은 fileId로 재시도할 수 있고, 재시도하지 않으면 임시 파일 정리 대상이 된다.
-     */
-    public void detachFromJob() {
-        this.isTemp = true;
-        this.targetType = null;
-        this.targetId = null;
-        this.tempSince = LocalDateTime.now();
     }
 }

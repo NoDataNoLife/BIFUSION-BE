@@ -165,6 +165,36 @@ public class Job extends BaseEntity {
                 && startedAt.plus(threshold).isBefore(now);
     }
 
+    /**
+     * ML 실행 요청 전에 서버가 죽어 mlJobId 없이 남은 PENDING Job인지 판정한다 (생성 시각 기준).
+     */
+    public boolean isLaunchTimedOut(Duration threshold, LocalDateTime now) {
+        return status == JobStatus.PENDING
+                && mlJobId == null
+                && getCreatedAt() != null
+                && getCreatedAt().plus(threshold).isBefore(now);
+    }
+
+    /**
+     * RUNNING이던 Job을 ML이 잃어버렸는지 판정한다. ML이 PENDING을 돌려줄 때만 쓴다.
+     * Celery는 모르는 job_id에도 PENDING을 반환하므로, RUNNING 이후 PENDING이 threshold 넘게 이어지면 유실로 본다.
+     * TODO: ML이 모르는 job_id에 404를 주도록 바뀌면 제거 (404 → ML_JOB_NOT_FOUND로 처리됨)
+     */
+    public boolean isStaleSince(Duration threshold, LocalDateTime now) {
+        return status == JobStatus.RUNNING
+                && startedAt != null
+                && startedAt.plus(threshold).isBefore(now);
+    }
+
+    /**
+     * ML 응답과 관계없이 RUNNING 상태가 상한을 넘었는지 판정한다 (ML 접수 시각 기준, 워커 멈춤 대비).
+     */
+    public boolean isRunningTimedOut(Duration threshold, LocalDateTime now) {
+        return status == JobStatus.RUNNING
+                && startedAt != null
+                && startedAt.plus(threshold).isBefore(now);
+    }
+
     public void updateUser(User newUser) {
         this.user = newUser;
     }

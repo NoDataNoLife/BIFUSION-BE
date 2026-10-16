@@ -136,11 +136,22 @@ public class MlClientImpl implements MlClient {
                 log.warn("[ML] 실행 요청 응답 대기 타임아웃 - ML 접수 여부 불확실: {}", task);
                 throw new BusinessException(ErrorCode.ML_SUBMIT_TIMEOUT);
             }
-            log.warn("[ML] 연결 실패 - {} {}: {}", operation, task, rootCauseName(e));
+            logUnavailable(operation, "[ML] 연결 실패 - {} {}: {}", operation, task, rootCauseName(e));
             throw new BusinessException(ErrorCode.ML_CONNECTION_FAILED);
         } catch (RestClientException e) {
             log.error("[ML] 응답 파싱 실패 - {} {}: {}", operation, task, e.getClass().getSimpleName());
             throw new BusinessException(ErrorCode.ML_RESPONSE_ERROR);
+        }
+    }
+
+    /**
+     * ML 연결 불가 로그. 조회(GET)는 폴링 스케줄러가 주기마다 한 줄로 요약하므로 호출마다 남기지 않는다(debug).
+     */
+    private static void logUnavailable(Operation operation, String format, Object... args) {
+        if (operation == Operation.GET) {
+            log.debug(format, args);
+        } else {
+            log.warn(format, args);
         }
     }
 
@@ -159,7 +170,7 @@ public class MlClientImpl implements MlClient {
 
     private ErrorCode classify(Operation operation, String task, HttpStatusCode status) {
         if (status.is5xxServerError()) {
-            log.warn("[ML] 서버 오류 응답 - {} {}: {}", operation, task, status.value());
+            logUnavailable(operation, "[ML] 서버 오류 응답 - {} {}: {}", operation, task, status.value());
             return ErrorCode.ML_CONNECTION_FAILED;
         }
         if (operation == Operation.RUN && status.value() == HttpStatus.UNPROCESSABLE_ENTITY.value()) {
