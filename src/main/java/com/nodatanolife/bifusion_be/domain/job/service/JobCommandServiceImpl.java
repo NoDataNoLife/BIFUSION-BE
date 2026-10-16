@@ -85,10 +85,8 @@ public class JobCommandServiceImpl implements JobCommandService {
 
     @Override
     public void markFailed(Long jobId, JobFailureReason reason) {
+        // 입력 파일은 되돌리지 않고 Job에 연결된 채로 보존한다 (스케줄러의 실패·취소 처리와 동일, 재시도 API 대비).
         getJob(jobId).fail(reason, null);
-        // Config의 fileId 목록(jsonb)은 기록으로 남기고, 파일만 임시 상태로 되돌려 같은 fileId로 재시도할 수 있게 한다.
-        fileRepository.findAllByTargetTypeAndTargetId(File.TARGET_TYPE_JOB, jobId)
-                .forEach(File::detachFromJob);
     }
 
     private JobLaunchPlan createAugmentation(Project project, User user, AugmentationJobCreateRequest request,
@@ -97,7 +95,8 @@ public class JobCommandServiceImpl implements JobCommandService {
                 .withDefaults(mlProperties.defaults().augmentation());
         jobRequestValidator.validateAugmentation(parameters, request.getNormalFileIds(), request.getAnomalyFileIds());
         List<File> inputFiles = getAttachableFiles(user.getUserId(),
-                Stream.concat(request.getNormalFileIds().stream(), request.getAnomalyFileIds().stream()).toList());
+                Stream.concat(request.getNormalFileIds().stream(), request.getAnomalyFileIds().stream()).toList(),
+                false);
 
         Job job = jobRepository.saveAndFlush(
                 Job.create(project, user, JobType.AUGMENTATION, parameters.seed(), idempotencyKey));
@@ -129,7 +128,7 @@ public class JobCommandServiceImpl implements JobCommandService {
         TrainedModel model = trainedModelRepository.findById(request.getModelId())
                 .filter(m -> m.getProject().getProjectId().equals(project.getProjectId()))
                 .orElseThrow(() -> new BusinessException(ErrorCode.TRAINED_MODEL_NOT_FOUND));
-        List<File> inputFiles = getAttachableFiles(user.getUserId(), request.getFileIds());
+        List<File> inputFiles = getAttachableFiles(user.getUserId(), request.getFileIds(), false);
 
         Job job = jobRepository.saveAndFlush(
                 Job.create(project, user, JobType.INFERENCE, null, idempotencyKey));
@@ -157,8 +156,11 @@ public class JobCommandServiceImpl implements JobCommandService {
     /**
      * 입력 파일 검증: 존재 → 요청자 소유 → 임시 파일(다른 Job에 연결되지 않음) → 선언 용량 합계.
      * 행 잠금으로 같은 임시 파일이 동시에 두 Job에 연결되지 않게 한다.
+     *
+     * @param allowReuseFromEndedJob true면 FAILED·CANCELLED Job에 연결된 본인 파일도 허용한다.
+     *                               재시도 API용 조건이며, Job 생성 API는 false로 호출한다 (재사용 시 FILE_ALREADY_USED).
      */
-    private List<File> getAttachableFiles(Long userId, List<Long> fileIds) {
+    private List<File> getAttachableFiles(Long userId, List<Long> fileIds, boolean allowReuseFromEndedJob) {
         List<File> files = fileRepository.findAllByIdForUpdate(fileIds);
         if (files.size() != fileIds.size()) {
             throw new BusinessException(ErrorCode.FILE_NOT_FOUND);
@@ -168,7 +170,8 @@ public class JobCommandServiceImpl implements JobCommandService {
             if (!file.getUser().getUserId().equals(userId)) {
                 throw new BusinessException(ErrorCode.FILE_ACCESS_DENIED);
             }
-            if (!Boolean.TRUE.equals(file.getIsTemp())) {
+            if (!Boolean.TRUE.equals(file.getIsTemp())
+                    && !(allowReuseFromEndedJob && isInputOfEndedJob(file))) {
                 throw new BusinessException(ErrorCode.FILE_ALREADY_USED);
             }
             totalSize += file.getFileSize() != null ? file.getFileSize() : 0;
@@ -177,6 +180,19 @@ public class JobCommandServiceImpl implements JobCommandService {
             throw new BusinessException(ErrorCode.FILE_TOTAL_SIZE_EXCEEDED);
         }
         return files;
+    }
+
+    /**
+     * FAILED·CANCELLED Job의 입력 파일인지. (소유자 검증은 호출 측에서 이미 했다)
+     * 결과 파일(JOB_RESULT)이나 진행 중·성공한 Job의 입력 파일은 해당하지 않는다.
+     */
+    private boolean isInputOfEndedJob(File file) {
+        if (!File.TARGET_TYPE_JOB.equals(file.getTargetType()) || file.getTargetId() == null) {
+            return false;
+        }
+        return jobRepository.findById(file.getTargetId())
+                .map(job -> job.getStatus() == JobStatus.FAILED || job.getStatus() == JobStatus.CANCELLED)
+                .orElse(false);
     }
 
     /**

@@ -20,6 +20,16 @@ public record MlTrainingResult(
     /**
      * @param ourBucket 우리 S3 버킷명 (spring.cloud.aws.s3.bucket). 다른 버킷의 파일이면 null.
      */
+    /**
+     * SUCCESS 응답인데 결과로 저장할 수 없으면 그 사유. 정상이면 null.
+     */
+    public String invalidReason() {
+        if (modelId == null || modelId.isBlank()) {
+            return "SUCCESS 응답에 model_id 없음";
+        }
+        return null;
+    }
+
     public String modelStorageKey(String ourBucket) {
         return MlStorageKeys.resolve(modelKey, modelUrl, bucket, ourBucket);
     }

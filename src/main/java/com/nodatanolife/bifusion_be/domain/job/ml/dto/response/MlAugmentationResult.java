@@ -23,6 +23,17 @@ public record MlAugmentationResult(
     /**
      * @param ourBucket 우리 S3 버킷명 (spring.cloud.aws.s3.bucket). 다른 버킷의 파일이면 null.
      */
+    /**
+     * SUCCESS 응답인데 결과로 저장할 수 없으면 그 사유. 정상이면 null.
+     * (응답 본문 대신 이 사유를 mlErrorDetail에 남긴다)
+     */
+    public String invalidReason() {
+        if (datasetId == null || datasetId.isBlank()) {
+            return "SUCCESS 응답에 dataset_id 없음";
+        }
+        return null;
+    }
+
     public String datasetStorageKey(String ourBucket) {
         return MlStorageKeys.resolve(datasetKey, datasetUrl, bucket, ourBucket);
     }
