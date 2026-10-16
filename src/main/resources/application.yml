@@ -61,6 +61,32 @@ app:
   cookie:
     secure: false  # prod에서는 true로 변경
 
+ml:
+  # ML 서버(RunPod) 주소. 비어 있으면 ML 호출은 모두 연결 실패(ML_CONNECTION_FAILED)로 처리된다.
+  base-url: ${ML_BASE_URL:}
+  # 비어 있으면 X-API-Key 헤더를 붙이지 않는다.
+  api-key: ${ML_API_KEY:}
+  connect-timeout: 5s
+  # 실행 요청은 Base64 이미지 본문(최대 약 27MB)을 보내므로 넉넉히 잡는다.
+  read-timeout: 60s
+  # ML 접수 후 PENDING 유지 허용 시간. 큐별 동시 실행이 1개라 정상 대기도 길 수 있다.
+  pending-timeout: ${ML_PENDING_TIMEOUT:6h}
+  # Base64 변환 전 입력 이미지 총 용량 상한 (ML 요청 1건 기준)
+  max-input-size: 20MB
+  # 요청에서 생략된 파라미터는 아래 값으로 채워 ML에 명시적으로 보낸다. (증강 seed는 비어 있으면 랜덤 생성)
+  defaults:
+    augmentation:
+      num-samples-per-class: 10
+      strength: 0.3
+      finetune-steps: 400
+      steps: 50
+    training:
+      k-shot: 5
+      epochs: 30
+      q-query: 5
+      episodes-per-epoch: 10
+      seed: 42
+
 server:
   port: 8080
 
