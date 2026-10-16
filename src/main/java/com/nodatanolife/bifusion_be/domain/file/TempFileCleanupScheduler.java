@@ -24,7 +24,7 @@ public class TempFileCleanupScheduler {
     @Transactional
     public void cleanUpExpiredTempFiles() {
         LocalDateTime expiryTime = LocalDateTime.now().minusHours(1);
-        List<File> expiredFiles = fileRepository.findExpiredTempFiles(expiryTime);
+        List<File> expiredFiles = fileRepository.findAllByIsTempTrueAndCreatedAtBefore(expiryTime);
 
         log.info("[TempFileCleanup] 만료된 임시 파일 {}건 삭제 시작", expiredFiles.size());
 
