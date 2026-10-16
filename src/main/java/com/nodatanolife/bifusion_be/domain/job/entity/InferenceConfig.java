@@ -3,8 +3,11 @@ package com.nodatanolife.bifusion_be.domain.job.entity;
 import com.nodatanolife.bifusion_be.global.entity.BaseEntity;
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.math.BigDecimal;
+import java.util.List;
 
 @Entity
 @Table(name = "\"InferenceConfig\"")
@@ -47,18 +50,24 @@ public class InferenceConfig extends BaseEntity {
     @Column(name = "elapsed_time")
     private Integer elapsedTime;
 
+    // 입력 이미지 fileId (요청 순서 = ML sample_index 순서). 결과 저장 시 sample_index를 fileId로 되짚는 데 쓴다.
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "input_file_ids", columnDefinition = "jsonb")
+    private List<Long> inputFileIds;
+
     @Builder
-    private InferenceConfig(Job job, TrainedModel trainedModel, Integer totalImageCount) {
+    private InferenceConfig(Job job, TrainedModel trainedModel, List<Long> inputFileIds) {
         this.job = job;
         this.trainedModel = trainedModel;
-        this.totalImageCount = totalImageCount;
+        this.inputFileIds = List.copyOf(inputFileIds);
+        this.totalImageCount = inputFileIds.size();
     }
 
-    public static InferenceConfig create(Job job, TrainedModel trainedModel, int totalImageCount) {
+    public static InferenceConfig create(Job job, TrainedModel trainedModel, List<Long> inputFileIds) {
         return InferenceConfig.builder()
                 .job(job)
                 .trainedModel(trainedModel)
-                .totalImageCount(totalImageCount)
+                .inputFileIds(inputFileIds)
                 .build();
     }
 
