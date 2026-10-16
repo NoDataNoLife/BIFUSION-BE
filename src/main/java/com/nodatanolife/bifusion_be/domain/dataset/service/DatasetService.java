@@ -1,5 +1,7 @@
 package com.nodatanolife.bifusion_be.domain.dataset.service;
 
+import com.nodatanolife.bifusion_be.domain.dataset.entity.Dataset;
+import java.util.List;
 import com.nodatanolife.bifusion_be.domain.dataset.dto.response.DatasetDetailResponse;
 import com.nodatanolife.bifusion_be.domain.dataset.dto.request.DatasetCreateRequest;
 import com.nodatanolife.bifusion_be.domain.dataset.dto.request.DatasetUpdateRequest;
@@ -50,4 +52,6 @@ public interface DatasetService {
      * title/description을 부분 수정이 아닌 전체 덮어쓰기 방식으로 반영한다.
      */
     DatasetUpdateResponse updateDataset(Long userId, Long datasetId, DatasetUpdateRequest request);
+
+    List<Dataset> getPublicDatasetsByUser(Long userId);
 }

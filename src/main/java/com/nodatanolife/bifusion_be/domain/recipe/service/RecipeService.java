@@ -1,5 +1,7 @@
 package com.nodatanolife.bifusion_be.domain.recipe.service;
 
+import com.nodatanolife.bifusion_be.domain.recipe.entity.Recipe;
+import java.util.List;
 import com.nodatanolife.bifusion_be.domain.recipe.dto.response.MyRecipeListResponse;
 import com.nodatanolife.bifusion_be.domain.recipe.dto.response.RecipeDetailResponse;
 import com.nodatanolife.bifusion_be.domain.recipe.dto.response.RecipeListResponse;
@@ -40,4 +42,6 @@ public interface RecipeService {
     Page<RecipeListResponse> getRecipeList(String sort, String keyword, int page, int size);
 
     void deleteRecipe(Long recipeId, Long userId);
+
+    List<Recipe> getPublicRecipesByUser(Long userId);
 }

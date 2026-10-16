@@ -253,4 +253,10 @@ public class DatasetServiceImpl implements DatasetService {
 
         return DatasetUpdateResponse.from(dataset, tagNames);
     }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<Dataset> getPublicDatasetsByUser(Long userId) {
+        return datasetRepository.findPublicByUserId(userId);
+    }
 }
