@@ -1,16 +1,23 @@
 package com.nodatanolife.bifusion_be.domain.job.dto.response;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import com.nodatanolife.bifusion_be.domain.file.presign.PresignedUrl;
 import com.nodatanolife.bifusion_be.domain.job.entity.AugmentationConfig;
 
 /**
  * @param datasetId 학습 요청의 dataset_id로 쓰는 값 (= 이 증강 jobId)
  */
+@Schema(description = "증강 결과")
 public record AugmentationJobResult(
+        @Schema(description = "학습 요청의 dataset_id로 쓰는 값 (= 이 증강 작업 번호)", example = "15")
         Long datasetId,
+        @Schema(description = "새로 만든 이미지 수", example = "20")
         Integer generatedCount,
+        @Schema(description = "전체 이미지 수 (원본 + 생성분)", example = "30")
         Integer totalSampleCount,
+        @Schema(description = "미리보기 이미지 주소 (presigned, 없으면 null)")
         @PresignedUrl String previewUrl,
+        @Schema(description = "결과 데이터 다운로드 주소 (presigned, 없으면 null)")
         @PresignedUrl String downloadUrl
 ) implements JobResult {
 
