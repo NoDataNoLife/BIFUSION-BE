@@ -13,12 +13,15 @@ import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
 import software.amazon.awssdk.services.s3.model.GetObjectRequest;
+import software.amazon.awssdk.services.s3.model.HeadObjectRequest;
+import software.amazon.awssdk.services.s3.model.HeadObjectResponse;
 import software.amazon.awssdk.services.s3.model.NoSuchKeyException;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 import software.amazon.awssdk.services.s3.presigner.S3Presigner;
 import software.amazon.awssdk.services.s3.presigner.model.GetObjectPresignRequest;
 
 import java.time.Duration;
+import java.util.Optional;
 import java.util.UUID;
 
 @Slf4j
@@ -135,6 +138,24 @@ public class S3Service {
      */
     public String uploadFile(MultipartFile file, String prefix) {
         return uploadFile(file, prefix, buildUniqueFilename(file.getOriginalFilename()));
+    }
+
+    /**
+     * 객체의 크기·형식을 조회한다. 객체가 없거나 조회에 실패하면 empty (호출 측에서 값 없이 진행).
+     */
+    public Optional<S3ObjectInfo> headObject(String s3Key) {
+        try {
+            HeadObjectResponse response = s3Client.headObject(
+                    HeadObjectRequest.builder()
+                            .bucket(bucketName)
+                            .key(s3Key)
+                            .build()
+            );
+            return Optional.of(new S3ObjectInfo(response.contentLength(), response.contentType()));
+        } catch (SdkException e) {
+            log.warn("S3 객체 정보 조회 실패: key={}, err={}", s3Key, e.getClass().getSimpleName());
+            return Optional.empty();
+        }
     }
 
     public void deleteFile(String s3Key) {

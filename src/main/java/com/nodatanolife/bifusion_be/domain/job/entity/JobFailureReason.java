@@ -36,6 +36,8 @@ public enum JobFailureReason {
             "AI 서버 응답이 지연되어 작업을 시작하지 못했습니다. 잠시 후 다시 시도해 주세요."),
     ML_JOB_NOT_FOUND(null, List.of(), List.of(),
             "AI 서버에서 작업 정보를 찾을 수 없어 중단되었습니다. 작업을 다시 실행해 주세요."),
+    RUNNING_TIMEOUT(null, List.of(), List.of(),
+            "작업 시간이 너무 오래 걸려 중단되었습니다. 설정을 확인한 뒤 다시 실행해 주세요."),
     PENDING_TIMEOUT(null, List.of(), List.of(),
             "대기 시간이 너무 길어 작업이 중단되었습니다. 잠시 후 다시 실행해 주세요."),
     UNKNOWN(null, List.of(), List.of(),

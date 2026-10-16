@@ -15,7 +15,12 @@ import java.time.LocalDateTime;
 @Builder(access = AccessLevel.PRIVATE)
 public class File extends BaseCreatedEntity {
 
+    // AI 작업 입력 원본
     public static final String TARGET_TYPE_JOB = "JOB";
+    // AI 작업 결과물(미리보기·다운로드용으로 ML이 우리 S3에 올린 파일). 입력 파일과 구분한다.
+    public static final String TARGET_TYPE_JOB_RESULT = "JOB_RESULT";
+
+    private static final int FILE_TYPE_MAX_LENGTH = 50;
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -70,6 +75,24 @@ public class File extends BaseCreatedEntity {
                 .fileSize(fileSize)
                 .isTemp(true)
                 .tempSince(LocalDateTime.now())
+                .build();
+    }
+
+    /**
+     * AI 작업 결과 파일. 처음부터 영구 파일이며 Job에 연결된다.
+     * fileUrl에는 S3 key를 저장한다 (presign 시 key로 처리됨). 크기·형식은 조회에 실패하면 null.
+     */
+    public static File createJobResult(User owner, Long jobId, String s3Key, String contentType, Long fileSize) {
+        return File.builder()
+                .user(owner)
+                .fileUrl(s3Key)
+                .s3Key(s3Key)
+                .fileName(s3Key.substring(s3Key.lastIndexOf('/') + 1))
+                .fileType(contentType != null && contentType.length() <= FILE_TYPE_MAX_LENGTH ? contentType : null)
+                .fileSize(fileSize)
+                .isTemp(false)
+                .targetType(TARGET_TYPE_JOB_RESULT)
+                .targetId(jobId)
                 .build();
     }
 
