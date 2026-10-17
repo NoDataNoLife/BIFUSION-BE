@@ -32,7 +32,7 @@ spring:
       region:
         static: ap-northeast-2
       s3:
-        bucket: bifusion-files-959222626767-ap-northeast-2-an
+        bucket: ${S3_BUCKET:bifusion-files-308664125879-ap-northeast-2-an}
         # presigned GET URL 만료 시간(분). 버킷이 private이라 응답 시 이 값으로 임시 URL을 발급한다.
         presign-duration-minutes: 10
 
