@@ -7,19 +7,15 @@ import java.math.BigDecimal;
 
 /**
  * ML 학습 결과(result). 모든 필드 nullable.
+ * 모델 파일 위치는 artifacts.download의 bucket/key만 사용한다 (model_url은 ML 로컬 경로라 쓰지 않는다).
  */
 @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
 public record MlTrainingResult(
         String modelId,
-        String modelUrl,
         Metrics metrics,
-        String modelKey,
-        String bucket
+        MlArtifacts artifacts
 ) {
 
-    /**
-     * @param ourBucket 우리 S3 버킷명 (spring.cloud.aws.s3.bucket). 다른 버킷의 파일이면 null.
-     */
     /**
      * SUCCESS 응답인데 결과로 저장할 수 없으면 그 사유. 정상이면 null.
      */
@@ -30,8 +26,8 @@ public record MlTrainingResult(
         return null;
     }
 
-    public String modelStorageKey(String ourBucket) {
-        return MlStorageKeys.resolve(modelKey, modelUrl, bucket, ourBucket);
+    public MlArtifact download() {
+        return artifacts != null ? artifacts.download() : null;
     }
 
     @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)

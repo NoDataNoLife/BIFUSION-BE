@@ -17,11 +17,11 @@ import software.amazon.awssdk.services.s3.model.HeadObjectRequest;
 import software.amazon.awssdk.services.s3.model.HeadObjectResponse;
 import software.amazon.awssdk.services.s3.model.NoSuchKeyException;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
+import software.amazon.awssdk.services.s3.model.S3Exception;
 import software.amazon.awssdk.services.s3.presigner.S3Presigner;
 import software.amazon.awssdk.services.s3.presigner.model.GetObjectPresignRequest;
 
 import java.time.Duration;
-import java.util.Optional;
 import java.util.UUID;
 
 @Slf4j
@@ -141,9 +141,10 @@ public class S3Service {
     }
 
     /**
-     * 객체의 크기·형식을 조회한다. 객체가 없거나 조회에 실패하면 empty (호출 측에서 값 없이 진행).
+     * 객체의 크기·형식을 조회한다. 객체가 없으면 missing, 그 외 조회 실패는 failed (호출 측에서 처리 방식을 정한다).
+     * 버킷 ListBucket 권한이 없으면 S3는 없는 객체에도 403을 주므로 failed로 분류된다.
      */
-    public Optional<S3ObjectInfo> headObject(String s3Key) {
+    public S3ObjectLookup headObject(String s3Key) {
         try {
             HeadObjectResponse response = s3Client.headObject(
                     HeadObjectRequest.builder()
@@ -151,10 +152,18 @@ public class S3Service {
                             .key(s3Key)
                             .build()
             );
-            return Optional.of(new S3ObjectInfo(response.contentLength(), response.contentType()));
+            return S3ObjectLookup.found(new S3ObjectInfo(response.contentLength(), response.contentType()));
+        } catch (NoSuchKeyException e) {
+            return S3ObjectLookup.missing();
+        } catch (S3Exception e) {
+            if (e.statusCode() == 404) {
+                return S3ObjectLookup.missing();
+            }
+            log.warn("S3 객체 정보 조회 실패: key={}, status={}", s3Key, e.statusCode());
+            return S3ObjectLookup.failed();
         } catch (SdkException e) {
             log.warn("S3 객체 정보 조회 실패: key={}, err={}", s3Key, e.getClass().getSimpleName());
-            return Optional.empty();
+            return S3ObjectLookup.failed();
         }
     }
 

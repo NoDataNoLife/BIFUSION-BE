@@ -5,24 +5,18 @@ import com.fasterxml.jackson.databind.annotation.JsonNaming;
 
 /**
  * ML 증강 결과(result). 모든 필드 nullable.
+ * 결과 파일 위치는 artifacts의 bucket/key만 사용한다 (dataset_url·preview_url은 ML이 만든 임시 주소라 쓰지 않는다).
  */
 @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
 public record MlAugmentationResult(
         String datasetId,
-        String datasetUrl,
-        String previewUrl,
         Integer numNormal,
         Integer numAnomaly,
         Integer totalSamples,
         Integer numSyntheticGenerated,
-        String datasetKey,
-        String previewKey,
-        String bucket
+        MlArtifacts artifacts
 ) {
 
-    /**
-     * @param ourBucket 우리 S3 버킷명 (spring.cloud.aws.s3.bucket). 다른 버킷의 파일이면 null.
-     */
     /**
      * SUCCESS 응답인데 결과로 저장할 수 없으면 그 사유. 정상이면 null.
      * (응답 본문 대신 이 사유를 mlErrorDetail에 남긴다)
@@ -34,14 +28,11 @@ public record MlAugmentationResult(
         return null;
     }
 
-    public String datasetStorageKey(String ourBucket) {
-        return MlStorageKeys.resolve(datasetKey, datasetUrl, bucket, ourBucket);
+    public MlArtifact download() {
+        return artifacts != null ? artifacts.download() : null;
     }
 
-    /**
-     * @param ourBucket 우리 S3 버킷명 (spring.cloud.aws.s3.bucket). 다른 버킷의 파일이면 null.
-     */
-    public String previewStorageKey(String ourBucket) {
-        return MlStorageKeys.resolve(previewKey, previewUrl, bucket, ourBucket);
+    public MlArtifact preview() {
+        return artifacts != null ? artifacts.preview() : null;
     }
 }
