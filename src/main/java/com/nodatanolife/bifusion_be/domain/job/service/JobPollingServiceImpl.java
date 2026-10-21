@@ -24,16 +24,17 @@ import com.nodatanolife.bifusion_be.global.exception.ErrorCode;
 import com.nodatanolife.bifusion_be.global.exception.business.BusinessException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 @Slf4j
 @Service
@@ -51,9 +52,6 @@ public class JobPollingServiceImpl implements JobPollingService {
     private final TrainedModelRepository trainedModelRepository;
     private final FileRepository fileRepository;
     private final MlProperties mlProperties;
-
-    @Value("${spring.cloud.aws.s3.bucket}")
-    private String bucketName;
 
     @Override
     @Transactional(readOnly = true)
@@ -86,7 +84,7 @@ public class JobPollingServiceImpl implements JobPollingService {
     }
 
     @Override
-    public void applyAugmentationSuccess(Long jobId, MlAugmentationResult result, List<ResultFileMeta> resultFiles) {
+    public void applyAugmentationSuccess(Long jobId, MlAugmentationResult result, ResultFileMeta dataset, ResultFileMeta preview) {
         Optional<Job> active = findActiveJob(jobId);
         if (active.isEmpty()) {
             return;
@@ -101,16 +99,16 @@ public class JobPollingServiceImpl implements JobPollingService {
         job.succeed();
         config.recordResult(
                 result.datasetId(),
-                result.datasetStorageKey(bucketName),
-                result.previewStorageKey(bucketName),
+                ResultFileMeta.keyOf(dataset),
+                ResultFileMeta.keyOf(preview),
                 result.numSyntheticGenerated(),
                 result.totalSamples()
         );
-        saveResultFiles(job, resultFiles);
+        saveResultFiles(job, dataset, preview);
     }
 
     @Override
-    public void applyTrainingSuccess(Long jobId, MlTrainingResult result, List<ResultFileMeta> resultFiles) {
+    public void applyTrainingSuccess(Long jobId, MlTrainingResult result, ResultFileMeta model) {
         Optional<Job> active = findActiveJob(jobId);
         if (active.isEmpty()) {
             return;
@@ -129,8 +127,8 @@ public class JobPollingServiceImpl implements JobPollingService {
         }
         // k-shot은 ML 결과값이 아니라 BE가 실제로 보낸 파라미터를 기준으로 기록한다.
         trainedModelRepository.save(TrainedModel.create(
-                job, result.modelId(), config.getKShot(), result.modelStorageKey(bucketName)));
-        saveResultFiles(job, resultFiles);
+                job, result.modelId(), config.getKShot(), ResultFileMeta.keyOf(model)));
+        saveResultFiles(job, model);
     }
 
     @Override
@@ -184,8 +182,8 @@ public class JobPollingServiceImpl implements JobPollingService {
         return true;
     }
 
-    private void saveResultFiles(Job job, List<ResultFileMeta> resultFiles) {
-        resultFiles.forEach(meta -> fileRepository.save(File.createJobResult(
+    private void saveResultFiles(Job job, ResultFileMeta... resultFiles) {
+        Stream.of(resultFiles).filter(Objects::nonNull).forEach(meta -> fileRepository.save(File.createJobResult(
                 job.getUser(), job.getJobId(), meta.s3Key(), meta.contentType(), meta.size())));
     }
 
