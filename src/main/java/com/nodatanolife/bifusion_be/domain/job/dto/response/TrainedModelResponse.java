@@ -42,7 +42,7 @@ public record TrainedModelResponse(
                 model.getTrainedModelId(),
                 trainingJob.getDisplayCode(),
                 model.getKShot(),
-                config != null ? new Metrics(config.getAccuracy(), config.getAuroc(), config.getLoss()) : null,
+                config != null ? new Metrics(config.getAccuracy(), config.getF1Score(), config.getAuroc(), config.getLoss()) : null,
                 sourceJob != null ? sourceJob.getJobId() : null,
                 sourceJob != null ? sourceJob.getDisplayCode() : null,
                 trainingJob.getFinishedAt()
@@ -53,6 +53,8 @@ public record TrainedModelResponse(
     public record Metrics(
             @Schema(description = "정확도 (0~1)", example = "0.9123")
             BigDecimal accuracy,
+            @Schema(description = "F1 점수 (0~1)", example = "0.9")
+            BigDecimal f1Score,
             @Schema(description = "AUROC (0~1)", example = "0.95")
             BigDecimal auroc,
             @Schema(description = "손실", example = "0.1234")
