@@ -63,7 +63,8 @@ public class S3Service {
     /**
      * DB에 저장된 값(S3 공개 URL 또는 raw key)을 만료 시간이 있는 presigned GET URL로 변환한다.
      * 버킷은 private 상태이므로 응답 시점에 이 메서드로 접근 가능한 URL을 발급한다.
-     * 입력이 비어있거나 key를 추출할 수 없으면 원본을 그대로 반환한다(외부 URL 등).
+     * 입력이 비어있으면 그대로, S3가 아닌 외부 URL은 원본을 반환한다.
+     * 우리 S3 값인데 key를 추출할 수 없거나 presign에 실패하면 null을 반환한다 (저장된 key·URL을 응답에 노출하지 않는다).
      */
     public String toPresignedUrl(String storedUrlOrKey) {
         return toPresignedUrl(storedUrlOrKey, Duration.ofMinutes(presignDurationMinutes));
@@ -90,7 +91,8 @@ public class S3Service {
             key = storedUrlOrKey;
         }
         if (key == null || key.isBlank()) {
-            return storedUrlOrKey;
+            log.warn("Presigned URL 생성 실패, S3 URL에서 key 추출 불가");
+            return null;
         }
 
         try {
@@ -106,8 +108,8 @@ public class S3Service {
 
             return s3Presigner.presignGetObject(presignRequest).url().toString();
         } catch (Exception e) {
-            log.warn("Presigned URL 생성 실패, 원본 반환: key={}, err={}", key, e.getMessage());
-            return storedUrlOrKey;
+            log.warn("Presigned URL 생성 실패: key={}, err={}", key, e.getClass().getSimpleName());
+            return null;
         }
     }
 
