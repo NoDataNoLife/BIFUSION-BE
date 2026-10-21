@@ -58,6 +58,9 @@ public class FileServiceImpl implements FileService {
 
         String presignedUrl = s3Service.toPresignedUrl(
                 file.getS3Key(), Duration.ofSeconds(DOWNLOAD_URL_EXPIRE_SECONDS));
+        if (presignedUrl == null || presignedUrl.isBlank()) {
+            throw new BusinessException(ErrorCode.FILE_DOWNLOAD_FAILED);
+        }
 
         return FileDownloadResponse.from(file, presignedUrl, DOWNLOAD_URL_EXPIRE_SECONDS);
     }

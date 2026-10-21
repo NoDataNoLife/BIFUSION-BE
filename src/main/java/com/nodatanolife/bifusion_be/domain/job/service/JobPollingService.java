@@ -26,9 +26,16 @@ public interface JobPollingService {
 
     void cancel(Long jobId);
 
-    void applyAugmentationSuccess(Long jobId, MlAugmentationResult result, List<ResultFileMeta> resultFiles);
+    /**
+     * @param dataset 연결할 데이터셋 파일. 연결할 수 없으면 null
+     * @param preview 연결할 미리보기 파일. 연결할 수 없으면 null
+     */
+    void applyAugmentationSuccess(Long jobId, MlAugmentationResult result, ResultFileMeta dataset, ResultFileMeta preview);
 
-    void applyTrainingSuccess(Long jobId, MlTrainingResult result, List<ResultFileMeta> resultFiles);
+    /**
+     * @param model 연결할 모델 파일. 연결할 수 없으면 null
+     */
+    void applyTrainingSuccess(Long jobId, MlTrainingResult result, ResultFileMeta model);
 
     void applyInferenceSuccess(Long jobId, MlInferenceResult result);
 }

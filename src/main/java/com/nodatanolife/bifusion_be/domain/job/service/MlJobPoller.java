@@ -1,12 +1,14 @@
 package com.nodatanolife.bifusion_be.domain.job.service;
 
 import com.nodatanolife.bifusion_be.domain.file.service.S3ObjectInfo;
+import com.nodatanolife.bifusion_be.domain.file.service.S3ObjectLookup;
 import com.nodatanolife.bifusion_be.domain.file.service.S3Service;
 import com.nodatanolife.bifusion_be.domain.job.entity.Job;
 import com.nodatanolife.bifusion_be.domain.job.entity.JobFailureReason;
 import com.nodatanolife.bifusion_be.domain.job.entity.JobStatus;
 import com.nodatanolife.bifusion_be.domain.job.ml.MlClient;
 import com.nodatanolife.bifusion_be.domain.job.ml.MlProperties;
+import com.nodatanolife.bifusion_be.domain.job.ml.dto.response.MlArtifact;
 import com.nodatanolife.bifusion_be.domain.job.ml.dto.response.MlAugmentationResult;
 import com.nodatanolife.bifusion_be.domain.job.ml.dto.response.MlInferenceResult;
 import com.nodatanolife.bifusion_be.domain.job.ml.dto.response.MlJobResponse;
@@ -19,10 +21,6 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Objects;
-import java.util.stream.Stream;
 
 /**
  * Job 1건 폴링. 트랜잭션을 갖지 않는다.
@@ -135,8 +133,9 @@ public class MlJobPoller {
             return;
         }
         MlAugmentationResult result = response.result();
-        jobPollingService.applyAugmentationSuccess(job.getJobId(), result, describeResultFiles(job,
-                result.datasetStorageKey(bucketName), result.previewStorageKey(bucketName)));
+        jobPollingService.applyAugmentationSuccess(job.getJobId(), result,
+                describeResultFile(job, "dataset", result.download()),
+                describeResultFile(job, "preview", result.preview()));
     }
 
     private void pollTraining(Job job, LocalDateTime now) {
@@ -146,7 +145,7 @@ public class MlJobPoller {
         }
         MlTrainingResult result = response.result();
         jobPollingService.applyTrainingSuccess(job.getJobId(), result,
-                describeResultFiles(job, result.modelStorageKey(bucketName)));
+                describeResultFile(job, "model", result.download()));
     }
 
     private void pollInference(Job job, LocalDateTime now) {
@@ -211,22 +210,33 @@ public class MlJobPoller {
     }
 
     /**
-     * 결과 파일 key마다 S3에서 크기·형식을 미리 조회한다 (트랜잭션 밖). 조회에 실패하면 값 없이 진행한다.
-     * key가 없으면(ML 로컬 저장 또는 다른 버킷) File 행을 만들지 않는다.
+     * ML artifacts의 결과 파일 하나를 확인하고 크기·형식을 미리 조회한다 (트랜잭션 밖).
+     * 연결할 수 없으면 null을 반환하며, 이때 Job은 SUCCESS로 두고 해당 파일만 연결하지 않는다.
+     * - key 없음(ML이 S3에 올리지 않음), 다른 버킷, 결과 경로(ml-results/) 밖의 key, S3에 객체 없음
+     * 크기는 ML이 준 size_bytes를 우선 쓴다. S3 조회 자체가 실패(권한·네트워크)하면 일시 장애일 수 있어 형식 없이 연결한다.
+     *
+     * @param slot 로그용 파일 구분 (dataset / preview / model)
      */
-    private List<ResultFileMeta> describeResultFiles(Job job, String... s3Keys) {
-        List<String> keys = Stream.of(s3Keys).filter(Objects::nonNull).toList();
-        if (keys.size() < s3Keys.length) {
-            log.warn("[Polling] 결과 파일 S3 key 없음(ML 로컬 저장 또는 다른 버킷) - jobId: {}, mlJobId: {}",
-                    job.getJobId(), job.getMlJobId());
+    private ResultFileMeta describeResultFile(Job job, String slot, MlArtifact artifact) {
+        if (artifact == null || !artifact.hasKey()) {
+            log.warn("[Polling] 결과 파일 artifacts 없음 - jobId: {}, mlJobId: {}, file: {}",
+                    job.getJobId(), job.getMlJobId(), slot);
+            return null;
         }
-        List<ResultFileMeta> metas = new ArrayList<>();
-        for (String key : keys) {
-            S3ObjectInfo info = s3Service.headObject(key).orElse(null);
-            metas.add(new ResultFileMeta(key,
-                    info != null ? info.size() : null,
-                    info != null ? info.contentType() : null));
+        String rejectReason = artifact.rejectReason(bucketName);
+        if (rejectReason != null) {
+            log.error("[Polling] 결과 파일 연결 안 함({}) - jobId: {}, mlJobId: {}, file: {}, bucket: {}, key: {}",
+                    rejectReason, job.getJobId(), job.getMlJobId(), slot, artifact.bucket(), artifact.key());
+            return null;
         }
-        return metas;
+        S3ObjectLookup lookup = s3Service.headObject(artifact.key());
+        if (lookup.notFound()) {
+            log.error("[Polling] 결과 파일이 S3에 없음, 연결하지 않음 - jobId: {}, mlJobId: {}, file: {}, key: {}",
+                    job.getJobId(), job.getMlJobId(), slot, artifact.key());
+            return null;
+        }
+        S3ObjectInfo info = lookup.info();
+        Long size = artifact.sizeBytes() != null ? artifact.sizeBytes() : (info != null ? info.size() : null);
+        return new ResultFileMeta(artifact.key(), size, info != null ? info.contentType() : null);
     }
 }
