@@ -123,7 +123,7 @@ public class JobPollingServiceImpl implements JobPollingService {
         job.succeed();
         MlTrainingResult.Metrics metrics = result.metrics();
         if (metrics != null) {
-            config.recordMetrics(metrics.accuracy(), metrics.auroc(), metrics.loss());
+            config.recordMetrics(metrics.accuracy(), metrics.f1Score(), metrics.auroc(), metrics.loss());
         }
         // k-shot은 ML 결과값이 아니라 BE가 실제로 보낸 파라미터를 기준으로 기록한다.
         trainedModelRepository.save(TrainedModel.create(

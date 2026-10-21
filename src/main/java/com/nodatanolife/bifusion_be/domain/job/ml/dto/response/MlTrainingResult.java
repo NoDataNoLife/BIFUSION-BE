@@ -33,6 +33,7 @@ public record MlTrainingResult(
     @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
     public record Metrics(
             BigDecimal accuracy,
+            BigDecimal f1Score,
             BigDecimal auroc,
             BigDecimal loss
     ) {

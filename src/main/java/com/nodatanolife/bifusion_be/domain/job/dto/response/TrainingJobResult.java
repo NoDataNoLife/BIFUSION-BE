@@ -26,7 +26,7 @@ public record TrainingJobResult(
         return new TrainingJobResult(
                 model != null ? model.getTrainedModelId() : null,
                 config.getKShot(),
-                new Metrics(config.getAccuracy(), config.getAuroc(), config.getLoss()),
+                new Metrics(config.getAccuracy(), config.getF1Score(), config.getAuroc(), config.getLoss()),
                 model != null ? model.getModelKey() : null
         );
     }
@@ -35,6 +35,8 @@ public record TrainingJobResult(
     public record Metrics(
             @Schema(description = "정확도 (0~1)", example = "0.9123")
             BigDecimal accuracy,
+            @Schema(description = "F1 점수 (0~1)", example = "0.9")
+            BigDecimal f1Score,
             @Schema(description = "AUROC (0~1)", example = "0.95")
             BigDecimal auroc,
             @Schema(description = "손실", example = "0.1234")

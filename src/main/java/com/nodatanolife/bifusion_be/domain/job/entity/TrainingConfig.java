@@ -38,6 +38,9 @@ public class TrainingConfig extends BaseEntity {
     @Column(name = "accuracy", precision = 5, scale = 4)
     private BigDecimal accuracy;
 
+    @Column(name = "f1_score", precision = 5, scale = 4)
+    private BigDecimal f1Score;
+
     @Column(name = "auroc", precision = 5, scale = 4)
     private BigDecimal auroc;
 
@@ -83,8 +86,9 @@ public class TrainingConfig extends BaseEntity {
                 .build();
     }
 
-    public void recordMetrics(BigDecimal accuracy, BigDecimal auroc, BigDecimal loss) {
+    public void recordMetrics(BigDecimal accuracy, BigDecimal f1Score, BigDecimal auroc, BigDecimal loss) {
         this.accuracy = accuracy;
+        this.f1Score = f1Score;
         this.auroc = auroc;
         this.loss = loss;
     }
