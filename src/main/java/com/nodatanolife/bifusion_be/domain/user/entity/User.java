@@ -3,6 +3,7 @@ package com.nodatanolife.bifusion_be.domain.user.entity;
 import com.nodatanolife.bifusion_be.global.entity.BaseEntity;
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.ColumnDefault;
 import java.time.LocalDate;
 
 @Entity
@@ -40,8 +41,11 @@ public class User extends BaseEntity {
     @Column(name = "bio")
     private String bio;
 
+    // 기본값 USER. 탈퇴 익명화 계정만 DELETED (createDeletedUser).
+    // @ColumnDefault는 테이블을 새로 만들 때만 적용되므로, 기존 DB는 ALTER로 기본값을 따로 넣어야 한다.
+    @ColumnDefault("'USER'")
     @Column(name = "role", length = 20)
-    private String role;
+    private String role = "USER";
 
     @Column(name = "website_url")
     private String websiteUrl;
