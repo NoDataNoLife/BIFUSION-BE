@@ -24,7 +24,7 @@ public record InspectionSummary(
         return switch (inspectionRequest.getStatus()) {
             case PENDING -> new InspectionSummary(InspectionStatus.PENDING, null);
             case APPROVED -> new InspectionSummary(InspectionStatus.COMPLETED, InspectionResultResponse.from(inspectionRequest));
-            case REJECTED -> NONE;
+            case REJECTED, CANCELLED -> NONE;
         };
     }
 }

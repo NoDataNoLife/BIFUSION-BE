@@ -12,6 +12,11 @@ public interface InspectionService {
 
     InspectionResponse createInspection(User user, InspectionCreateRequest request);
 
+    /**
+     * 신청자 취소. 전문가가 검수를 시작하기 전에만 가능하며 포인트를 환불한다.
+     */
+    InspectionResponse cancelInspection(User user, Long inspectionRequestId);
+
     InspectionDetailResponse getInspectionDetail(User expert, Long inspectionId);
 
     InspectionDraftResponse saveDraftComment(User expert, Long inspectionId, String expertComment);

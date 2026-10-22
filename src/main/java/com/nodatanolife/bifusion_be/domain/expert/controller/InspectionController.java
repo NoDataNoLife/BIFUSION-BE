@@ -37,6 +37,10 @@ public class InspectionController {
 
                     - targetType/targetId: 검수 대상, reason: 검증 요청 메모(필수), rewardPoints: 전문가 리워드(신청 즉시 차감)
                     - 본인 소유 대상만 신청 가능(아니면 403), 중복 신청 409, 포인트 부족 400
+                    - 신청과 동시에 전문가 1명에게 자동 배정됩니다 (진행 중인 검수가 가장 적은 전문가, 신청자 본인 제외).
+                      배정할 전문가가 없으면 409(IS008)이며 포인트는 차감되지 않습니다.
+                    - 반려·취소된 대상은 다시 신청할 수 있습니다.
+                    - 응답의 inspectionId는 검수 신청 ID(취소 API에 사용)입니다. 전문가용 /inspections/{inspectionId} API의 ID(검수 task ID)와 다릅니다.
                     """
     )
     @PostMapping
@@ -48,6 +52,25 @@ public class InspectionController {
         User user = principal.getUser();
         InspectionResponse response = inspectionService.createInspection(user, request);
         return CommonResponse.success(response, "전문가 검수 신청이 완료되었습니다.");
+    }
+
+    @Operation(
+            summary = "전문가 검수 신청 취소",
+            description = """
+                    내 검수 신청을 취소하고 차감된 포인트를 돌려받습니다. 전문가가 검수를 시작하기 전에만 취소할 수 있습니다.
+
+                    - inspectionRequestId: 검수 신청 API 응답의 inspectionId, 또는 증강 데이터셋 목록의 inspectionTarget.inspectionRequestId
+                    - 취소 후 같은 대상에 다시 신청할 수 있습니다.
+                    - 본인 신청이 아니거나 없으면 404(IS009), 검수가 시작됐거나 이미 처리된 신청은 409(IS010)
+                    """
+    )
+    @PatchMapping("/requests/{inspectionRequestId}/cancel")
+    public CommonResponse<InspectionResponse> cancelInspection(
+            @AuthenticationPrincipal CustomOAuth2User principal,
+            @PathVariable Long inspectionRequestId
+    ) {
+        InspectionResponse response = inspectionService.cancelInspection(principal.getUser(), inspectionRequestId);
+        return CommonResponse.success(response, "전문가 검수 신청이 취소되었습니다.");
     }
 
     @Operation(
