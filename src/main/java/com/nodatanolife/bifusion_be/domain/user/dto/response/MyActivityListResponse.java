@@ -21,7 +21,7 @@ import java.util.List;
  * 나눠 애초에 해당 도메인에 없는 필드는 구조적으로 존재하지 않게 한다.
  * 타입별로 실제 내려가는 필드:
  * <pre>
- * RECIPE      : thumbnailUrl, likeCount, commentCount, forkCount
+ * RECIPE      : thumbnailUrl, likeCount, commentCount (최상위 리뷰 + 대댓글, 레시피 상세 reviewCount와 같은 기준), forkCount
  * DATASET     : thumbnailUrl, likeCount, downloadCount
  * QNA         : commentCount (ExpertQnA.answerCount = 전문가 답변 수)
  * RECRUITMENT : commentCount (RecruitApplication 총 지원 수, 상태 무관)
