@@ -8,6 +8,7 @@ import com.nodatanolife.bifusion_be.domain.job.entity.JobFailureReason;
 import com.nodatanolife.bifusion_be.domain.job.entity.JobStatus;
 import com.nodatanolife.bifusion_be.domain.job.ml.MlClient;
 import com.nodatanolife.bifusion_be.domain.job.ml.MlProperties;
+import com.nodatanolife.bifusion_be.domain.job.ml.MlUnavailableException;
 import com.nodatanolife.bifusion_be.domain.job.ml.dto.response.MlArtifact;
 import com.nodatanolife.bifusion_be.domain.job.ml.dto.response.MlAugmentationResult;
 import com.nodatanolife.bifusion_be.domain.job.ml.dto.response.MlInferenceResult;
@@ -20,7 +21,10 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
+import java.time.Duration;
 import java.time.LocalDateTime;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Job 1건 폴링. 트랜잭션을 갖지 않는다.
@@ -40,6 +44,12 @@ public class MlJobPoller {
 
     @Value("${spring.cloud.aws.s3.bucket}")
     private String bucketName;
+
+    // PENDING 지속 경고를 마지막으로 남긴 시각 (jobId별). 메모리에만 두며 서버 재시작 시 초기화된다.
+    private final Map<Long, LocalDateTime> pendingWarnedAt = new ConcurrentHashMap<>();
+
+    // 폴링 조회로 ML 연결 불가가 처음 확인된 시각. ML 앱이 응답하면 null. 메모리에만 두며 서버 재시작 시 초기화된다.
+    private volatile LocalDateTime mlUnreachableSince;
 
     /**
      * @param job 폴링 대상 조회 시점의 스냅샷 (판정용). 상태 변경은 반영 서비스가 Job을 다시 읽어 수행한다.
@@ -71,6 +81,13 @@ public class MlJobPoller {
             }
             return;
         }
+        // 연결 불가가 이어지는 동안에는 ML 조회 없이 시간으로 판정한다 (ML이 작업을 계속하는지 알 수 없다).
+        if (isUnreachableTimedOut(job, now)) {
+            log.warn("[Polling] ML 연결 불가 지속 - 실패 처리, jobId: {}, mlJobId: {}, 연결 불가 시작: {}",
+                    job.getJobId(), job.getMlJobId(), mlUnreachableSince);
+            jobPollingService.fail(job.getJobId(), JobFailureReason.ML_UNREACHABLE, null);
+            return;
+        }
         if (cycle.isMlUnavailable()) {
             cycle.skipMlCall();
             return;
@@ -85,13 +102,21 @@ public class MlJobPoller {
         } catch (BusinessException e) {
             switch (e.getErrorCode()) {
                 case ML_JOB_NOT_FOUND -> {
+                    markMlReachable(now);
                     log.warn("[Polling] ML에 작업 없음(404) - jobId: {}, mlJobId: {}", job.getJobId(), job.getMlJobId());
                     jobPollingService.fail(job.getJobId(), JobFailureReason.ML_JOB_NOT_FOUND, null);
                 }
                 // 실패 처리하지 않고 다음 주기에 재시도. 로그는 스케줄러가 주기마다 한 줄로 요약한다.
-                case ML_CONNECTION_FAILED -> cycle.markMlUnavailable();
-                case ML_RESPONSE_ERROR -> log.warn("[Polling] ML 응답 처리 실패 - 다음 주기에 재시도, jobId: {}, mlJobId: {}",
-                        job.getJobId(), job.getMlJobId());
+                // 연결 불가가 unreachableTimeout 넘게 이어지면 isUnreachableTimedOut으로 실패 처리된다.
+                case ML_CONNECTION_FAILED -> {
+                    markMlUnreachable(now);
+                    cycle.markMlUnavailable(unavailableReason(e));
+                }
+                case ML_RESPONSE_ERROR -> {
+                    markMlReachable(now);
+                    log.warn("[Polling] ML 응답 처리 실패 - 다음 주기에 재시도, jobId: {}, mlJobId: {}",
+                            job.getJobId(), job.getMlJobId());
+                }
                 default -> throw e;
             }
         }
@@ -120,7 +145,7 @@ public class MlJobPoller {
             log.info("[Polling] 타임아웃 Job의 ML 취소 요청 완료 - jobId: {}, mlJobId: {}", job.getJobId(), job.getMlJobId());
         } catch (BusinessException e) {
             if (e.getErrorCode() == ErrorCode.ML_CONNECTION_FAILED) {
-                cycle.markMlUnavailable();
+                cycle.markMlUnavailable(unavailableReason(e));
             }
             log.warn("[Polling] 타임아웃 Job의 ML 취소 실패(무시) - jobId: {}, mlJobId: {}, code: {}",
                     job.getJobId(), job.getMlJobId(), e.getErrorCode());
@@ -165,13 +190,20 @@ public class MlJobPoller {
         String currentStep = response.currentStep();
         boolean stepChanged = currentStep != null && !currentStep.equals(job.getCurrentStep());
 
+        markMlReachable(now);
+        if (response.jobStatus() != JobStatus.PENDING) {
+            pendingWarnedAt.remove(jobId);
+        }
         switch (response.jobStatus()) {
             case PENDING -> {
                 if (job.isStaleSince(mlProperties.pendingTimeout(), now)) {
                     log.warn("[Polling] RUNNING이던 작업을 ML이 PENDING으로 응답 - 유실로 판단, jobId: {}, mlJobId: {}",
                             jobId, job.getMlJobId());
                     jobPollingService.fail(jobId, JobFailureReason.ML_JOB_NOT_FOUND, null);
-                } else if (stepChanged) {
+                    return true;
+                }
+                warnIfPendingTooLong(job, now);
+                if (stepChanged) {
                     jobPollingService.applyProgress(jobId, false, currentStep);
                 }
                 return true;
@@ -207,6 +239,65 @@ public class MlJobPoller {
             }
         }
         return true;
+    }
+
+    /**
+     * ML이 PENDING을 pendingWarnAfter 넘게 돌려주면 경고 로그를 남긴다. 같은 Job은 pendingWarnAfter 간격으로만 다시 남긴다.
+     * ML은 모르는 job_id에도 PENDING을 주므로(작업 유실, started 추적 미설정 포함) 이 로그 없이는 원인을 구분할 수 없다.
+     * 상태는 바꾸지 않는다 (실패 처리는 pendingTimeout이 맡는다).
+     */
+    private void warnIfPendingTooLong(Job job, LocalDateTime now) {
+        Duration warnAfter = mlProperties.polling().pendingWarnAfter();
+        LocalDateTime startedAt = job.getStartedAt();
+        if (startedAt == null || !startedAt.plus(warnAfter).isBefore(now)) {
+            return;
+        }
+        LocalDateTime lastWarnedAt = pendingWarnedAt.get(job.getJobId());
+        if (lastWarnedAt != null && !lastWarnedAt.plus(warnAfter).isBefore(now)) {
+            return;
+        }
+        // pendingTimeout이 지난 기록은 이미 타임아웃 처리됐거나 취소 등으로 종료된 Job이다.
+        LocalDateTime expired = now.minus(mlProperties.pendingTimeout());
+        pendingWarnedAt.values().removeIf(warnedAt -> warnedAt.isBefore(expired));
+        pendingWarnedAt.put(job.getJobId(), now);
+
+        log.warn("[Polling] ML이 PENDING 응답 지속 - jobId: {}, mlJobId: {}, BE 상태: {}, 접수 후 {}분 경과 (ML 큐 대기·작업 유실 확인 필요)",
+                job.getJobId(), job.getMlJobId(), job.getStatus(), Duration.between(startedAt, now).toMinutes());
+    }
+
+    /**
+     * 연결 불가가 unreachableTimeout 넘게 이어졌는지. 연결 불가 시작 시각과 ML 접수 시각 중 늦은 쪽부터 잰다.
+     */
+    private boolean isUnreachableTimedOut(Job job, LocalDateTime now) {
+        LocalDateTime since = mlUnreachableSince;
+        if (since == null || job.getStartedAt() == null) {
+            return false;
+        }
+        LocalDateTime from = job.getStartedAt().isAfter(since) ? job.getStartedAt() : since;
+        return from.plus(mlProperties.polling().unreachableTimeout()).isBefore(now);
+    }
+
+    private void markMlUnreachable(LocalDateTime now) {
+        if (mlUnreachableSince == null) {
+            mlUnreachableSince = now;
+            log.warn("[Polling] ML 연결 불가 시작 - {} 넘게 이어지면 진행 중 Job을 실패 처리",
+                    mlProperties.polling().unreachableTimeout());
+        }
+    }
+
+    /**
+     * ML 앱이 응답했으면(오류 응답 포함) 연결 불가 구간을 끝낸다.
+     */
+    private void markMlReachable(LocalDateTime now) {
+        LocalDateTime since = mlUnreachableSince;
+        if (since != null) {
+            mlUnreachableSince = null;
+            log.info("[Polling] ML 연결 복구 - 연결 불가 {}분", Duration.between(since, now).toMinutes());
+        }
+    }
+
+    private static String unavailableReason(BusinessException e) {
+        return e instanceof MlUnavailableException unavailable ? unavailable.getReason() : null;
     }
 
     /**

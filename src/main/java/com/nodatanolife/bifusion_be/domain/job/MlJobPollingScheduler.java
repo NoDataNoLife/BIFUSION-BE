@@ -54,8 +54,8 @@ public class MlJobPollingScheduler {
         }
 
         if (cycle.isMlUnavailable()) {
-            log.warn("[Polling] ML 서버 연결 실패 - 이번 주기 나머지 ML 조회 {}건 건너뜀, 다음 주기에 재시도",
-                    cycle.getSkippedMlCalls());
+            log.warn("[Polling] ML 서버 연결 실패({}) - 이번 주기 나머지 ML 조회 {}건 건너뜀, 다음 주기에 재시도",
+                    cycle.getMlUnavailableReason(), cycle.getSkippedMlCalls());
         }
     }
 }
