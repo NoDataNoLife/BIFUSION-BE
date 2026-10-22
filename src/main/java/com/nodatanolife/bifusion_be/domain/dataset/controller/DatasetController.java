@@ -29,7 +29,7 @@ public class DatasetController {
             summary = "데이터셋 상세 단건 조회",
             description = "데이터셋 상세 정보와 첨부 파일 정보를 함께 반환합니다. "
                     + "isPublic=false인 비공개 데이터셋은 작성자 본인만 조회할 수 있으며, "
-                    + "본인이 아닌 사용자가 요청하면 접근이 거부됩니다."
+                    + "본인이 아닌 사용자가 요청하면 접근이 거부됩니다. 삭제된 데이터셋은 작성자 본인이 요청해도 404입니다."
     )
     @GetMapping("/{datasetId}")
     public CommonResponse<DatasetDetailResponse> getDatasetDetail(
