@@ -81,4 +81,18 @@ public interface JobRepository extends JpaRepository<Job, Long> {
      */
     @Query("select j from Job j where j.status in :statuses order by coalesce(j.startedAt, j.createdAt) asc, j.jobId asc")
     List<Job> findPollTargets(@Param("statuses") Collection<JobStatus> statuses, Pageable pageable);
+
+    /**
+     * 기간 안에 만든 사용자의 작업 수 (리소스 사용량의 월간 증강 횟수). excludedStatuses(실패·취소)는 세지 않는다.
+     */
+    @Query("""
+            select count(j) from Job j
+            where j.user.userId = :userId and j.type = :type and j.status not in :excludedStatuses
+              and j.createdAt >= :from and j.createdAt < :to
+            """)
+    long countCreatedBetween(@Param("userId") Long userId,
+                             @Param("type") JobType type,
+                             @Param("excludedStatuses") Collection<JobStatus> excludedStatuses,
+                             @Param("from") LocalDateTime from,
+                             @Param("to") LocalDateTime to);
 }
