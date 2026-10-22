@@ -124,9 +124,8 @@ public class Dataset extends BaseEntity {
     @JoinColumn(name = "file_id")
     private File file;
 
-    // soft delete 시각. null이면 삭제되지 않은 상태
-    @Column(name = "deleted_at")
-    private LocalDateTime deletedAt;
+    // soft delete 시각(deleted_at)은 BaseEntity.deletedAt을 쓴다. 여기서 같은 필드를 다시 선언하면
+    // markDeleted()가 바꾸는 BaseEntity 필드가 아닌 이 필드가 컬럼에 매핑되어 삭제가 저장되지 않는다.
 
 
     @Builder
