@@ -1,5 +1,7 @@
 package com.nodatanolife.bifusion_be.domain.job.ml;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.nodatanolife.bifusion_be.domain.job.ml.dto.request.MlAugmentationRunRequest;
@@ -31,7 +33,7 @@ import java.util.function.Supplier;
 
 /**
  * 실행 요청에는 Base64 이미지가 담기고 ML의 422 응답 본문은 입력값을 그대로 되돌려 주므로,
- * 요청·응답 본문은 어떤 경우에도 로그에 남기지 않는다.
+ * 요청·응답 본문은 어떤 경우에도 로그에 남기지 않는다. 응답 파싱 실패 시에는 실패한 필드 경로와 짧은 원인만 남긴다.
  */
 @Slf4j
 @Component
@@ -43,6 +45,7 @@ public class MlClientImpl implements MlClient {
     private static final String INFERENCE = "inference";
     private static final String JOB_NOT_FOUND_CODE = "JOB_NOT_FOUND";
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+    private static final int PARSE_FAILURE_MESSAGE_MAX_LENGTH = 300;
 
     private final RestClient mlRestClient;
     private final MlProperties mlProperties;
@@ -93,7 +96,7 @@ public class MlClientImpl implements MlClient {
     }
 
     private String run(String task, Object request) {
-        MlRunResponse response = execute(Operation.RUN, task, () -> mlRestClient.post()
+        MlRunResponse response = execute(Operation.RUN, task, null, () -> mlRestClient.post()
                 .uri("/api/v1/{task}/run", task)
                 .contentType(MediaType.APPLICATION_JSON)
                 .body(request)
@@ -108,7 +111,7 @@ public class MlClientImpl implements MlClient {
 
     private <T> MlJobResponse<T> get(String task, String mlJobId,
                                      ParameterizedTypeReference<MlJobResponse<T>> type) {
-        MlJobResponse<T> response = execute(Operation.GET, task, () -> mlRestClient.get()
+        MlJobResponse<T> response = execute(Operation.GET, task, mlJobId, () -> mlRestClient.get()
                 .uri("/api/v1/{task}/{jobId}", task, mlJobId)
                 .retrieve()
                 .body(type));
@@ -120,32 +123,67 @@ public class MlClientImpl implements MlClient {
     }
 
     private void cancel(String task, String mlJobId) {
-        execute(Operation.CANCEL, task, () -> mlRestClient.post()
+        execute(Operation.CANCEL, task, mlJobId, () -> mlRestClient.post()
                 .uri("/api/v1/{task}/{jobId}/cancel", task, mlJobId)
                 .retrieve()
                 .toBodilessEntity());
     }
 
-    private <T> T execute(Operation operation, String task, Supplier<T> call) {
+    /**
+     * @param mlJobId 로그용. 실행 요청(RUN)은 아직 없으므로 null
+     */
+    private <T> T execute(Operation operation, String task, String mlJobId, Supplier<T> call) {
         if (!StringUtils.hasText(mlProperties.baseUrl())) {
             log.warn("[ML] base URL 미설정 - {} {}", operation, task);
-            throw new BusinessException(ErrorCode.ML_CONNECTION_FAILED);
+            throw new MlUnavailableException("base URL 미설정");
         }
         try {
             return call.get();
         } catch (RestClientResponseException e) {
-            throw new BusinessException(classify(operation, task, e));
+            ErrorCode errorCode = classify(operation, task, e);
+            if (errorCode == ErrorCode.ML_CONNECTION_FAILED) {
+                int status = e.getStatusCode().value();
+                throw new MlUnavailableException(status == HttpStatus.NOT_FOUND.value()
+                        ? "HTTP 404 (ML 앱 응답 아님)"
+                        : "HTTP " + status);
+            }
+            throw new BusinessException(errorCode);
         } catch (ResourceAccessException e) {
             if (operation == Operation.RUN && isResponseTimeout(e)) {
                 log.warn("[ML] 실행 요청 응답 대기 타임아웃 - ML 접수 여부 불확실: {}", task);
                 throw new BusinessException(ErrorCode.ML_SUBMIT_TIMEOUT);
             }
-            logUnavailable(operation, "[ML] 연결 실패 - {} {}: {}", operation, task, rootCauseName(e));
-            throw new BusinessException(ErrorCode.ML_CONNECTION_FAILED);
+            String cause = rootCauseName(e);
+            logUnavailable(operation, "[ML] 연결 실패 - {} {}: {}", operation, task, cause);
+            throw new MlUnavailableException(cause);
         } catch (RestClientException e) {
-            log.error("[ML] 응답 파싱 실패 - {} {}: {}", operation, task, e.getClass().getSimpleName());
+            log.error("[ML] 응답 파싱 실패 - {} {}, mlJobId: {}, 원인: {}",
+                    operation, task, mlJobId, describeParseFailure(e));
             throw new BusinessException(ErrorCode.ML_RESPONSE_ERROR);
         }
+    }
+
+    /**
+     * 파싱 실패 원인을 짧게 설명한다. Jackson 오류면 실패한 필드 경로와 위치 정보를 뺀 메시지를 남긴다
+     * (enum 값 불일치 등은 거부된 값 하나가 메시지에 포함된다). 그 밖의 예외는 메시지에 본문이 섞일 수 있어 클래스명만 남긴다.
+     */
+    private static String describeParseFailure(RestClientException e) {
+        Throwable cause = e.getMostSpecificCause();
+        if (cause instanceof JsonMappingException mapping) {
+            return mapping.getClass().getSimpleName() + " at " + mapping.getPathReference()
+                    + ": " + truncate(mapping.getOriginalMessage());
+        }
+        if (cause instanceof JsonProcessingException processing) {
+            return processing.getClass().getSimpleName() + ": " + truncate(processing.getOriginalMessage());
+        }
+        return cause.getClass().getSimpleName();
+    }
+
+    private static String truncate(String message) {
+        if (message == null || message.length() <= PARSE_FAILURE_MESSAGE_MAX_LENGTH) {
+            return message;
+        }
+        return message.substring(0, PARSE_FAILURE_MESSAGE_MAX_LENGTH) + "...";
     }
 
     /**
@@ -182,14 +220,22 @@ public class MlClientImpl implements MlClient {
             log.error("[ML] 실행 요청 형식 오류(422) - BE 요청 DTO 확인 필요: {}", task);
             return ErrorCode.ML_REQUEST_INVALID;
         }
-        if (operation != Operation.RUN && status.value() == HttpStatus.NOT_FOUND.value()) {
-            if (isJobNotFound(e)) {
-                return ErrorCode.ML_JOB_NOT_FOUND;
+        if (status.value() == HttpStatus.NOT_FOUND.value()) {
+            NotFoundBody body = readNotFoundBody(e);
+            if (body == NotFoundBody.NOT_ML_APP) {
+                // RunPod 프록시는 Pod가 없거나 앱이 떠 있지 않으면 본문 없는 404를 준다. 요청이 ML 앱에 닿지 않았으므로 연결 실패로 본다.
+                logUnavailable(operation, "[ML] 404 응답이 ML 앱 형식이 아님 - 연결 불가로 처리, {} {}", operation, task);
+                return ErrorCode.ML_CONNECTION_FAILED;
             }
-            // 경로 없음(ML 주소 오설정·엔드포인트 미구현 등)일 수 있어 작업 없음으로 보지 않는다. 호출자는 상태를 바꾸지 않는다.
-            logUnavailable(operation, "[ML] 404 응답에 error_code JOB_NOT_FOUND 없음 - 작업 없음으로 보지 않음, {} {}",
-                    operation, task);
-            return ErrorCode.ML_RESPONSE_ERROR;
+            if (operation != Operation.RUN) {
+                if (body == NotFoundBody.JOB_NOT_FOUND) {
+                    return ErrorCode.ML_JOB_NOT_FOUND;
+                }
+                // 경로 없음(ML 주소 오설정·엔드포인트 미구현 등)일 수 있어 작업 없음으로 보지 않는다. 호출자는 상태를 바꾸지 않는다.
+                logUnavailable(operation, "[ML] 404 응답에 error_code JOB_NOT_FOUND 없음 - 작업 없음으로 보지 않음, {} {}",
+                        operation, task);
+                return ErrorCode.ML_RESPONSE_ERROR;
+            }
         }
         if (operation == Operation.CANCEL && status.value() == HttpStatus.CONFLICT.value()) {
             return ErrorCode.ML_JOB_ALREADY_FINISHED;
@@ -199,17 +245,27 @@ public class MlClientImpl implements MlClient {
     }
 
     /**
-     * 404 응답 본문이 ML의 "작업 없음" 형식인지 확인한다: {"detail": {"error_code": "JOB_NOT_FOUND", ...}}
-     * FastAPI는 경로가 없을 때도 404({"detail": "Not Found"})를 주므로 상태 코드만으로는 구분할 수 없다.
-     * 본문이 없거나 파싱에 실패하면 false. 본문은 로그에 남기지 않는다.
+     * 404 응답 본문을 분류한다. 본문은 로그에 남기지 않는다.
+     * - JOB_NOT_FOUND : ML의 "작업 없음" 형식 {"detail": {"error_code": "JOB_NOT_FOUND", ...}}
+     * - OTHER_ML_ERROR: 그 밖의 FastAPI 404 (경로가 없을 때도 {"detail": "Not Found"}를 준다)
+     * - NOT_ML_APP    : 본문 없음·JSON 아님·detail 없음. ML 앱이 아니라 프록시 등 중간에서 준 응답
      */
-    private static boolean isJobNotFound(RestClientResponseException e) {
+    private static NotFoundBody readNotFoundBody(RestClientResponseException e) {
         try {
-            JsonNode errorCode = OBJECT_MAPPER.readTree(e.getResponseBodyAsString()).path("detail").path("error_code");
-            return JOB_NOT_FOUND_CODE.equals(errorCode.asText(null));
+            JsonNode detail = OBJECT_MAPPER.readTree(e.getResponseBodyAsString()).path("detail");
+            if (detail.isMissingNode()) {
+                return NotFoundBody.NOT_ML_APP;
+            }
+            return JOB_NOT_FOUND_CODE.equals(detail.path("error_code").asText(null))
+                    ? NotFoundBody.JOB_NOT_FOUND
+                    : NotFoundBody.OTHER_ML_ERROR;
         } catch (Exception parseFailure) {
-            return false;
+            return NotFoundBody.NOT_ML_APP;
         }
+    }
+
+    private enum NotFoundBody {
+        JOB_NOT_FOUND, OTHER_ML_ERROR, NOT_ML_APP
     }
 
     private enum Operation {

@@ -28,7 +28,8 @@ public class ExpertTaskServiceImpl implements ExpertTaskService {
      */
     @Override
     public ExpertTaskStartResponse startTask(User expert, Long taskId) {
-        ExpertTask task = expertTaskRepository.findByExpertTaskIdAndExpert(taskId, expert)
+        // 신청자 취소와 동시에 들어오면 한쪽만 반영되도록 task를 잠가서 조회한다.
+        ExpertTask task = expertTaskRepository.findForUpdate(taskId, expert)
                 .orElseThrow(() -> new BusinessException(ErrorCode.EXPERT_TASK_NOT_FOUND));
 
         boolean taskNotPending = !STATUS_PENDING.equals(task.getStatus());

@@ -67,7 +67,8 @@ public class ExpertQnAServiceImpl implements ExpertQnAService {
             throw new BusinessException(ErrorCode.EXPERT_ONLY);
         }
 
-        ExpertQnA qna = expertQnARepository.findById(qnaId)
+        // 질문 행을 잠가 동시 답변의 answerCount 증가가 사라지지 않게 하고, 삭제된 질문에는 답변하지 못하게 한다.
+        ExpertQnA qna = expertQnARepository.findActiveForUpdate(qnaId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.BOARD_NOT_FOUND));
 
         ExpertQnAAnswer answer = ExpertQnAAnswer.create(qna, user, request.getContent());

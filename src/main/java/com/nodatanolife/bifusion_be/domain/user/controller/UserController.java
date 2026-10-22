@@ -21,6 +21,7 @@ import com.nodatanolife.bifusion_be.domain.user.dto.response.ActivityVisibilityU
 import com.nodatanolife.bifusion_be.domain.user.dto.response.MyActivityListResponse;
 import com.nodatanolife.bifusion_be.domain.user.service.MyActivityService;
 import com.nodatanolife.bifusion_be.domain.user.service.MyActivityVisibilityService;
+import com.nodatanolife.bifusion_be.domain.user.service.ResourceUsageService;
 import com.nodatanolife.bifusion_be.domain.user.service.UserService;
 import com.nodatanolife.bifusion_be.global.response.CommonResponse;
 import com.nodatanolife.bifusion_be.global.security.oauth2.CustomOAuth2User;
@@ -41,6 +42,7 @@ public class UserController {
     private final ProjectService projectService;
     private final MyActivityVisibilityService myActivityVisibilityService;
     private final MyActivityService myActivityService;
+    private final ResourceUsageService resourceUsageService;
     private final CookieUtil cookieUtil;
 
     @Operation(
@@ -56,6 +58,28 @@ public class UserController {
             @AuthenticationPrincipal CustomOAuth2User principal) {
         UserResponse response = userService.getMe(principal.getUser().getUserId());
         return CommonResponse.success(response, "내 정보 조회 성공!");
+    }
+
+    @Operation(
+            summary = "내 리소스 사용량 조회",
+            description = """
+                    대시보드의 스토리지·월간 증강 카드에 쓰는 사용량을 조회합니다.
+
+                    - storageUsedBytes: 내가 소유한 파일(데이터셋 업로드·작업 입력 이미지·증강 결과·학습 모델)의 크기 합.
+                      1시간 뒤 정리되는 임시 업로드와 삭제된 데이터셋의 파일은 제외합니다.
+                    - storageLimitBytes: 저장 용량 한도. 아직 정해지지 않아 null
+                    - storageUnmeasuredFileCount: 크기 정보가 없어 합계에서 빠진 파일 수
+                    - monthlyAugmentations: 이번 달(periodStart ~ periodEnd) 만든 증강 작업 수. 실패·취소는 제외, 진행 중은 포함
+                    - monthlyAugmentationLimit: 횟수 제한이 없어 null (작업 비용은 토큰으로 차감)
+                    - periodStart/periodEnd: 집계 기간 (timezone 기준 이번 달 1일 0시 ~ 다음 달 1일 0시, 끝은 미포함)
+
+                    사용량 값이 null이면 집계에 실패한 것이고, 0이면 실제 사용량이 없는 것입니다."""
+    )
+    @GetMapping("/users/me/resource-usage")
+    public CommonResponse<ResourceUsageResponse> getMyResourceUsage(
+            @AuthenticationPrincipal CustomOAuth2User principal) {
+        ResourceUsageResponse response = resourceUsageService.getResourceUsage(principal.getUser().getUserId());
+        return CommonResponse.success(response, "리소스 사용량 조회 성공!");
     }
 
     @Operation(
@@ -233,7 +257,9 @@ public class UserController {
                     - DATASET(DatasetItem): thumbnailUrl, likeCount, downloadCount
                     - QNA(QnaItem): commentCount(전문가 답변 수. 답변엔 대댓글 개념이 없어 전체 답변 수와 동일)
                     - RECRUITMENT(RecruitItem): commentCount(지원자 수, 상태 무관 전체 지원 건수)
-                    모든 타입 공통: activityId, type, title, description, isPublic, createdAt"""
+                    모든 타입 공통: activityId, type, title, description, isPublic, isMyPageVisible, createdAt
+                    - isPublic: 글 자체의 공개 여부
+                    - isMyPageVisible: 공개 프로필에 표시되는지. 비공개 글은 항상 false (PATCH /users/me/activities/visibility로 변경)"""
     )
     @GetMapping("/mypage/activities")
     public CommonResponse<MyActivityListResponse> getMyActivities(

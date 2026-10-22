@@ -113,12 +113,16 @@ public class ExpertServiceImpl implements ExpertService {
 
     /**
      * 전문가 심사 진행 상태 판정
-     * 가장 최근 신청의 상태를 반환한다. (APPROVED는 종료 상태라 항상 마지막 신청)
-     * 신청 내역이 없으면 NONE.
+     * 승인 기록이 하나라도 있으면 APPROVED (검수 배정·전문가 목록의 existsByUserAndStatus(APPROVED)와 같은 기준).
+     * 승인 후 재신청은 apply에서 막지만, 관리자가 DB에서 상태를 바꿔 승인 뒤에 다른 기록이 생겨도 판정이 어긋나지 않게 한다.
+     * 승인 기록이 없으면 가장 최근 신청의 상태, 신청 내역이 없으면 NONE.
      */
     @Override
     @Transactional(readOnly = true)
     public ExpertApplicationStatus resolveStatus(User user) {
+        if (expertApplicationRepository.existsByUserAndStatus(user, ExpertApplicationStatus.APPROVED)) {
+            return ExpertApplicationStatus.APPROVED;
+        }
         return expertApplicationRepository.findFirstByUserOrderByAppliedAtDesc(user)
                 .map(ExpertApplication::getStatus)
                 .orElse(ExpertApplicationStatus.NONE);

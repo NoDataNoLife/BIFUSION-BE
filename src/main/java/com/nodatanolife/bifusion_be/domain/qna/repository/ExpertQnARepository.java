@@ -4,16 +4,24 @@ import com.nodatanolife.bifusion_be.domain.qna.entity.ExpertQnA;
 import com.nodatanolife.bifusion_be.domain.user.entity.User;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 public interface ExpertQnARepository extends JpaRepository<ExpertQnA, Long> {
 
     List<ExpertQnA> findAllByUser(User user);
+
+    // 답변 등록용. 동시에 답변이 달려도 answerCount 증가가 사라지지 않도록 질문 행을 잠근다. 삭제된 질문은 제외.
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT q FROM ExpertQnA q WHERE q.expertQnAId = :qnaId AND q.deletedAt IS NULL")
+    Optional<ExpertQnA> findActiveForUpdate(@Param("qnaId") Long qnaId);
 
     @Query(
             value = "SELECT q FROM ExpertQnA q JOIN FETCH q.user " +

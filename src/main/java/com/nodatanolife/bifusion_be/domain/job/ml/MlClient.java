@@ -12,7 +12,7 @@ import com.nodatanolife.bifusion_be.domain.job.ml.dto.response.MlTrainingResult;
  * ML 서버 호출 클라이언트.
  *
  * 오류는 BusinessException의 ErrorCode로 구분해 전달한다.
- * - ML_CONNECTION_FAILED : 연결 오류·연결 타임아웃·5xx. ML이 작업을 접수하지 않은 경우.
+ * - ML_CONNECTION_FAILED : 연결 오류·연결 타임아웃·5xx, ML 앱 형식이 아닌 404(프록시 응답). ML이 작업을 접수하지 않은 경우.
  * - ML_SUBMIT_TIMEOUT    : 실행 요청의 응답 대기 타임아웃. ML이 이미 접수했을 수 있어 재시도하지 않는다.
  * - ML_REQUEST_INVALID   : 실행 요청 422. BE 요청 형식 버그.
  * - ML_JOB_NOT_FOUND     : 조회·취소 404 + 본문 detail.error_code = JOB_NOT_FOUND. ML이 모르는 작업.

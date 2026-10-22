@@ -61,23 +61,23 @@ public record RecipeDetailResponse(
     }
 
     /**
-     * 생성 파라미터 설정값 영역.
+     * 생성 파라미터 설정값 영역. 레시피에 설정값이 없을 수 있어(엔티티 컬럼 nullable) 모든 값이 null일 수 있다.
      */
     public record Settings(
             String model,
-            int steps,
+            Integer steps,
             String sampler,
-            double cfgScale,
+            Double cfgScale,
             String seed,
             String resolution,
-            int batchSize
+            Integer batchSize
     ) {
         public static Settings from(Recipe recipe) {
             return new Settings(
                     recipe.getModel(),
                     recipe.getSteps(),
                     recipe.getSampler(),
-                    recipe.getCfgScale().doubleValue(),
+                    recipe.getCfgScale() != null ? recipe.getCfgScale().doubleValue() : null,
                     recipe.getSeed(),
                     recipe.getResolution(),
                     recipe.getBatchSize()
@@ -85,7 +85,10 @@ public record RecipeDetailResponse(
         }
     }
 
-    public static RecipeDetailResponse from(Recipe recipe, InspectionSummary verificationSummary) {
+    /**
+     * @param reviewCount 최상위 리뷰 + 대댓글 합산 (리뷰 목록 API의 totalElements는 최상위 리뷰 수라 다르다)
+     */
+    public static RecipeDetailResponse from(Recipe recipe, InspectionSummary verificationSummary, long reviewCount) {
         return new RecipeDetailResponse(
                 recipe.getRecipeId(),
                 recipe.getTitle(),
@@ -95,8 +98,7 @@ public record RecipeDetailResponse(
                 AuthorInfo.from(recipe.getUser()),
                 recipe.getCreatedAt(),
                 recipe.getRating().doubleValue(),
-                // TODO: 실제 댓글 수 집계 미연동 상태 (항상 0으로 고정)
-                0,
+                (int) reviewCount,
                 recipe.getForkCount(),
                 recipe.getViewCount(),
                 recipe.getDownloadCount(),
