@@ -72,7 +72,8 @@ public class CommunityRecipeController {
     @Operation(
             summary = "레시피 상세내역 조회",
             description = "레시피 ID로 상세 정보를 조회합니다. isPublic=false인 비공개 레시피(포크로 생성된 "
-                    + "내 보관함 사본 포함)는 작성자 본인만 조회할 수 있으며, 본인이 아닌 사용자가 요청하면 접근이 거부됩니다."
+                    + "내 보관함 사본 포함)는 작성자 본인만 조회할 수 있으며, 본인이 아닌 사용자가 요청하면 접근이 거부됩니다. "
+                    + "reviewCount는 최상위 리뷰 + 대댓글 합산입니다 (리뷰 목록 API의 totalElements는 최상위 리뷰 수)."
     )
     @GetMapping("/{recipeId}")
     public CommonResponse<RecipeDetailResponse> getRecipeDetail(

@@ -86,7 +86,7 @@ public record RecipeDetailResponse(
     }
 
     /**
-     * @param reviewCount 최상위 리뷰 수 (리뷰 목록 API의 totalElements와 같은 기준)
+     * @param reviewCount 최상위 리뷰 + 대댓글 합산 (리뷰 목록 API의 totalElements는 최상위 리뷰 수라 다르다)
      */
     public static RecipeDetailResponse from(Recipe recipe, InspectionSummary verificationSummary, long reviewCount) {
         return new RecipeDetailResponse(

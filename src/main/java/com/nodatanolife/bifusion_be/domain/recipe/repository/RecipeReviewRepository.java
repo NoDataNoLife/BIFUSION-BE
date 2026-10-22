@@ -21,14 +21,14 @@ public interface RecipeReviewRepository extends JpaRepository<RecipeReview, Long
     // 레시피의 최상위 댓글만 페이지 조회 (parent가 없는 댓글)
     Page<RecipeReview> findAllByRecipe_RecipeIdAndParentIsNull(Long recipeId, Pageable pageable);
 
-    // 레시피 상세의 리뷰 수. 위 목록 조회의 totalElements와 같은 기준(최상위 댓글만)
-    long countByRecipe_RecipeIdAndParentIsNull(Long recipeId);
+    // 레시피 상세의 리뷰 수. 최상위 댓글 + 대댓글 합산 (마이페이지·공개 프로필 commentCount와 같은 기준)
+    long countByRecipe_RecipeId(Long recipeId);
 
     // 여러 최상위 댓글 ID에 딸린 대댓글을 한 번에 조회 (댓글 목록 조회 시 N+1 방지용 배치 조회)
     List<RecipeReview> findAllByParent_RecipeReviewIdInOrderByCreatedAtAsc(List<Long> parentIds);
 
     /**
-     * 마이페이지 "내 활동" 댓글 수 배치 집계용. 최상위 댓글 + 대댓글을 모두 합산한다.
+     * 마이페이지 "내 활동"·공개 프로필 댓글 수 배치 집계용. 최상위 댓글 + 대댓글을 모두 합산한다 (레시피 상세 reviewCount와 같은 기준).
      */
     @Query("SELECT rr.recipe.recipeId AS recipeId, COUNT(rr) AS count " +
             "FROM RecipeReview rr " +
