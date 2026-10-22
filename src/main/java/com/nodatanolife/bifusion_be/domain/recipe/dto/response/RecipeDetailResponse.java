@@ -61,23 +61,23 @@ public record RecipeDetailResponse(
     }
 
     /**
-     * 생성 파라미터 설정값 영역.
+     * 생성 파라미터 설정값 영역. 레시피에 설정값이 없을 수 있어(엔티티 컬럼 nullable) 모든 값이 null일 수 있다.
      */
     public record Settings(
             String model,
-            int steps,
+            Integer steps,
             String sampler,
-            double cfgScale,
+            Double cfgScale,
             String seed,
             String resolution,
-            int batchSize
+            Integer batchSize
     ) {
         public static Settings from(Recipe recipe) {
             return new Settings(
                     recipe.getModel(),
                     recipe.getSteps(),
                     recipe.getSampler(),
-                    recipe.getCfgScale().doubleValue(),
+                    recipe.getCfgScale() != null ? recipe.getCfgScale().doubleValue() : null,
                     recipe.getSeed(),
                     recipe.getResolution(),
                     recipe.getBatchSize()
