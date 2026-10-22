@@ -1,5 +1,6 @@
 package com.nodatanolife.bifusion_be.domain.job.dto.response;
 
+import com.nodatanolife.bifusion_be.domain.expert.dto.response.InspectionTargetResponse;
 import io.swagger.v3.oas.annotations.media.Schema;
 import com.nodatanolife.bifusion_be.domain.file.presign.PresignedUrl;
 import com.nodatanolife.bifusion_be.domain.job.entity.AugmentationConfig;
@@ -28,10 +29,12 @@ public record AugmentedDatasetResponse(
         @Schema(description = "미리보기 이미지 주소 (presigned, 없으면 null)")
         @PresignedUrl String previewUrl,
         @Schema(description = "증강이 끝난 시각")
-        LocalDateTime finishedAt
+        LocalDateTime finishedAt,
+        @Schema(description = "검수 신청 대상 정보. 검수 신청 시 inspectionTarget.targetId를 보낸다 (datasetId와 다름). 검수 대상이 아니면 null")
+        InspectionTargetResponse inspectionTarget
 ) {
 
-    public static AugmentedDatasetResponse from(AugmentationConfig config) {
+    public static AugmentedDatasetResponse from(AugmentationConfig config, InspectionTargetResponse inspectionTarget) {
         return new AugmentedDatasetResponse(
                 config.getJob().getJobId(),
                 config.getJob().getDisplayCode(),
@@ -40,7 +43,8 @@ public record AugmentedDatasetResponse(
                 config.getNormalCount(),
                 config.getAnomalyCount(),
                 config.getPreviewKey(),
-                config.getJob().getFinishedAt()
+                config.getJob().getFinishedAt(),
+                inspectionTarget
         );
     }
 }

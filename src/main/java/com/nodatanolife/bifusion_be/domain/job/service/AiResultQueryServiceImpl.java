@@ -1,5 +1,7 @@
 package com.nodatanolife.bifusion_be.domain.job.service;
 
+import com.nodatanolife.bifusion_be.domain.expert.dto.response.InspectionTargetResponse;
+import com.nodatanolife.bifusion_be.domain.expert.service.InspectionResultService;
 import com.nodatanolife.bifusion_be.domain.job.dto.response.AugmentedDatasetResponse;
 import com.nodatanolife.bifusion_be.domain.job.dto.response.TrainedModelResponse;
 import com.nodatanolife.bifusion_be.domain.job.entity.AugmentationConfig;
@@ -30,16 +32,22 @@ public class AiResultQueryServiceImpl implements AiResultQueryService {
     private final TrainedModelRepository trainedModelRepository;
     private final TrainingConfigRepository trainingConfigRepository;
     private final ProjectMemberRepository projectMemberRepository;
+    private final InspectionResultService inspectionResultService;
 
     /**
      * 쿼리 1번: SUCCESS 증강 결과를 Job과 함께 조회하고, 학습 가능 여부는 isReadyForTraining()으로 판정한다.
+     * 쿼리 2번: 목록 항목들의 검수 신청을 한 번에 조회해 검수 신청 대상 정보(inspectionTarget)를 붙인다.
      */
     @Override
     public List<AugmentedDatasetResponse> getAugmentedDatasets(Long userId, Long projectId) {
         validateProjectMember(projectId, userId);
-        return augmentationConfigRepository.findAllWithJobByProjectIdAndStatus(projectId, JobStatus.SUCCESS).stream()
+        List<AugmentationConfig> configs = augmentationConfigRepository
+                .findAllWithJobByProjectIdAndStatus(projectId, JobStatus.SUCCESS).stream()
                 .filter(AugmentationConfig::isReadyForTraining)
-                .map(AugmentedDatasetResponse::from)
+                .toList();
+        Map<Long, InspectionTargetResponse> targets = inspectionResultService.getAugmentedDataTargets(userId, configs);
+        return configs.stream()
+                .map(config -> AugmentedDatasetResponse.from(config, targets.get(config.getAugmentationConfigId())))
                 .toList();
     }
 
