@@ -120,6 +120,8 @@ ml:
     launch-timeout: 10m
     # ML이 계속 RUNNING만 돌려줄 때(워커 멈춤)의 상한 (ML 접수 시각부터)
     running-timeout: 72h
+    # ML이 PENDING을 이 시간 넘게 돌려주면 경고 로그 (ML 큐 대기·작업 유실 확인용, 같은 간격으로 반복)
+    pending-warn-after: 10m
   cancel:
     # ML 취소 엔드포인트 배포 전까지 false. false면 취소 API는 검증 후 503, 폴러의 타임아웃 취소 호출도 생략
     enabled: ${ML_CANCEL_ENABLED:false}

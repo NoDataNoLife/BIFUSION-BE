@@ -6,14 +6,25 @@ package com.nodatanolife.bifusion_be.domain.job.service;
 public class PollingCycle {
 
     private boolean mlUnavailable;
+    private String mlUnavailableReason;
     private int skippedMlCalls;
 
-    public void markMlUnavailable() {
+    /**
+     * @param reason 연결 실패 원인 (예: "HTTP 502", "ConnectException"). 주기 요약 로그용이며 처음 원인만 남긴다.
+     */
+    public void markMlUnavailable(String reason) {
+        if (!mlUnavailable) {
+            this.mlUnavailableReason = reason;
+        }
         this.mlUnavailable = true;
     }
 
     public boolean isMlUnavailable() {
         return mlUnavailable;
+    }
+
+    public String getMlUnavailableReason() {
+        return mlUnavailableReason;
     }
 
     public void skipMlCall() {

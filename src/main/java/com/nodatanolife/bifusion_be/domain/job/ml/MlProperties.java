@@ -72,12 +72,14 @@ public record MlProperties(
      * @param batchSize      한 주기에 처리할 최대 Job 수
      * @param launchTimeout  mlJobId 없는 PENDING Job을 실행 실패로 보는 기준 (생성 시각부터)
      * @param runningTimeout RUNNING Job의 최대 허용 시간 (ML 접수 시각부터)
+     * @param pendingWarnAfter ML이 PENDING을 이 시간 넘게 돌려주면 경고 로그를 남긴다 (ML 접수 시각부터, 같은 간격으로 반복)
      */
     public record Polling(
             Duration interval,
             int batchSize,
             Duration launchTimeout,
-            Duration runningTimeout
+            Duration runningTimeout,
+            Duration pendingWarnAfter
     ) {
     }
 

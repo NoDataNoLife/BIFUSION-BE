@@ -1,5 +1,7 @@
 package com.nodatanolife.bifusion_be.domain.job.ml;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.nodatanolife.bifusion_be.domain.job.ml.dto.request.MlAugmentationRunRequest;
@@ -31,7 +33,7 @@ import java.util.function.Supplier;
 
 /**
  * 실행 요청에는 Base64 이미지가 담기고 ML의 422 응답 본문은 입력값을 그대로 되돌려 주므로,
- * 요청·응답 본문은 어떤 경우에도 로그에 남기지 않는다.
+ * 요청·응답 본문은 어떤 경우에도 로그에 남기지 않는다. 응답 파싱 실패 시에는 실패한 필드 경로와 짧은 원인만 남긴다.
  */
 @Slf4j
 @Component
@@ -43,6 +45,7 @@ public class MlClientImpl implements MlClient {
     private static final String INFERENCE = "inference";
     private static final String JOB_NOT_FOUND_CODE = "JOB_NOT_FOUND";
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+    private static final int PARSE_FAILURE_MESSAGE_MAX_LENGTH = 300;
 
     private final RestClient mlRestClient;
     private final MlProperties mlProperties;
@@ -93,7 +96,7 @@ public class MlClientImpl implements MlClient {
     }
 
     private String run(String task, Object request) {
-        MlRunResponse response = execute(Operation.RUN, task, () -> mlRestClient.post()
+        MlRunResponse response = execute(Operation.RUN, task, null, () -> mlRestClient.post()
                 .uri("/api/v1/{task}/run", task)
                 .contentType(MediaType.APPLICATION_JSON)
                 .body(request)
@@ -108,7 +111,7 @@ public class MlClientImpl implements MlClient {
 
     private <T> MlJobResponse<T> get(String task, String mlJobId,
                                      ParameterizedTypeReference<MlJobResponse<T>> type) {
-        MlJobResponse<T> response = execute(Operation.GET, task, () -> mlRestClient.get()
+        MlJobResponse<T> response = execute(Operation.GET, task, mlJobId, () -> mlRestClient.get()
                 .uri("/api/v1/{task}/{jobId}", task, mlJobId)
                 .retrieve()
                 .body(type));
@@ -120,32 +123,64 @@ public class MlClientImpl implements MlClient {
     }
 
     private void cancel(String task, String mlJobId) {
-        execute(Operation.CANCEL, task, () -> mlRestClient.post()
+        execute(Operation.CANCEL, task, mlJobId, () -> mlRestClient.post()
                 .uri("/api/v1/{task}/{jobId}/cancel", task, mlJobId)
                 .retrieve()
                 .toBodilessEntity());
     }
 
-    private <T> T execute(Operation operation, String task, Supplier<T> call) {
+    /**
+     * @param mlJobId 로그용. 실행 요청(RUN)은 아직 없으므로 null
+     */
+    private <T> T execute(Operation operation, String task, String mlJobId, Supplier<T> call) {
         if (!StringUtils.hasText(mlProperties.baseUrl())) {
             log.warn("[ML] base URL 미설정 - {} {}", operation, task);
-            throw new BusinessException(ErrorCode.ML_CONNECTION_FAILED);
+            throw new MlUnavailableException("base URL 미설정");
         }
         try {
             return call.get();
         } catch (RestClientResponseException e) {
-            throw new BusinessException(classify(operation, task, e));
+            ErrorCode errorCode = classify(operation, task, e);
+            if (errorCode == ErrorCode.ML_CONNECTION_FAILED) {
+                throw new MlUnavailableException("HTTP " + e.getStatusCode().value());
+            }
+            throw new BusinessException(errorCode);
         } catch (ResourceAccessException e) {
             if (operation == Operation.RUN && isResponseTimeout(e)) {
                 log.warn("[ML] 실행 요청 응답 대기 타임아웃 - ML 접수 여부 불확실: {}", task);
                 throw new BusinessException(ErrorCode.ML_SUBMIT_TIMEOUT);
             }
-            logUnavailable(operation, "[ML] 연결 실패 - {} {}: {}", operation, task, rootCauseName(e));
-            throw new BusinessException(ErrorCode.ML_CONNECTION_FAILED);
+            String cause = rootCauseName(e);
+            logUnavailable(operation, "[ML] 연결 실패 - {} {}: {}", operation, task, cause);
+            throw new MlUnavailableException(cause);
         } catch (RestClientException e) {
-            log.error("[ML] 응답 파싱 실패 - {} {}: {}", operation, task, e.getClass().getSimpleName());
+            log.error("[ML] 응답 파싱 실패 - {} {}, mlJobId: {}, 원인: {}",
+                    operation, task, mlJobId, describeParseFailure(e));
             throw new BusinessException(ErrorCode.ML_RESPONSE_ERROR);
         }
+    }
+
+    /**
+     * 파싱 실패 원인을 짧게 설명한다. Jackson 오류면 실패한 필드 경로와 위치 정보를 뺀 메시지를 남긴다
+     * (enum 값 불일치 등은 거부된 값 하나가 메시지에 포함된다). 그 밖의 예외는 메시지에 본문이 섞일 수 있어 클래스명만 남긴다.
+     */
+    private static String describeParseFailure(RestClientException e) {
+        Throwable cause = e.getMostSpecificCause();
+        if (cause instanceof JsonMappingException mapping) {
+            return mapping.getClass().getSimpleName() + " at " + mapping.getPathReference()
+                    + ": " + truncate(mapping.getOriginalMessage());
+        }
+        if (cause instanceof JsonProcessingException processing) {
+            return processing.getClass().getSimpleName() + ": " + truncate(processing.getOriginalMessage());
+        }
+        return cause.getClass().getSimpleName();
+    }
+
+    private static String truncate(String message) {
+        if (message == null || message.length() <= PARSE_FAILURE_MESSAGE_MAX_LENGTH) {
+            return message;
+        }
+        return message.substring(0, PARSE_FAILURE_MESSAGE_MAX_LENGTH) + "...";
     }
 
     /**
