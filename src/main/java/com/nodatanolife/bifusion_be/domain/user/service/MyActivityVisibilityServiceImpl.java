@@ -31,6 +31,7 @@ public class MyActivityVisibilityServiceImpl implements MyActivityVisibilityServ
 
     /**
      * 마이페이지 활동 공개 여부 일괄 변경
+     * - 없거나 삭제된 항목이 하나라도 있으면 전체 롤백 (ACTIVITY_NOT_FOUND)
      * - 본인 소유가 아닌 항목이 하나라도 있으면 전체 롤백 (ACTIVITY_ACCESS_DENIED)
      * - 비공개 콘텐츠(isPublic=false)에 공개 요청이 들어오면 전체 롤백 (ACTIVITY_PRIVATE_CONTENT_CANNOT_BE_PUBLIC)
      */
@@ -81,6 +82,7 @@ public class MyActivityVisibilityServiceImpl implements MyActivityVisibilityServ
      */
     private Boolean updateDataset(Long datasetId, Long userId, boolean visible) {
         Dataset dataset = datasetRepository.findById(datasetId)
+                .filter(d -> !d.isDeleted())
                 .orElseThrow(() -> new BusinessException(ErrorCode.ACTIVITY_NOT_FOUND));
         if (!dataset.getUser().getUserId().equals(userId)) {
             throw new BusinessException(ErrorCode.ACTIVITY_ACCESS_DENIED);
@@ -97,6 +99,7 @@ public class MyActivityVisibilityServiceImpl implements MyActivityVisibilityServ
      */
     private Boolean updateQnA(Long qnaId, Long userId, boolean visible) {
         ExpertQnA qna = expertQnARepository.findById(qnaId)
+                .filter(q -> !q.isDeleted())
                 .orElseThrow(() -> new BusinessException(ErrorCode.ACTIVITY_NOT_FOUND));
         if (!qna.getUser().getUserId().equals(userId)) {
             throw new BusinessException(ErrorCode.ACTIVITY_ACCESS_DENIED);
@@ -113,6 +116,7 @@ public class MyActivityVisibilityServiceImpl implements MyActivityVisibilityServ
      */
     private Boolean updateRecruit(Long recruitId, Long userId, boolean visible) {
         Recruit recruit = recruitRepository.findById(recruitId)
+                .filter(r -> !r.isDeleted())
                 .orElseThrow(() -> new BusinessException(ErrorCode.ACTIVITY_NOT_FOUND));
         if (!recruit.getUser().getUserId().equals(userId)) {
             throw new BusinessException(ErrorCode.ACTIVITY_ACCESS_DENIED);
