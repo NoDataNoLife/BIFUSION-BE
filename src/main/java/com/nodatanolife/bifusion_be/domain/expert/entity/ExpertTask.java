@@ -2,6 +2,8 @@ package com.nodatanolife.bifusion_be.domain.expert.entity;
 
 import com.nodatanolife.bifusion_be.domain.user.entity.User;
 import com.nodatanolife.bifusion_be.global.entity.BaseEntity;
+import com.nodatanolife.bifusion_be.global.exception.ErrorCode;
+import com.nodatanolife.bifusion_be.global.exception.business.BusinessException;
 import jakarta.persistence.*;
 import lombok.*;
 import java.math.BigDecimal;
@@ -12,6 +14,9 @@ import java.time.LocalDateTime;
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class ExpertTask extends BaseEntity {
+
+    public static final String STATUS_PENDING = "PENDING";
+    public static final String STATUS_COMPLETED = "COMPLETED";
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -50,6 +55,47 @@ public class ExpertTask extends BaseEntity {
     @Column(name = "draft_feedback")
     private String draftFeedback;
 
+    @Builder
+    private ExpertTask(User expert, InspectionRequest inspectionRequest, Integer reward) {
+        this.expert = expert;
+        this.inspectionRequest = inspectionRequest;
+        this.reward = reward;
+        this.status = STATUS_PENDING;
+    }
+
+    /**
+     * 검수 신청을 전문가에게 배정한다. 보상은 신청 포인트와 같으며, 승인·반려 시 수수료를 뗀 금액이 지급된다.
+     * reviewCode는 ID가 필요해 저장 후 assignReviewCode()로 채운다.
+     */
+    public static ExpertTask assign(User expert, InspectionRequest inspectionRequest) {
+        return ExpertTask.builder()
+                .expert(expert)
+                .inspectionRequest(inspectionRequest)
+                .reward(inspectionRequest.getRewardPoints())
+                .build();
+    }
+
+    /**
+     * 화면 표시용 검수 코드 (예: REV-023). 저장으로 ID가 생긴 뒤 호출한다.
+     */
+    public void assignReviewCode() {
+        this.reviewCode = "REV-%03d".formatted(expertTaskId);
+    }
+
+    public boolean isPending() {
+        return STATUS_PENDING.equals(status);
+    }
+
+    /**
+     * 완료된 task로는 검수를 바꿀 수 없다. 반려·취소 후 재신청되면 신청(InspectionRequest)은 다시 PENDING이 되지만
+     * 이전 회차 task는 COMPLETED로 남으므로, 이전 task로 새 회차를 승인·반려하지 못하게 막는다.
+     */
+    public void validateNotCompleted() {
+        if (STATUS_COMPLETED.equals(status)) {
+            throw new BusinessException(ErrorCode.INSPECTION_ALREADY_PROCESSED);
+        }
+    }
+
     public void anonymize(User deletedUser) {
         this.expert = deletedUser;
     }
@@ -68,7 +114,7 @@ public class ExpertTask extends BaseEntity {
      * 더 이상 유효하지 않은 임시 저장값(draftFeedback)은 비운다.
      */
     public void complete(String finalComment) {
-        this.status = "COMPLETED";
+        this.status = STATUS_COMPLETED;
         this.completedAt = LocalDateTime.now();
         this.feedback = finalComment;
         this.draftFeedback = null;

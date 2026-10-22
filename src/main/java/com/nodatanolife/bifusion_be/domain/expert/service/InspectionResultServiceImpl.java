@@ -54,7 +54,7 @@ public class InspectionResultServiceImpl implements InspectionResultService {
     /**
      * 대상별로 신청을 한 번에 조회한다 (N+1 방지).
      * - status·result: 가장 최근 신청 기준 (getSummaries와 같은 기준이지만 반려도 그대로 보여준다)
-     * - canRequest: 본인 소유이고, 본인의 기존 신청이 없거나 반려됐을 때 true.
+     * - canRequest: 본인 소유이고, 본인의 기존 신청이 없거나 반려·취소됐을 때 true.
      *   검수 신청 API(InspectionServiceImpl.createInspection)의 소유자·중복 검증과 같은 기준이며, 포인트는 신청 시 검증한다.
      */
     @Override
@@ -79,7 +79,8 @@ public class InspectionResultServiceImpl implements InspectionResultService {
                             .orElse(null);
                     boolean hasActiveRequest = requests.stream()
                             .anyMatch(request -> request.getUser().getUserId().equals(userId)
-                                    && request.getStatus() != InspectionRequestStatus.REJECTED);
+                                    && request.getStatus() != InspectionRequestStatus.REJECTED
+                                    && request.getStatus() != InspectionRequestStatus.CANCELLED);
                     boolean canRequest = config.getJob().isOwnedBy(userId) && !hasActiveRequest;
                     return InspectionTargetResponse.of(InspectionTargetType.AUGMENTED_DATA,
                             config.getAugmentationConfigId(), canRequest, latest);
