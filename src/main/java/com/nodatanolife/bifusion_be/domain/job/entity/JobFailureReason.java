@@ -35,6 +35,9 @@ public enum JobFailureReason {
     // 실행 요청 응답 대기 중 타임아웃. ML이 이미 접수했을 수 있어 자동 재시도하지 않는다.
     ML_SUBMIT_UNCERTAIN(true, null, List.of(), List.of(),
             "AI 서버 응답이 지연되어 작업을 시작하지 못했습니다. 잠시 후 다시 시도해 주세요."),
+    // ML 접수 후 연결 불가가 ml.polling.unreachable-timeout 넘게 이어짐. ML 작업이 남아 있는지 알 수 없다.
+    ML_UNREACHABLE(true, null, List.of(), List.of(),
+            "AI 서버와 연결이 끊겨 작업을 계속할 수 없습니다. 잠시 후 다시 실행해 주세요."),
     ML_JOB_NOT_FOUND(true, null, List.of(), List.of(),
             "AI 서버에서 작업 정보를 찾을 수 없어 중단되었습니다. 작업을 다시 실행해 주세요."),
     RUNNING_TIMEOUT(true, null, List.of(), List.of(),

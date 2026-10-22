@@ -142,7 +142,10 @@ public class MlClientImpl implements MlClient {
         } catch (RestClientResponseException e) {
             ErrorCode errorCode = classify(operation, task, e);
             if (errorCode == ErrorCode.ML_CONNECTION_FAILED) {
-                throw new MlUnavailableException("HTTP " + e.getStatusCode().value());
+                int status = e.getStatusCode().value();
+                throw new MlUnavailableException(status == HttpStatus.NOT_FOUND.value()
+                        ? "HTTP 404 (ML 앱 응답 아님)"
+                        : "HTTP " + status);
             }
             throw new BusinessException(errorCode);
         } catch (ResourceAccessException e) {
@@ -217,14 +220,22 @@ public class MlClientImpl implements MlClient {
             log.error("[ML] 실행 요청 형식 오류(422) - BE 요청 DTO 확인 필요: {}", task);
             return ErrorCode.ML_REQUEST_INVALID;
         }
-        if (operation != Operation.RUN && status.value() == HttpStatus.NOT_FOUND.value()) {
-            if (isJobNotFound(e)) {
-                return ErrorCode.ML_JOB_NOT_FOUND;
+        if (status.value() == HttpStatus.NOT_FOUND.value()) {
+            NotFoundBody body = readNotFoundBody(e);
+            if (body == NotFoundBody.NOT_ML_APP) {
+                // RunPod 프록시는 Pod가 없거나 앱이 떠 있지 않으면 본문 없는 404를 준다. 요청이 ML 앱에 닿지 않았으므로 연결 실패로 본다.
+                logUnavailable(operation, "[ML] 404 응답이 ML 앱 형식이 아님 - 연결 불가로 처리, {} {}", operation, task);
+                return ErrorCode.ML_CONNECTION_FAILED;
             }
-            // 경로 없음(ML 주소 오설정·엔드포인트 미구현 등)일 수 있어 작업 없음으로 보지 않는다. 호출자는 상태를 바꾸지 않는다.
-            logUnavailable(operation, "[ML] 404 응답에 error_code JOB_NOT_FOUND 없음 - 작업 없음으로 보지 않음, {} {}",
-                    operation, task);
-            return ErrorCode.ML_RESPONSE_ERROR;
+            if (operation != Operation.RUN) {
+                if (body == NotFoundBody.JOB_NOT_FOUND) {
+                    return ErrorCode.ML_JOB_NOT_FOUND;
+                }
+                // 경로 없음(ML 주소 오설정·엔드포인트 미구현 등)일 수 있어 작업 없음으로 보지 않는다. 호출자는 상태를 바꾸지 않는다.
+                logUnavailable(operation, "[ML] 404 응답에 error_code JOB_NOT_FOUND 없음 - 작업 없음으로 보지 않음, {} {}",
+                        operation, task);
+                return ErrorCode.ML_RESPONSE_ERROR;
+            }
         }
         if (operation == Operation.CANCEL && status.value() == HttpStatus.CONFLICT.value()) {
             return ErrorCode.ML_JOB_ALREADY_FINISHED;
@@ -234,17 +245,27 @@ public class MlClientImpl implements MlClient {
     }
 
     /**
-     * 404 응답 본문이 ML의 "작업 없음" 형식인지 확인한다: {"detail": {"error_code": "JOB_NOT_FOUND", ...}}
-     * FastAPI는 경로가 없을 때도 404({"detail": "Not Found"})를 주므로 상태 코드만으로는 구분할 수 없다.
-     * 본문이 없거나 파싱에 실패하면 false. 본문은 로그에 남기지 않는다.
+     * 404 응답 본문을 분류한다. 본문은 로그에 남기지 않는다.
+     * - JOB_NOT_FOUND : ML의 "작업 없음" 형식 {"detail": {"error_code": "JOB_NOT_FOUND", ...}}
+     * - OTHER_ML_ERROR: 그 밖의 FastAPI 404 (경로가 없을 때도 {"detail": "Not Found"}를 준다)
+     * - NOT_ML_APP    : 본문 없음·JSON 아님·detail 없음. ML 앱이 아니라 프록시 등 중간에서 준 응답
      */
-    private static boolean isJobNotFound(RestClientResponseException e) {
+    private static NotFoundBody readNotFoundBody(RestClientResponseException e) {
         try {
-            JsonNode errorCode = OBJECT_MAPPER.readTree(e.getResponseBodyAsString()).path("detail").path("error_code");
-            return JOB_NOT_FOUND_CODE.equals(errorCode.asText(null));
+            JsonNode detail = OBJECT_MAPPER.readTree(e.getResponseBodyAsString()).path("detail");
+            if (detail.isMissingNode()) {
+                return NotFoundBody.NOT_ML_APP;
+            }
+            return JOB_NOT_FOUND_CODE.equals(detail.path("error_code").asText(null))
+                    ? NotFoundBody.JOB_NOT_FOUND
+                    : NotFoundBody.OTHER_ML_ERROR;
         } catch (Exception parseFailure) {
-            return false;
+            return NotFoundBody.NOT_ML_APP;
         }
+    }
+
+    private enum NotFoundBody {
+        JOB_NOT_FOUND, OTHER_ML_ERROR, NOT_ML_APP
     }
 
     private enum Operation {
