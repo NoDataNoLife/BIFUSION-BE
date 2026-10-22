@@ -1,5 +1,6 @@
 package com.nodatanolife.bifusion_be.domain.expert.entity;
 
+import com.nodatanolife.bifusion_be.domain.expert.entity.converter.InspectionRequestStatusConverter;
 import com.nodatanolife.bifusion_be.domain.user.entity.User;
 import com.nodatanolife.bifusion_be.global.entity.BaseEntity;
 import com.nodatanolife.bifusion_be.global.exception.ErrorCode;
@@ -41,7 +42,9 @@ public class InspectionRequest extends BaseEntity {
     @Column(name = "target_type", length = 20)
     private InspectionTargetType targetType;
 
-    @Enumerated(EnumType.STRING)
+    // 컨버터로 매핑: @Enumerated는 enum 값 목록 CHECK 제약을 만들어 CANCELLED 같은 값 추가 시 저장이 막힌다.
+    // 기존 DB의 inspection_request_status_check 제약은 직접 삭제해야 한다.
+    @Convert(converter = InspectionRequestStatusConverter.class)
     @Column(name = "status", length = 20)
     private InspectionRequestStatus status;
 
