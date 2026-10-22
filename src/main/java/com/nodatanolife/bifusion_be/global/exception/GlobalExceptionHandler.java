@@ -6,8 +6,10 @@ import jakarta.validation.ConstraintViolationException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.multipart.support.MissingServletRequestPartException;
 import org.springframework.web.servlet.NoHandlerFoundException;
 
 @Slf4j
@@ -98,6 +100,24 @@ public class GlobalExceptionHandler {
                 .body(CommonResponse.fail(
                         errorCode.getCode(),
                         "요청 값의 타입이 올바르지 않습니다."
+                ));
+    }
+
+    /* ================================
+     * 필수 요청 파트·파라미터 누락 (파일 누락 등)
+     * ================================ */
+    @ExceptionHandler({MissingServletRequestPartException.class, MissingServletRequestParameterException.class})
+    protected ResponseEntity<CommonResponse<?>> handleMissingRequestValue(Exception e) {
+        ErrorCode errorCode = ErrorCode.INVALID_REQUEST;
+        String name = e instanceof MissingServletRequestPartException partException
+                ? partException.getRequestPartName()
+                : ((MissingServletRequestParameterException) e).getParameterName();
+
+        return ResponseEntity
+                .status(errorCode.getStatus()) // 400
+                .body(CommonResponse.fail(
+                        errorCode.getCode(),
+                        "필수 요청 값이 없습니다: " + name
                 ));
     }
 
