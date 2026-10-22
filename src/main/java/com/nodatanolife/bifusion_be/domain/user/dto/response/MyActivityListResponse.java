@@ -14,6 +14,7 @@ import java.util.List;
  * 마이페이지 "내 활동" 커서 기반 목록 조회 응답.
  * Recipe/Dataset/ExpertQnA/Recruit를 최신순으로 병합한 결과이며,
  * 본인 조회이므로 isPublic/isMyPageVisible과 무관하게 소유한 항목을 전부 담는다.
+ * isPublic은 글 자체의 공개 여부, isMyPageVisible은 공개 프로필에 표시되는지(비공개 글이면 항상 false)다.
  * <p>
  * 좋아요/댓글/다운로드 수처럼 도메인마다 있고 없고가 갈리는 값은 null로 채우는 대신,
  * 타입별 record({@link RecipeItem}/{@link DatasetItem}/{@link QnaItem}/{@link RecruitItem})로
@@ -42,6 +43,8 @@ public record MyActivityListResponse(
 
         Boolean isPublic();
 
+        Boolean isMyPageVisible();
+
         LocalDateTime createdAt();
     }
 
@@ -52,6 +55,7 @@ public record MyActivityListResponse(
             String description,
             @PresignedUrl String thumbnailUrl,
             Boolean isPublic,
+            Boolean isMyPageVisible,
             Integer likeCount,
             Integer commentCount,
             Integer forkCount,
@@ -65,6 +69,7 @@ public record MyActivityListResponse(
                     recipe.getShortDescription(),
                     recipe.getThumbnailUrl(),
                     recipe.getIsPublic(),
+                    isShownOnProfile(recipe.getIsPublic(), recipe.getIsMyPageVisible()),
                     recipe.getLikeCount(),
                     commentCount,
                     recipe.getForkCount(),
@@ -80,6 +85,7 @@ public record MyActivityListResponse(
             String description,
             @PresignedUrl String thumbnailUrl,
             Boolean isPublic,
+            Boolean isMyPageVisible,
             Integer likeCount,
             Integer downloadCount,
             LocalDateTime createdAt
@@ -92,6 +98,7 @@ public record MyActivityListResponse(
                     dataset.getDescription(),
                     dataset.getBannerImageUrl(),
                     dataset.getIsPublic(),
+                    isShownOnProfile(dataset.getIsPublic(), dataset.getIsMyPageVisible()),
                     dataset.getLikeCount(),
                     dataset.getDownloadCount(),
                     dataset.getCreatedAt()
@@ -105,6 +112,7 @@ public record MyActivityListResponse(
             String title,
             String description,
             Boolean isPublic,
+            Boolean isMyPageVisible,
             Integer commentCount,
             LocalDateTime createdAt
     ) implements Item {
@@ -115,6 +123,7 @@ public record MyActivityListResponse(
                     qna.getTitle(),
                     qna.getContent(),
                     qna.getIsPublic(),
+                    isShownOnProfile(qna.getIsPublic(), qna.getIsMyPageVisible()),
                     qna.getAnswerCount(),
                     qna.getCreatedAt()
             );
@@ -127,6 +136,7 @@ public record MyActivityListResponse(
             String title,
             String description,
             Boolean isPublic,
+            Boolean isMyPageVisible,
             Integer commentCount,
             LocalDateTime createdAt
     ) implements Item {
@@ -137,9 +147,18 @@ public record MyActivityListResponse(
                     recruit.getJobTitle(),
                     recruit.getDescription(),
                     recruit.getIsPublic(),
+                    isShownOnProfile(recruit.getIsPublic(), recruit.getIsMyPageVisible()),
                     applicationCount,
                     recruit.getCreatedAt()
             );
         }
+    }
+
+    /**
+     * 공개 프로필에 실제로 표시되는지. 공개 프로필 조회 조건(isPublic = true AND isMyPageVisible = true)과 같은 기준이며,
+     * 비공개 글(포크 사본 등)은 저장된 표시 설정과 무관하게 false다.
+     */
+    private static Boolean isShownOnProfile(Boolean isPublic, Boolean isMyPageVisible) {
+        return Boolean.TRUE.equals(isPublic) && Boolean.TRUE.equals(isMyPageVisible);
     }
 }

@@ -85,7 +85,10 @@ public record RecipeDetailResponse(
         }
     }
 
-    public static RecipeDetailResponse from(Recipe recipe, InspectionSummary verificationSummary) {
+    /**
+     * @param reviewCount 최상위 리뷰 수 (리뷰 목록 API의 totalElements와 같은 기준)
+     */
+    public static RecipeDetailResponse from(Recipe recipe, InspectionSummary verificationSummary, long reviewCount) {
         return new RecipeDetailResponse(
                 recipe.getRecipeId(),
                 recipe.getTitle(),
@@ -95,8 +98,7 @@ public record RecipeDetailResponse(
                 AuthorInfo.from(recipe.getUser()),
                 recipe.getCreatedAt(),
                 recipe.getRating().doubleValue(),
-                // TODO: 실제 댓글 수 집계 미연동 상태 (항상 0으로 고정)
-                0,
+                (int) reviewCount,
                 recipe.getForkCount(),
                 recipe.getViewCount(),
                 recipe.getDownloadCount(),

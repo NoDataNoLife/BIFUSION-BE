@@ -233,7 +233,9 @@ public class UserController {
                     - DATASET(DatasetItem): thumbnailUrl, likeCount, downloadCount
                     - QNA(QnaItem): commentCount(전문가 답변 수. 답변엔 대댓글 개념이 없어 전체 답변 수와 동일)
                     - RECRUITMENT(RecruitItem): commentCount(지원자 수, 상태 무관 전체 지원 건수)
-                    모든 타입 공통: activityId, type, title, description, isPublic, createdAt"""
+                    모든 타입 공통: activityId, type, title, description, isPublic, isMyPageVisible, createdAt
+                    - isPublic: 글 자체의 공개 여부
+                    - isMyPageVisible: 공개 프로필에 표시되는지. 비공개 글은 항상 false (PATCH /users/me/activities/visibility로 변경)"""
     )
     @GetMapping("/mypage/activities")
     public CommonResponse<MyActivityListResponse> getMyActivities(

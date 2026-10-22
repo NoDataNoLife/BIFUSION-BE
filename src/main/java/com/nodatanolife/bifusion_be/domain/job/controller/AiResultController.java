@@ -32,6 +32,9 @@ public class AiResultController {
                     - 항목의 datasetId를 학습 요청의 dataset_id로 그대로 보냅니다. 목록에 있는 항목은 학습 요청에서 거절되지 않습니다(같은 판정 기준).
                     - 표시 예: JOB-015 (40장, 2026-10-16) = jobCode + totalSampleCount + finishedAt
                     - 페이지 없이 전체를 반환하며, 결과가 없으면 빈 배열입니다.
+                    - inspectionTarget: 검수 신청(POST /api/v1/inspections)에 쓸 targetType·targetId와 신청 가능 여부(canRequest),
+                      가장 최근 신청 상태(status)·결과(result). targetId는 AugmentationConfig ID라 datasetId와 다릅니다.
+                      전문가 배정은 아직 구현되지 않아, 신청 건이 전문가 화면에 바로 나타나지는 않습니다.
 
                     주요 오류
                     - 403 P002 프로젝트 멤버 아님"""
