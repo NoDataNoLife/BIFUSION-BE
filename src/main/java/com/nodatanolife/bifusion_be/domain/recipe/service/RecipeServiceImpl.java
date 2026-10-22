@@ -71,8 +71,10 @@ public class RecipeServiceImpl implements RecipeService {
 
         InspectionSummary verificationSummary = inspectionResultService
                 .getSummary(InspectionTargetType.RECIPE, recipeId);
+        // 리뷰 목록 API(최상위 리뷰 페이지)의 totalElements와 같은 기준. 대댓글은 세지 않는다.
+        long reviewCount = recipeReviewRepository.countByRecipe_RecipeIdAndParentIsNull(recipeId);
 
-        return RecipeDetailResponse.from(recipe, verificationSummary);
+        return RecipeDetailResponse.from(recipe, verificationSummary, reviewCount);
     }
 
     /**
