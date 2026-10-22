@@ -56,6 +56,11 @@ spring:
     serialization:
       write-dates-as-timestamps: false
 
+# 대시보드 리소스 사용량 (GET /users/me/resource-usage)
+usage:
+  # 월간 집계 기간을 나누는 타임존
+  timezone: Asia/Seoul
+
 jwt:
   secret: ${JWT_SECRET}
   access-expiration: 1800000
