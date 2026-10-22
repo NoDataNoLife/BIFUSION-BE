@@ -67,9 +67,11 @@ public class ResourceUsageServiceImpl implements ResourceUsageService {
 
         return new ResourceUsageResponse(
                 storageUsedBytes,
+                // TODO: 저장 용량 한도 미정(고정 용량 정책 보류). 정해지면 설정값으로 채우고 업로드 시 한도 확인도 추가
                 null,
                 unmeasuredFileCount,
                 monthlyAugmentations,
+                // TODO: 월간 증강 횟수 한도 없음(작업 비용은 토큰 기준). 토큰 차감 정책 확정 후 횟수 한도가 필요한지 재검토
                 null,
                 periodStart.toOffsetDateTime(),
                 periodEnd.toOffsetDateTime(),
