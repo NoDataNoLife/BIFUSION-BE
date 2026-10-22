@@ -163,6 +163,7 @@ public class DatasetServiceImpl implements DatasetService {
 
     /**
      * 데이터셋 상세 조회.
+     * 삭제된 데이터셋은 수정·삭제 API와 같이 404로 처리한다 (작성자 본인 포함).
      * 비공개 데이터셋인데 요청자가 작성자 본인이 아니면 접근을 차단한다.
      * (커뮤니티/내 자산 상세 화면이 동일 API를 공유하므로 이 가드가 유일한 비공개 방어선이다)
      */
@@ -170,6 +171,7 @@ public class DatasetServiceImpl implements DatasetService {
     @Transactional(readOnly = true)
     public DatasetDetailResponse getDatasetDetail(Long datasetId, Long userId) {
         Dataset dataset = datasetRepository.findById(datasetId)
+                .filter(d -> !d.isDeleted())
                 .orElseThrow(() -> new BusinessException(ErrorCode.RESOURCE_NOT_FOUND));
 
         if (!dataset.getIsPublic() && !dataset.getUser().getUserId().equals(userId)) {
