@@ -1,6 +1,7 @@
 package com.nodatanolife.bifusion_be.domain.user.service;
 
 import com.nodatanolife.bifusion_be.domain.expert.entity.ExpertTask;
+import com.nodatanolife.bifusion_be.domain.user.config.PointProperties;
 import com.nodatanolife.bifusion_be.domain.user.entity.RewardHistory;
 import com.nodatanolife.bifusion_be.domain.user.entity.User;
 import com.nodatanolife.bifusion_be.domain.user.repository.RewardHistoryRepository;
@@ -22,6 +23,7 @@ public class PointServiceImpl implements PointService {
 
     private final UserRepository userRepository;
     private final RewardHistoryRepository rewardHistoryRepository;
+    private final PointProperties pointProperties;
 
     @Override
     public void earn(Long userId, int amount, String type, String targetType, Long targetId) {
@@ -45,6 +47,22 @@ public class PointServiceImpl implements PointService {
         }
         user.deductPoints(amount);
         rewardHistoryRepository.save(RewardHistory.of(user, -amount, type, targetType, targetId));
+    }
+
+    /**
+     * 비활성화돼 있으면 503(POINT_CHARGE_DISABLED), 상품에 없는 앤트 수면 400(POINT_CHARGE_OPTION_INVALID).
+     */
+    @Override
+    public int charge(Long userId, int points) {
+        PointProperties.Charge charge = pointProperties.charge();
+        if (!charge.enabled()) {
+            throw new BusinessException(ErrorCode.POINT_CHARGE_DISABLED);
+        }
+        if (!charge.options().contains(points)) {
+            throw new BusinessException(ErrorCode.POINT_CHARGE_OPTION_INVALID);
+        }
+        earn(userId, points, RewardHistory.TYPE_CHARGE, null, null);
+        return userRepository.getReferenceById(userId).getPoints();
     }
 
     @Override

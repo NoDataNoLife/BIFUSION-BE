@@ -19,6 +19,7 @@ public class RewardHistory extends BaseCreatedEntity {
     public static final String TYPE_QNA_QUESTION = "QNA_QUESTION";
     public static final String TYPE_INSPECTION_REQUEST = "INSPECTION_REQUEST";
     public static final String TYPE_INSPECTION_REFUND = "INSPECTION_REFUND";
+    public static final String TYPE_CHARGE = "CHARGE";
 
     public static final String TARGET_RECIPE = "RECIPE";
     public static final String TARGET_QNA = "QNA";

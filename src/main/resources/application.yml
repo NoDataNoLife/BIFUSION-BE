@@ -92,6 +92,10 @@ points:
   # 전문가 Q&A: 질문 등록 시 차감, 전문가 답변 시 지급 (질문 하나당 전문가 한 명에게 1회)
   qna-question-cost: 100
   qna-answer-reward: 90
+  # 앤트 충전 (POST /api/v1/points/charge). 결제 연동 전 체험용이라 요청만으로 지급된다. 운영에서 막으려면 false
+  charge:
+    enabled: ${POINT_CHARGE_ENABLED:true}
+    options: [500, 1000, 3000, 5000]
 
 jwt:
   secret: ${JWT_SECRET}

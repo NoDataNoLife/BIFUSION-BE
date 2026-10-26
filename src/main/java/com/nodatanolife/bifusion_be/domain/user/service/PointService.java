@@ -22,4 +22,11 @@ public interface PointService {
      * 전문가 검수 보상. 내역에 ExpertTask를 연결한다.
      */
     void earnForExpertTask(Long expertId, ExpertTask task, int amount);
+
+    /**
+     * 앤트 충전 (결제 연동 전 체험용, 결제 없이 지급). 설정한 상품만 충전할 수 있다.
+     *
+     * @return 충전 후 잔액
+     */
+    int charge(Long userId, int points);
 }

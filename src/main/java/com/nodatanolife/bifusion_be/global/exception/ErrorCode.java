@@ -151,6 +151,8 @@ public enum ErrorCode {
      * ================================ */
     ALREADY_SUBSCRIBED_PLAN(HttpStatus.BAD_REQUEST, "U004", "이미 해당 플랜을 구독 중입니다."),
     PLAN_CHANGE_NOT_ALLOWED(HttpStatus.BAD_REQUEST, "U005", "플랜 변경 가능 기간이 아닙니다."),
+    POINT_CHARGE_OPTION_INVALID(HttpStatus.BAD_REQUEST, "U006", "충전할 수 없는 앤트 수입니다."),
+    POINT_CHARGE_DISABLED(HttpStatus.SERVICE_UNAVAILABLE, "U007", "앤트 충전을 사용할 수 없습니다."),
 
     /* ================================
      * Activity (마이페이지 커뮤니티 활동)
