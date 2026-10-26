@@ -2,7 +2,9 @@ package com.nodatanolife.bifusion_be.domain.recipe.dto.response;
 
 import com.nodatanolife.bifusion_be.domain.expert.dto.response.InspectionResultResponse;
 import com.nodatanolife.bifusion_be.domain.expert.dto.response.InspectionSummary;
+import com.nodatanolife.bifusion_be.domain.expert.dto.response.InspectionTargetResponse;
 import com.nodatanolife.bifusion_be.domain.expert.entity.InspectionStatus;
+import com.nodatanolife.bifusion_be.domain.file.presign.PresignedUrl;
 import com.nodatanolife.bifusion_be.domain.recipe.entity.Recipe;
 import com.nodatanolife.bifusion_be.domain.user.entity.User;
 
@@ -19,12 +21,13 @@ public record RecipeDetailResponse(
         Long recipeId,
         String title,
         String description,
-        String bannerUrl,
+        @PresignedUrl String bannerUrl,
         boolean isExpertVerified,
         AuthorInfo author,
         LocalDateTime createdAt,
         double rating,
         int reviewCount,
+        // 포크한 레시피는 원본의 포크 수
         int forkCount,
         int viewCount,
         int downloadCount,
@@ -32,12 +35,16 @@ public record RecipeDetailResponse(
         Settings settings,
         InspectionStatus inspectionStatus,
         InspectionResultResponse inspectionResult,
-        boolean isDeleted
+        // 검수 신청 버튼·취소용. 작성자 본인에게만 내려주고 그 외에는 null
+        InspectionTargetResponse inspectionTarget,
+        boolean isDeleted,
+        // 포크한 레시피의 원본. 직접 작성한 레시피는 null
+        ForkedFromInfo forkedFrom
 ) {
     /**
      * 작성자 정보.
      */
-    public record AuthorInfo(Long userId, String nickname, String profileImageUrl) {
+    public record AuthorInfo(Long userId, String nickname, @PresignedUrl String profileImageUrl) {
         public static AuthorInfo from(User author) {
             return new AuthorInfo(
                     author.getUserId(),
@@ -88,7 +95,8 @@ public record RecipeDetailResponse(
     /**
      * @param reviewCount 최상위 리뷰 + 대댓글 합산 (리뷰 목록 API의 totalElements는 최상위 리뷰 수라 다르다)
      */
-    public static RecipeDetailResponse from(Recipe recipe, InspectionSummary verificationSummary, long reviewCount) {
+    public static RecipeDetailResponse from(Recipe recipe, InspectionSummary verificationSummary, long reviewCount,
+                                            InspectionTargetResponse inspectionTarget) {
         return new RecipeDetailResponse(
                 recipe.getRecipeId(),
                 recipe.getTitle(),
@@ -99,14 +107,16 @@ public record RecipeDetailResponse(
                 recipe.getCreatedAt(),
                 recipe.getRating().doubleValue(),
                 (int) reviewCount,
-                recipe.getForkCount(),
+                recipe.getDisplayForkCount(),
                 recipe.getViewCount(),
                 recipe.getDownloadCount(),
                 Overview.from(recipe),
                 Settings.from(recipe),
                 verificationSummary.status(),
                 verificationSummary.result(),
-                recipe.isDeleted()
+                inspectionTarget,
+                recipe.isDeleted(),
+                ForkedFromInfo.of(recipe)
         );
     }
 }

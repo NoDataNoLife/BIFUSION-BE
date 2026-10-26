@@ -52,6 +52,7 @@ public class JobPollingServiceImpl implements JobPollingService {
     private final TrainedModelRepository trainedModelRepository;
     private final FileRepository fileRepository;
     private final MlProperties mlProperties;
+    private final JobResultNotifier jobResultNotifier;
 
     @Override
     @Transactional(readOnly = true)
@@ -62,7 +63,10 @@ public class JobPollingServiceImpl implements JobPollingService {
     @Override
     public boolean fail(Long jobId, JobFailureReason reason, String mlErrorDetail) {
         Optional<Job> active = findActiveJob(jobId);
-        active.ifPresent(job -> job.fail(reason, mlErrorDetail));
+        active.ifPresent(job -> {
+            job.fail(reason, mlErrorDetail);
+            jobResultNotifier.notifyFailed(job);
+        });
         return active.isPresent();
     }
 
@@ -97,6 +101,7 @@ public class JobPollingServiceImpl implements JobPollingService {
                 .orElseThrow(() -> new BusinessException(ErrorCode.JOB_NOT_FOUND));
 
         job.succeed();
+        jobResultNotifier.notifySucceeded(job);
         config.recordResult(
                 result.datasetId(),
                 ResultFileMeta.keyOf(dataset),
@@ -179,6 +184,7 @@ public class JobPollingServiceImpl implements JobPollingService {
         log.error("[Polling] ML SUCCESS 응답을 결과로 저장할 수 없음 - jobId: {}, mlJobId: {}, 사유: {}",
                 job.getJobId(), job.getMlJobId(), invalidReason);
         job.fail(JobFailureReason.UNKNOWN, invalidReason);
+        jobResultNotifier.notifyFailed(job);
         return true;
     }
 

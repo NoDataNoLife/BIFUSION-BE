@@ -19,6 +19,17 @@ public interface ExpertTaskRepository extends JpaRepository<ExpertTask, Long> {
 
     List<ExpertTask> findAllByExpert(User expert);
 
+    // 파일 다운로드 권한 확인용. 이 대상들 중 하나의 검수를 배정받은 적이 있는지
+    @Query("""
+            SELECT COUNT(t) > 0 FROM ExpertTask t
+            WHERE t.expert.userId = :expertId
+              AND t.inspectionRequest.targetType = :targetType
+              AND t.inspectionRequest.targetId IN :targetIds
+            """)
+    boolean existsAssignedTo(@Param("expertId") Long expertId,
+                             @Param("targetType") InspectionTargetType targetType,
+                             @Param("targetIds") List<Long> targetIds);
+
     Optional<ExpertTask> findByExpertTaskIdAndExpert(Long expertTaskId, User expert);
 
     /**
@@ -34,13 +45,9 @@ public interface ExpertTaskRepository extends JpaRepository<ExpertTask, Long> {
             JOIN FETCH t.inspectionRequest v
             JOIN FETCH v.user
             WHERE t.expert = :expert
-              AND v.targetType = :targetType
             ORDER BY t.updatedAt DESC
             """)
-    List<ExpertTask> findMyReviewTasks(
-            @Param("expert") User expert,
-            @Param("targetType") InspectionTargetType targetType
-    );
+    List<ExpertTask> findMyReviewTasks(@Param("expert") User expert);
 
     @Query("SELECT t.status AS status, COUNT(t) AS count FROM ExpertTask t WHERE t.expert = :expert GROUP BY t.status")
     List<StatusCount> countGroupedByStatus(@Param("expert") User expert);

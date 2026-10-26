@@ -82,7 +82,8 @@ public class DatasetController {
     @Operation(
             summary = "데이터셋 삭제",
             description = "본인이 등록한 데이터셋을 삭제(soft delete)합니다. "
-                    + "작성자 본인이 아닌 경우 삭제가 거부되며, 삭제된 데이터셋은 deletedAt이 기록되어 목록/상세 조회에서 제외됩니다."
+                    + "작성자 본인이 아닌 경우 삭제가 거부되며, 삭제된 데이터셋은 deletedAt이 기록되어 목록/상세 조회에서 제외됩니다. "
+                    + "전문가가 아직 시작하지 않은 검수 신청은 자동으로 취소되고 포인트가 환불되며, 전문가가 검수를 시작한 데이터셋은 삭제할 수 없습니다(409, IS012)."
     )
     @DeleteMapping("/{datasetId}")
     public CommonResponse<Void> deleteDataset(

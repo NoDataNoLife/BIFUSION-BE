@@ -1,8 +1,12 @@
 package com.nodatanolife.bifusion_be.domain.recipe.service;
 
 import com.nodatanolife.bifusion_be.domain.expert.dto.response.InspectionSummary;
+import com.nodatanolife.bifusion_be.domain.expert.dto.response.InspectionTargetResponse;
 import com.nodatanolife.bifusion_be.domain.expert.entity.InspectionTargetType;
 import com.nodatanolife.bifusion_be.domain.expert.service.InspectionResultService;
+import com.nodatanolife.bifusion_be.domain.expert.service.InspectionService;
+import com.nodatanolife.bifusion_be.domain.file.entity.File;
+import com.nodatanolife.bifusion_be.domain.file.repository.FileRepository;
 import com.nodatanolife.bifusion_be.domain.recipe.dto.response.MyRecipeListResponse;
 import com.nodatanolife.bifusion_be.domain.recipe.dto.response.RecipeDetailResponse;
 import com.nodatanolife.bifusion_be.domain.recipe.dto.request.RecipeRegisterRequest;
@@ -35,9 +39,11 @@ public class RecipeServiceImpl implements RecipeService {
 
     private final RecipeRepository recipeRepository;
     private final InspectionResultService inspectionResultService;
+    private final InspectionService inspectionService;
     private final RecipeReviewRepository recipeReviewRepository;
     private final RecipeForkHistoryRepository recipeForkHistoryRepository;
     private final UserRepository userRepository;
+    private final FileRepository fileRepository;
 
     /**
      * 회원 탈퇴 시 레시피 익명화
@@ -74,8 +80,12 @@ public class RecipeServiceImpl implements RecipeService {
         // 최상위 리뷰 + 대댓글 합산 (마이페이지·공개 프로필 commentCount와 같은 기준).
         // 리뷰 목록 API의 totalElements는 최상위 리뷰 페이지 기준이라 이 값과 다르다.
         long reviewCount = recipeReviewRepository.countByRecipe_RecipeId(recipeId);
+        // 검수 신청 정보(신청 ID 포함)는 작성자 본인에게만 내려준다
+        InspectionTargetResponse inspectionTarget = recipe.getUser().getUserId().equals(userId)
+                ? inspectionResultService.getRecipeTargets(userId, List.of(recipe)).get(recipeId)
+                : null;
 
-        return RecipeDetailResponse.from(recipe, verificationSummary, reviewCount);
+        return RecipeDetailResponse.from(recipe, verificationSummary, reviewCount, inspectionTarget);
     }
 
     /**
@@ -97,9 +107,31 @@ public class RecipeServiceImpl implements RecipeService {
         }
 
         Recipe recipe = Recipe.create(request, user, forkedFrom);
+        if (request.thumbnailFileId() != null) {
+            recipe.updateThumbnail(takeThumbnail(request.thumbnailFileId(), userId));
+        }
         Recipe savedRecipe = recipeRepository.save(recipe);
 
         return RecipeRegisterResponse.from(savedRecipe);
+    }
+
+    /**
+     * 대표 이미지로 쓸 임시 업로드 파일을 검증하고 영구 보관으로 바꾼다 (데이터셋 첨부 파일과 같은 방식).
+     * - 없는 파일 404, 남이 올린 파일은 도용 방지를 위해 거부(FILE_READ_FAILED), 이미지가 아니면 400(RECIPE_THUMBNAIL_NOT_IMAGE)
+     *
+     * @return 대표 이미지의 S3 key
+     */
+    private String takeThumbnail(Long fileId, Long userId) {
+        File file = fileRepository.findById(fileId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.RESOURCE_NOT_FOUND));
+        if (!file.getUser().getUserId().equals(userId)) {
+            throw new BusinessException(ErrorCode.FILE_READ_FAILED);
+        }
+        if (file.getFileType() == null || !file.getFileType().toLowerCase().startsWith("image/")) {
+            throw new BusinessException(ErrorCode.RECIPE_THUMBNAIL_NOT_IMAGE);
+        }
+        file.markAsPermanent();
+        return file.getS3Key();
     }
 
     /**
@@ -119,10 +151,13 @@ public class RecipeServiceImpl implements RecipeService {
         List<Long> ids = recipePage.getContent().stream().map(Recipe::getRecipeId).toList();
         Map<Long, InspectionSummary> verificationMap =
                 inspectionResultService.getSummaries(InspectionTargetType.RECIPE, ids);
+        Map<Long, InspectionTargetResponse> targetMap =
+                inspectionResultService.getRecipeTargets(userId, recipePage.getContent());
 
         return recipePage.map(recipe -> MyRecipeListResponse.from(
                 recipe,
-                verificationMap.getOrDefault(recipe.getRecipeId(), InspectionSummary.none())
+                verificationMap.getOrDefault(recipe.getRecipeId(), InspectionSummary.none()),
+                targetMap.get(recipe.getRecipeId())
         ));
 
     }
@@ -163,10 +198,8 @@ public class RecipeServiceImpl implements RecipeService {
         if (!recipe.getUser().getUserId().equals(userId)) {
             throw new BusinessException(ErrorCode.FORBIDDEN_RECIPE_ACCESS);
         }
-        // 검수 신청(POST /api/v1/inspections)이 AUGMENTED_DATA로만 제한되어 RECIPE 타입 검수 요청은
-        // 더 이상 생성되지 않고, 기존 RECIPE 타입 요청도 승인/거절될 방법이 없어(검수 처리 플로우 전체가
-        // AUGMENTED_DATA 기준) PENDING인 채로 영원히 남는다. 따라서 "검수 진행 중이면 삭제 금지"를 그대로
-        // 적용하면 과거에 RECIPE 검수를 신청했던 레시피는 영구히 삭제 불가능해지므로 이 체크는 두지 않는다.
+        // 전문가가 시작하기 전인 검수 신청은 자동 취소·환불하고, 이미 시작됐으면 삭제를 막는다(409)
+        inspectionService.cancelForTargetDeletion(userId, InspectionTargetType.RECIPE, recipeId);
         recipe.delete();
     }
 

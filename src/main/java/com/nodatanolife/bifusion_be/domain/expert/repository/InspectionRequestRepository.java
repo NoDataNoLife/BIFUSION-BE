@@ -1,6 +1,7 @@
 package com.nodatanolife.bifusion_be.domain.expert.repository;
 
 import com.nodatanolife.bifusion_be.domain.expert.entity.InspectionRequest;
+import com.nodatanolife.bifusion_be.domain.expert.entity.InspectionRequestStatus;
 import com.nodatanolife.bifusion_be.domain.expert.entity.InspectionTargetType;
 import com.nodatanolife.bifusion_be.domain.user.entity.User;
 import jakarta.persistence.LockModeType;
@@ -30,4 +31,12 @@ public interface InspectionRequestRepository extends JpaRepository<InspectionReq
     Optional<InspectionRequest> findFirstByTargetTypeAndTargetIdOrderByAppliedAtDesc(InspectionTargetType targetType, Long targetId);
 
     List<InspectionRequest> findAllByTargetTypeAndTargetIdIn(InspectionTargetType targetType, List<Long> targetIds);
+
+    // 전문가 자동 배정 도입 전에 만들어져 배정(ExpertTask) 없이 대기 중으로 남은 신청 (일회성 정리용)
+    @Query("""
+            SELECT r.inspectionRequestId FROM InspectionRequest r
+            WHERE r.status = :status
+              AND NOT EXISTS (SELECT 1 FROM ExpertTask t WHERE t.inspectionRequest = r)
+            """)
+    List<Long> findIdsWithoutTaskByStatus(@Param("status") InspectionRequestStatus status);
 }

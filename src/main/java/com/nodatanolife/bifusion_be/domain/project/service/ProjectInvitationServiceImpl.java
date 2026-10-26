@@ -46,14 +46,15 @@ public class ProjectInvitationServiceImpl implements ProjectInvitationService {
     /**
      * 프로젝트 초대 생성
      * 1. ACCEPTED — 이미 멤버 INVITATION_ALREADY_MEMBER 에러처리
-     * 2. PENDING  — 1시간 쿨다운, 통과 시 기존 row의 lastSentAt만 갱신 (재발송)
+     * 2. PENDING  — 1시간 쿨다운, 통과 시 기존 row의 role·lastSentAt 갱신 (재발송)
      * 3. EXPIRED / REJECTED — 새 초대 row 생성
      */
     @Override
-    public ProjectInvitationResponse invite(Long projectId, Long inviterUserId, String rawEmail) {
+    public ProjectInvitationResponse invite(Long projectId, Long inviterUserId, String rawEmail, ProjectRole requestedRole) {
 
         // 이메일은 소문자로 정규화
         String email = rawEmail.toLowerCase();
+        ProjectRole role = requestedRole != null ? requestedRole : DEFAULT_ROLE;
 
         Project project = projectRepository.findById(projectId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.PROJECT_NOT_FOUND));
@@ -61,7 +62,12 @@ public class ProjectInvitationServiceImpl implements ProjectInvitationService {
         User inviter = userRepository.getReferenceById(inviterUserId);
 
         // 초대자는 해당 프로젝트의 멤버여야 한다
-        if (!projectMemberRepository.existsByProjectProjectIdAndUserUserId(projectId, inviterUserId)) {
+        ProjectMember inviterMember = projectMemberRepository
+                .findByProjectProjectIdAndUserUserId(projectId, inviterUserId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.PROJECT_ACCESS_DENIED));
+
+        // MANAGER 권한 부여는 역할 변경과 동일하게 MANAGER만 가능
+        if (role == ProjectRole.MANAGER && inviterMember.getRole() != ProjectRole.MANAGER) {
             throw new BusinessException(ErrorCode.PROJECT_ACCESS_DENIED);
         }
 
@@ -90,13 +96,13 @@ public class ProjectInvitationServiceImpl implements ProjectInvitationService {
                     throw new BusinessException(ErrorCode.INVITATION_ALREADY_MEMBER);
 
                 case PENDING -> {
-                    // lastSentAt만 갱신해서 재발송으로 처리
+                    // 기존 row의 role·lastSentAt을 갱신해서 재발송으로 처리
                     LocalDateTime cooldownUntil = latest.getLastSentAt()
                             .plusHours(INVITATION_COOLDOWN_HOURS);
                     if (LocalDateTime.now().isBefore(cooldownUntil)) {
                         throw new BusinessException(ErrorCode.INVITATION_COOLDOWN);
                     }
-                    latest.resend();
+                    latest.resend(role);
                     mailService.sendInvitationMail(email, project.getTitle(), inviter.getName());
                     return ProjectInvitationResponse.from(latest);
                 }
@@ -108,21 +114,14 @@ public class ProjectInvitationServiceImpl implements ProjectInvitationService {
 
         // 가입자와 미가입자 분기하여 초대 row 생성
         ProjectInvitation invitation = inviteeOpt
-                .map(invitee -> ProjectInvitation.ofRegistered(project, inviter, invitee, DEFAULT_ROLE))
-                .orElseGet(() -> ProjectInvitation.ofUnregistered(project, inviter, email, DEFAULT_ROLE));
+                .map(invitee -> ProjectInvitation.ofRegistered(project, inviter, invitee, role))
+                .orElseGet(() -> ProjectInvitation.ofUnregistered(project, inviter, email, role));
 
         ProjectInvitation saved = projectInvitationRepository.save(invitation);
 
         if (inviteeOpt.isPresent()) {
             mailService.sendInvitationMail(email, project.getTitle(), inviter.getName());
-            notificationService.create(
-                    inviteeOpt.get(),
-                    NotificationType.PROJECT_INVITATION,
-                    "새로운 팀 프로젝트 초대",
-                    inviter.getName() + "님이 \"" + project.getTitle() + "\" 프로젝트로 초대했습니다.",
-                    TargetType.PROJECT,
-                    project.getProjectId()
-            );
+            notifyInvitation(inviteeOpt.get(), saved);
         } else {
             mailService.sendSignUpInvitationMail(email, project.getTitle(), inviter.getName());
         }
@@ -197,6 +196,7 @@ public class ProjectInvitationServiceImpl implements ProjectInvitationService {
 
     /**
      * 신규 가입자에게 미가입 시점에 도착해 있던 PENDING 초대를 연결한다.
+     * 미가입자에게는 초대 알림을 만들 수 없었으므로, 연결하면서 초대 알림을 보내 알림창에서 응답할 수 있게 한다.
      */
     @Override
     public void linkPendingInvitationsTo(User user) {
@@ -204,6 +204,23 @@ public class ProjectInvitationServiceImpl implements ProjectInvitationService {
 
         projectInvitationRepository
                 .findAllByInviteeEmailAndStatus(email, InvitationStatus.PENDING)
-                .forEach(invitation -> invitation.linkInvitee(user));
+                .forEach(invitation -> {
+                    invitation.linkInvitee(user);
+                    notifyInvitation(user, invitation);
+                });
+    }
+
+    /**
+     * 초대 알림. targetId에 초대 ID를 담아 알림창에서 바로 수락·거절할 수 있게 한다.
+     */
+    private void notifyInvitation(User invitee, ProjectInvitation invitation) {
+        notificationService.create(
+                invitee,
+                NotificationType.PROJECT_INVITATION,
+                "새로운 팀 프로젝트 초대",
+                invitation.getInviter().getName() + "님이 \"" + invitation.getProject().getTitle() + "\" 프로젝트로 초대했습니다.",
+                TargetType.INVITATION,
+                invitation.getProjectInvitationId()
+        );
     }
 }

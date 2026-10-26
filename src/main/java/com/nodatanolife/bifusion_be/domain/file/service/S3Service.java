@@ -136,6 +136,26 @@ public class S3Service {
     }
 
     /**
+     * 서버에서 만든 바이트(압축 파일에서 꺼낸 이미지 등)를 지정한 key로 업로드하고 key를 돌려준다.
+     */
+    public String uploadBytes(byte[] bytes, String s3Key, String contentType) {
+        try {
+            s3Client.putObject(
+                    PutObjectRequest.builder()
+                            .bucket(bucketName)
+                            .key(s3Key)
+                            .contentType(contentType)
+                            .build(),
+                    RequestBody.fromBytes(bytes)
+            );
+            return s3Key;
+        } catch (Exception e) {
+            log.error("S3 업로드 실패: {}", e.getMessage(), e);
+            throw new BusinessException(ErrorCode.FILE_UPLOAD_FAILED);
+        }
+    }
+
+    /**
      * UUID 파일명 자동 생성 후 업로드한다 (호출 측에서 s3Key가 필요 없는 케이스).
      */
     public String uploadFile(MultipartFile file, String prefix) {

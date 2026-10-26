@@ -62,6 +62,7 @@ public enum ErrorCode {
     FORBIDDEN_RECIPE_ACCESS(HttpStatus.FORBIDDEN, "CM020", "본인의 레시피가 아닙니다."),
     INVALID_RECIPE_LIST_TYPE(HttpStatus.BAD_REQUEST, "CM021", "유효하지 않은 레시피 목록 조회 타입입니다."),
     FORBIDDEN_RECRUITMENT_ACCESS(HttpStatus.FORBIDDEN, "CM022", "본인의 모집글이 아닙니다."),
+    RECIPE_THUMBNAIL_NOT_IMAGE(HttpStatus.BAD_REQUEST, "CM023", "레시피 대표 이미지는 이미지 파일만 올릴 수 있습니다."),
 
     /* ================================
      * Dataset
@@ -81,6 +82,7 @@ public enum ErrorCode {
     PROJECT_VISIBILITY_PRIVATE_FORBIDDEN(HttpStatus.BAD_REQUEST, "P007", "비공개 프로젝트는 마이페이지에 공개로 설정할 수 없습니다."),
     PROJECT_LAST_MANAGER(HttpStatus.BAD_REQUEST, "P008", "관리자가 본인만 남은 경우 자기자신은 삭제 불가합니다."),
     PROJECT_SAME_ROLE(HttpStatus.BAD_REQUEST, "P009", "이미 동일한 역할입니다."),
+    PROJECT_LAST_MANAGER_DEMOTE(HttpStatus.BAD_REQUEST, "P010", "관리자가 한 명뿐인 경우 관리자 권한을 해제할 수 없습니다."),
 
     /* ================================
      * Invitation
@@ -150,6 +152,8 @@ public enum ErrorCode {
      * ================================ */
     ALREADY_SUBSCRIBED_PLAN(HttpStatus.BAD_REQUEST, "U004", "이미 해당 플랜을 구독 중입니다."),
     PLAN_CHANGE_NOT_ALLOWED(HttpStatus.BAD_REQUEST, "U005", "플랜 변경 가능 기간이 아닙니다."),
+    POINT_CHARGE_OPTION_INVALID(HttpStatus.BAD_REQUEST, "U006", "충전할 수 없는 앤트 수입니다."),
+    POINT_CHARGE_DISABLED(HttpStatus.SERVICE_UNAVAILABLE, "U007", "앤트 충전을 사용할 수 없습니다."),
 
     /* ================================
      * Activity (마이페이지 커뮤니티 활동)
@@ -172,6 +176,9 @@ public enum ErrorCode {
     INSPECTION_NO_AVAILABLE_EXPERT(HttpStatus.CONFLICT, "IS008", "배정할 수 있는 전문가가 없습니다. 잠시 후 다시 신청해 주세요."),
     INSPECTION_NOT_FOUND(HttpStatus.NOT_FOUND, "IS009", "검수 신청을 찾을 수 없습니다."),
     INSPECTION_CANNOT_CANCEL(HttpStatus.CONFLICT, "IS010", "전문가가 검수를 시작했거나 이미 처리된 신청은 취소할 수 없습니다."),
+    INSPECTION_FORKED_RECIPE_NOT_ALLOWED(HttpStatus.BAD_REQUEST, "IS011", "그대로 복제한 레시피는 전문가 검수를 신청할 수 없습니다."),
+    INSPECTION_IN_PROGRESS_TARGET_DELETE(HttpStatus.CONFLICT, "IS012", "전문가 검수가 진행 중인 대상은 삭제할 수 없습니다."),
+    INSPECTION_REWARD_OUT_OF_RANGE(HttpStatus.BAD_REQUEST, "IS013", "검수 리워드가 허용 범위를 벗어났습니다."),
 
     /* ================================
      * Notification

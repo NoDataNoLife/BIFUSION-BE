@@ -33,10 +33,19 @@ public class InspectionController {
     @Operation(
             summary = "전문가 검수 신청",
             description = """
-                    내 증강 데이터에 대해 전문가 검수를 신청합니다. targetType은 현재 AUGMENTED_DATA만 지원합니다(그 외 400).
+                    내 증강 데이터·레시피·업로드 데이터셋에 대해 전문가 검수를 신청합니다.
 
-                    - targetType/targetId: 검수 대상, reason: 검증 요청 메모(필수), rewardPoints: 전문가 리워드(신청 즉시 차감)
-                    - 본인 소유 대상만 신청 가능(아니면 403), 중복 신청 409, 포인트 부족 400
+                    - targetType/targetId: 검수 대상. 각 화면 응답의 inspectionTarget 값을 그대로 보냅니다.
+                      - AUGMENTED_DATA: AugmentationConfig ID
+                      - RECIPE: Recipe ID. 원본을 그대로 복제한 레시피(POST /community/recipes/{recipeId}/fork)는 신청 불가(400, IS011).
+                        원본 내용을 불러와 다시 등록한 레시피(등록 API + forkedFromId)는 신청 가능
+                      - UPLOADED_DATA: 업로드 Dataset ID. 증강 데이터셋은 AUGMENTED_DATA로 신청
+                    - reason: 검증 요청 메모(필수), rewardPoints: 전문가 리워드(신청 즉시 차감)
+                    - rewardPoints는 대상별 범위 안이어야 합니다(벗어나면 400, IS013). 범위는 각 화면 응답의 inspectionTarget.minRewardPoints·maxRewardPoints
+                      - 대상의 스토리지 크기(MB, 올림) 기준. 증강 데이터는 증강 결과 데이터셋 파일, 업로드 데이터셋은 첨부 파일
+                      - 최소: max(100, MB × 10), 최대: min(10,000, max(1,000, MB × 100))
+                      - 레시피와 크기를 알 수 없는 대상: 100 ~ 1,000
+                    - 대상이 없거나 삭제됐으면 404, 본인 소유 대상만 신청 가능(아니면 403), 중복 신청 409, 포인트 부족 400
                     - 신청과 동시에 전문가 1명에게 자동 배정됩니다 (진행 중인 검수가 가장 적은 전문가, 신청자 본인 제외).
                       배정할 전문가가 없으면 409(IS008)이며 포인트는 차감되지 않습니다.
                     - 반려·취소된 대상은 다시 신청할 수 있습니다.
@@ -78,6 +87,11 @@ public class InspectionController {
             description = """
                     검수 대기/진행 중인 요청 하나를 상세 조회합니다. inspectionId는 검수 시작 API(PATCH /api/v1/experts/me/tasks/{taskId}/start)와 동일한 리소스입니다.
 
+                    - targetType에 해당하는 영역만 채워지고 나머지는 null입니다.
+                      - AUGMENTED_DATA: jobTitle, previewUrl(증강 결과 미리보기), augmentationParams, sampleImages
+                      - RECIPE: recipe (개요·생성 설정값)
+                      - UPLOADED_DATA: dataset (메타데이터·첨부 파일. 파일은 fileId로 POST /api/v1/files/{fileId}/download)
+                    - reason: 신청자가 남긴 검증 요청 메모
                     - expertComment: 확정 코멘트(승인/거절 시 저장된 값)가 있으면 그 값, 없으면 draft 값
                     - sampleImages.images[]에 label/comment까지 포함 ("이미지 정밀 검수" 모달 프리페치용)
                     """
@@ -113,7 +127,7 @@ public class InspectionController {
             summary = "이미지별 검수 의견 저장",
             description = """
                     "이미지 정밀 검수" 모달의 "코멘트 저장" 버튼. draft 개념 없이 바로 저장됩니다(빈 문자열 허용).
-                    imageId가 해당 검수 건의 샘플 이미지가 아니면 404, 이미 승인/거절로 확정된 건은 400.
+                    증강 데이터 검수 전용입니다. imageId가 해당 검수 건의 샘플 이미지가 아니거나 레시피·데이터셋 검수 건이면 404, 이미 승인/거절로 확정된 건은 400.
                     """
     )
     @PatchMapping("/{inspectionId}/images/{imageId}/comment")

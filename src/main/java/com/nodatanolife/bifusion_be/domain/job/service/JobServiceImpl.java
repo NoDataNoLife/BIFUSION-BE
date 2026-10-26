@@ -23,5 +23,4 @@ public class JobServiceImpl implements JobService {
                 .forEach(j -> j.anonymize(deletedUser));
     }
 
-    // TODO: AUGMENTATION_SUCCESS / AUGMENTATION_FAILED 알림 연동 필요 (job 로직 완성 후)
 }
