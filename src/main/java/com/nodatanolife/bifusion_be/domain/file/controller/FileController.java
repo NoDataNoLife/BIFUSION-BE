@@ -37,11 +37,19 @@ public class FileController {
 
     @Operation(
             summary = "파일 다운로드 URL 발급",
-            description = "S3 파일을 직접 노출하지 않고, 만료 시간이 있는 presigned URL을 발급합니다."
+            description = """
+                    S3 파일을 직접 노출하지 않고, 만료 시간이 있는 presigned URL을 발급합니다.
+                    받을 권한이 없거나 없는 파일이면 404입니다.
+                    - 데이터셋 첨부 파일: 공개 데이터셋이면 누구나, 비공개·삭제된 데이터셋은 작성자와 그 데이터셋 검수를 배정받은 전문가
+                    - AI 작업 입력·결과 파일: 그 작업이 속한 프로젝트 멤버
+                    - 그 외(임시 업로드 등): 업로드한 본인
+                    """
     )
     @PostMapping("files/{fileId}/download")
-    public CommonResponse<FileDownloadResponse> downloadFile(@PathVariable Long fileId) {
-        FileDownloadResponse response = fileService.getDownloadUrl(fileId);
+    public CommonResponse<FileDownloadResponse> downloadFile(
+            @AuthenticationPrincipal CustomOAuth2User principal,
+            @PathVariable Long fileId) {
+        FileDownloadResponse response = fileService.getDownloadUrl(principal.getUser().getUserId(), fileId);
         return CommonResponse.success(response, "다운로드 URL 발급 성공!");
     }
 }

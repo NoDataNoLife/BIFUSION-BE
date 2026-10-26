@@ -2,6 +2,7 @@ package com.nodatanolife.bifusion_be.domain.dataset.repository;
 
 import com.nodatanolife.bifusion_be.domain.dataset.entity.Dataset;
 import com.nodatanolife.bifusion_be.domain.dataset.entity.DatasetType;
+import com.nodatanolife.bifusion_be.domain.file.entity.File;
 import com.nodatanolife.bifusion_be.domain.user.entity.User;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -17,6 +18,9 @@ public interface DatasetRepository extends JpaRepository<Dataset, Long> {
 
     // 회원 탈퇴 익명화 처리 대상 조회 (공개 여부와 무관하게 해당 유저의 전체 데이터셋)
     List<Dataset> findAllByUser(User user);
+
+    // 파일 다운로드 권한 확인용. 첨부 파일을 교체해도 예전 파일은 남으므로 여러 건일 수 있다
+    List<Dataset> findAllByFile(File file);
 
     /**
      * "내 자산" 목록 조회용. 공개 여부와 무관하게 본인이 작성한 데이터셋만 type으로 필터링한다.

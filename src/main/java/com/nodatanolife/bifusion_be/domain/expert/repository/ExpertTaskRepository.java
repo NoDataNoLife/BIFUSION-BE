@@ -2,6 +2,7 @@ package com.nodatanolife.bifusion_be.domain.expert.repository;
 
 import com.nodatanolife.bifusion_be.domain.expert.entity.ExpertTask;
 import com.nodatanolife.bifusion_be.domain.expert.entity.InspectionRequest;
+import com.nodatanolife.bifusion_be.domain.expert.entity.InspectionTargetType;
 import com.nodatanolife.bifusion_be.domain.user.entity.User;
 import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -17,6 +18,17 @@ import java.util.Optional;
 public interface ExpertTaskRepository extends JpaRepository<ExpertTask, Long> {
 
     List<ExpertTask> findAllByExpert(User expert);
+
+    // 파일 다운로드 권한 확인용. 이 대상들 중 하나의 검수를 배정받은 적이 있는지
+    @Query("""
+            SELECT COUNT(t) > 0 FROM ExpertTask t
+            WHERE t.expert.userId = :expertId
+              AND t.inspectionRequest.targetType = :targetType
+              AND t.inspectionRequest.targetId IN :targetIds
+            """)
+    boolean existsAssignedTo(@Param("expertId") Long expertId,
+                             @Param("targetType") InspectionTargetType targetType,
+                             @Param("targetIds") List<Long> targetIds);
 
     Optional<ExpertTask> findByExpertTaskIdAndExpert(Long expertTaskId, User expert);
 
