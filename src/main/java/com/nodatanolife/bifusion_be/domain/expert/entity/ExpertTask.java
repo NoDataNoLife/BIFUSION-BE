@@ -1,5 +1,6 @@
 package com.nodatanolife.bifusion_be.domain.expert.entity;
 
+import com.nodatanolife.bifusion_be.domain.expert.entity.converter.InspectionRequestStatusConverter;
 import com.nodatanolife.bifusion_be.domain.user.entity.User;
 import com.nodatanolife.bifusion_be.global.entity.BaseEntity;
 import com.nodatanolife.bifusion_be.global.exception.ErrorCode;
@@ -56,6 +57,11 @@ public class ExpertTask extends BaseEntity {
     @Column(name = "draft_feedback")
     private String draftFeedback;
 
+    // 이 회차의 판정 (APPROVED/REJECTED). 신청(InspectionRequest)은 재신청 때 다시 쓰이므로 회차 결과는 task에 남긴다. 완료 전 null
+    @Convert(converter = InspectionRequestStatusConverter.class)
+    @Column(name = "result", length = 20)
+    private InspectionRequestStatus result;
+
     @Builder
     private ExpertTask(User expert, InspectionRequest inspectionRequest, Integer reward) {
         this.expert = expert;
@@ -97,6 +103,17 @@ public class ExpertTask extends BaseEntity {
         }
     }
 
+    /**
+     * 이 회차의 판정 (APPROVED/REJECTED). 완료 전이면 null.
+     * result 컬럼 도입 전에 끝난 회차는 신청 상태로 대신한다 (docs의 백필 SQL을 실행하면 쓰이지 않는다).
+     */
+    public InspectionRequestStatus reviewResult() {
+        if (!STATUS_COMPLETED.equals(status)) {
+            return null;
+        }
+        return result != null ? result : inspectionRequest.getStatus();
+    }
+
     public void anonymize(User deletedUser) {
         this.expert = deletedUser;
     }
@@ -111,11 +128,12 @@ public class ExpertTask extends BaseEntity {
     }
 
     /**
-     * 검수 최종 승인/거절 시 호출. 최종 코멘트를 feedback에 확정하고,
+     * 검수 최종 승인/거절 시 호출. 판정과 최종 코멘트를 이 회차에 확정하고,
      * 더 이상 유효하지 않은 임시 저장값(draftFeedback)은 비운다.
      */
-    public void complete(String finalComment) {
+    public void complete(InspectionRequestStatus result, String finalComment) {
         this.status = STATUS_COMPLETED;
+        this.result = result;
         this.completedAt = LocalDateTime.now();
         this.feedback = finalComment;
         this.draftFeedback = null;

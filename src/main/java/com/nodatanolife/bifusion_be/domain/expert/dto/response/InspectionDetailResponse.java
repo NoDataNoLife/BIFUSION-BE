@@ -199,7 +199,8 @@ public record InspectionDetailResponse(
                 inspectionRequest.getTargetType(),
                 jobTitle,
                 previewUrl,
-                inspectionRequest.getStatus(),
+                // 이 회차가 끝났으면 회차 판정, 진행 중이면 신청 상태(PENDING)
+                task.reviewResult() != null ? task.reviewResult() : inspectionRequest.getStatus(),
                 Requester.from(inspectionRequest.getUser(), inspectionRequest.getAppliedAt()),
                 inspectionRequest.getReason(),
                 augmentationParams,

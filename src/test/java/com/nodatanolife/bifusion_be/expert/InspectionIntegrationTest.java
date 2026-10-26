@@ -40,6 +40,7 @@ import org.springframework.data.domain.Page;
 
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -377,6 +378,66 @@ class InspectionIntegrationTest extends IntegrationTestSupport {
         assertError(() -> inspectionService.getMyRequestDetail(owner, cancelledId), ErrorCode.INSPECTION_NOT_FOUND);
     }
 
+    @Test
+    void 재신청_후에도_전문가_목록과_상세에는_회차별_판정이_남는다() {
+        User owner = user("owner@test.com", 3000);
+        User expert = expert("expert@test.com", 0);
+        Long approvedRecipe = recipe(owner, null, true);
+        Long cancelledRecipe = recipe(owner, null, true);
+        // 반려 → 재신청 → 승인
+        Long approvedId = inspectionService.createInspection(owner, create(InspectionTargetType.RECIPE, approvedRecipe, 500)).inspectionRequestId();
+        inspectionService.rejectInspection(expert, latestTaskId(approvedId), "보완 필요");
+        Long firstRound = latestTaskId(approvedId);
+        inspectionService.createInspection(owner, create(InspectionTargetType.RECIPE, approvedRecipe, 500));
+        Long approvedRound = latestTaskId(approvedId);
+        inspectionService.approveInspection(expert, approvedRound, "좋습니다");
+        // 반려 → 재신청 → 취소 (재신청 회차 task는 지워진다)
+        Long cancelledId = inspectionService.createInspection(owner, create(InspectionTargetType.RECIPE, cancelledRecipe, 500)).inspectionRequestId();
+        inspectionService.rejectInspection(expert, latestTaskId(cancelledId), "설명 부족");
+        Long rejectedRound = latestTaskId(cancelledId);
+        inspectionService.createInspection(owner, create(InspectionTargetType.RECIPE, cancelledRecipe, 500));
+        inspectionService.cancelInspection(owner, cancelledId);
+
+        Map<String, InspectionRequestStatus> results = expertService.getMyTasks(expert).completed().stream()
+                .collect(Collectors.toMap(ExpertTaskSummaryResponse::reviewCode, ExpertTaskSummaryResponse::reviewResult));
+        assertThat(results).containsOnly(
+                Map.entry(reviewCode(firstRound), InspectionRequestStatus.REJECTED),
+                Map.entry(reviewCode(approvedRound), InspectionRequestStatus.APPROVED),
+                Map.entry(reviewCode(rejectedRound), InspectionRequestStatus.REJECTED));
+        assertThat(inspectionService.getInspectionDetail(expert, rejectedRound).status()).isEqualTo(InspectionRequestStatus.REJECTED);
+        assertThat(inspectionService.getInspectionDetail(expert, firstRound).status()).isEqualTo(InspectionRequestStatus.REJECTED);
+    }
+
+    @Test
+    void 결과_컬럼_도입_전에_끝난_회차는_백필_SQL로_판정이_채워진다() {
+        User owner = user("owner@test.com", 3000);
+        User expert = expert("expert@test.com", 0);
+        Long recipeId = recipe(owner, null, true);
+        Long requestId = inspectionService.createInspection(owner, create(InspectionTargetType.RECIPE, recipeId, 500)).inspectionRequestId();
+        inspectionService.rejectInspection(expert, latestTaskId(requestId), "보완 필요");
+        Long rejectedRound = latestTaskId(requestId);
+        inspectionService.createInspection(owner, create(InspectionTargetType.RECIPE, recipeId, 500));
+        inspectionService.cancelInspection(owner, requestId);
+        Long otherId = inspectionService.createInspection(owner, create(InspectionTargetType.RECIPE, recipe(owner, null, true), 500)).inspectionRequestId();
+        Long approvedRound = latestTaskId(otherId);
+        inspectionService.approveInspection(expert, approvedRound, "좋습니다");
+        jdbc.update("UPDATE expert_task SET result = NULL");
+
+        // docs/prod-db-migration.md의 백필 SQL
+        jdbc.update("""
+                UPDATE expert_task t SET result = CASE
+                    WHEN t.expert_task_id = (SELECT MAX(t2.expert_task_id) FROM expert_task t2
+                                             WHERE t2.inspection_request_id = t.inspection_request_id)
+                         AND r.status IN ('APPROVED', 'REJECTED') THEN r.status
+                    ELSE 'REJECTED' END
+                FROM inspection_request r
+                WHERE r.inspection_request_id = t.inspection_request_id AND t.status = 'COMPLETED' AND t.result IS NULL
+                """);
+
+        assertThat(resultOf(rejectedRound)).isEqualTo("REJECTED");
+        assertThat(resultOf(approvedRound)).isEqualTo("APPROVED");
+    }
+
     // ---------- 대상 삭제 ----------
 
     @Test
@@ -434,6 +495,19 @@ class InspectionIntegrationTest extends IntegrationTestSupport {
     private InspectionCreateRequest create(InspectionTargetType targetType, Long targetId, int rewardPoints) {
         return request(InspectionCreateRequest.class, Map.of(
                 "targetType", targetType, "targetId", targetId, "reason", "검수 부탁드립니다", "rewardPoints", rewardPoints));
+    }
+
+    private Long latestTaskId(Long inspectionRequestId) {
+        return jdbc.queryForObject("SELECT MAX(expert_task_id) FROM expert_task WHERE inspection_request_id = ?",
+                Long.class, inspectionRequestId);
+    }
+
+    private String reviewCode(Long taskId) {
+        return expertTaskRepository.findById(taskId).orElseThrow().getReviewCode();
+    }
+
+    private String resultOf(Long taskId) {
+        return jdbc.queryForObject("SELECT result FROM expert_task WHERE expert_task_id = ?", String.class, taskId);
     }
 
     private ExpertTask onlyTask() {

@@ -400,7 +400,7 @@ public class InspectionServiceImpl implements InspectionService {
         DecisionNotice notice = resolveDecisionNotice(task);
 
         inspectionRequest.approve(expert, expertComment);
-        task.complete(expertComment);
+        task.complete(InspectionRequestStatus.APPROVED, expertComment);
         payExpertReward(expert, task);
 
         notificationService.create(
@@ -430,7 +430,7 @@ public class InspectionServiceImpl implements InspectionService {
         DecisionNotice notice = resolveDecisionNotice(task);
 
         inspectionRequest.reject(expert, expertComment);
-        task.complete(expertComment);
+        task.complete(InspectionRequestStatus.REJECTED, expertComment);
         payExpertReward(expert, task);
 
         notificationService.create(
