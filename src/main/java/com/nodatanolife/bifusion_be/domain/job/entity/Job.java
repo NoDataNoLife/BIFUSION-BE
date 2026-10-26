@@ -207,6 +207,17 @@ public class Job extends BaseEntity {
     }
 
     /**
+     * ML이 접수하지 않은 채(mlJobId 없음) 실행 요청 단계에서 실패했으면 그 요청이 응답한 에러.
+     * 접수 후 실패했거나 원래 에러를 알 수 없으면(UNKNOWN) null.
+     */
+    public ErrorCode submitFailureErrorCode() {
+        if (status != JobStatus.FAILED || mlJobId != null || failureReason == null) {
+            return null;
+        }
+        return failureReason.submitErrorCode();
+    }
+
+    /**
      * 재시도할 수 있는지. 조회 응답의 retryable에 쓰며, 엔티티 필드만으로 판정한다(추가 쿼리 없음).
      * (FAILED이면서 재시도 가능 사유) 또는 CANCELLED이고, 아직 이 Job을 원본으로 한 재시도가 없어야 한다.
      */

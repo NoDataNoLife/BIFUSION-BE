@@ -17,6 +17,7 @@ import com.nodatanolife.bifusion_be.domain.user.entity.User;
 import com.nodatanolife.bifusion_be.global.exception.ErrorCode;
 import com.nodatanolife.bifusion_be.global.exception.business.BusinessException;
 import com.nodatanolife.bifusion_be.support.IntegrationTestSupport;
+import org.assertj.core.api.ThrowableAssert;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 
@@ -98,6 +99,50 @@ class JobPointIntegrationTest extends IntegrationTestSupport {
         assertThat(second.jobId()).isEqualTo(first.jobId());
         assertThat(pointsOf(owner)).isEqualTo(50);
         assertThat(rewardHistoryCount(owner, RewardHistory.TYPE_JOB_RUN)).isEqualTo(1);
+    }
+
+    @Test
+    void 실행_요청_단계에서_실패한_작업을_같은_멱등_키로_다시_요청하면_첫_요청과_같은_에러로_응답한다() {
+        User owner = user("owner@test.com", 100);
+        Long projectId = project(owner);
+        JobCreateRequest request = augmentation(owner, Map.of());
+        JobLaunchPlan first = jobCommandService.createPending(owner.getUserId(), projectId, request, "idem-1");
+        jobCommandService.markFailed(first.jobId(), JobFailureReason.ML_UNAVAILABLE);
+
+        assertError(() -> jobCommandService.createPending(owner.getUserId(), projectId, request, "idem-1"),
+                ErrorCode.ML_CONNECTION_FAILED);
+
+        assertThat(jobRepository.count()).isEqualTo(1);
+        assertThat(pointsOf(owner)).isEqualTo(100);
+        assertThat(rewardHistoryCount(owner, RewardHistory.TYPE_JOB_RUN)).isEqualTo(1);
+    }
+
+    @Test
+    void 재시도도_실행_요청_단계에서_실패했으면_같은_멱등_키로_같은_에러를_응답한다() {
+        User owner = user("owner@test.com", 100);
+        JobLaunchPlan plan = jobCommandService.createPending(owner.getUserId(), project(owner), augmentation(owner, Map.of()), null);
+        jobCommandService.markFailed(plan.jobId(), JobFailureReason.ML_UNAVAILABLE);
+        JobLaunchPlan retry = jobCommandService.createRetry(owner.getUserId(), plan.jobId(), "retry-1");
+        jobCommandService.markFailed(retry.jobId(), JobFailureReason.ML_SUBMIT_UNCERTAIN);
+
+        assertError(() -> jobCommandService.createRetry(owner.getUserId(), plan.jobId(), "retry-1"),
+                ErrorCode.ML_SUBMIT_TIMEOUT);
+    }
+
+    @Test
+    void 접수_후_실패했거나_원래_에러를_알_수_없으면_같은_멱등_키에_작업을_그대로_돌려준다() {
+        User owner = user("owner@test.com", 200);
+        Long projectId = project(owner);
+        JobCreateRequest accepted = augmentation(owner, Map.of());
+        JobLaunchPlan started = jobCommandService.createPending(owner.getUserId(), projectId, accepted, "idem-accepted");
+        jobCommandService.markStarted(started.jobId(), "ml-1");
+        jobPollingService.fail(started.jobId(), JobFailureReason.INVALID_IMAGE, null);
+        JobCreateRequest unknown = augmentation(owner, Map.of());
+        JobLaunchPlan failed = jobCommandService.createPending(owner.getUserId(), projectId, unknown, "idem-unknown");
+        jobCommandService.markFailed(failed.jobId(), JobFailureReason.UNKNOWN);
+
+        assertThat(jobCommandService.createPending(owner.getUserId(), projectId, accepted, "idem-accepted").existing()).isTrue();
+        assertThat(jobCommandService.createPending(owner.getUserId(), projectId, unknown, "idem-unknown").existing()).isTrue();
     }
 
     // ---------- 환불 ----------
@@ -265,6 +310,11 @@ class JobPointIntegrationTest extends IntegrationTestSupport {
         body.put("normalFileIds", images(owner));
         body.put("anomalyFileIds", images(owner));
         return request(JobCreateRequest.class, body);
+    }
+
+    private static void assertError(ThrowableAssert.ThrowingCallable call, ErrorCode errorCode) {
+        assertThatThrownBy(call).isInstanceOf(BusinessException.class)
+                .extracting(e -> ((BusinessException) e).getErrorCode()).isEqualTo(errorCode);
     }
 
     private List<Long> images(User owner) {
