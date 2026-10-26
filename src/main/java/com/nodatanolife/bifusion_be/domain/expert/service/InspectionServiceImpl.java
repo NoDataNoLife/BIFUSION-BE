@@ -9,8 +9,11 @@ import com.nodatanolife.bifusion_be.domain.expert.dto.response.InspectionDetailR
 import com.nodatanolife.bifusion_be.domain.expert.dto.response.InspectionDraftResponse;
 import com.nodatanolife.bifusion_be.domain.expert.dto.response.InspectionImageCommentResponse;
 import com.nodatanolife.bifusion_be.domain.expert.dto.response.InspectionResponse;
+import com.nodatanolife.bifusion_be.domain.expert.dto.response.MyInspectionRequestDetailResponse;
+import com.nodatanolife.bifusion_be.domain.expert.dto.response.MyInspectionRequestResponse;
 import com.nodatanolife.bifusion_be.domain.expert.entity.ExpertApplicationStatus;
 import com.nodatanolife.bifusion_be.domain.expert.entity.ExpertTask;
+import com.nodatanolife.bifusion_be.domain.expert.entity.InspectionProgressStatus;
 import com.nodatanolife.bifusion_be.domain.expert.entity.InspectionRequest;
 import com.nodatanolife.bifusion_be.domain.expert.entity.InspectionRequestStatus;
 import com.nodatanolife.bifusion_be.domain.expert.entity.InspectionTargetType;
@@ -21,6 +24,7 @@ import com.nodatanolife.bifusion_be.domain.job.entity.AugmentationConfig;
 import com.nodatanolife.bifusion_be.domain.job.entity.AugmentationSampleImage;
 import com.nodatanolife.bifusion_be.domain.job.repository.AugmentationConfigRepository;
 import com.nodatanolife.bifusion_be.domain.job.repository.AugmentationSampleImageRepository;
+import com.nodatanolife.bifusion_be.domain.expert.service.InspectionTargetDisplayResolver.TargetDisplays;
 import com.nodatanolife.bifusion_be.domain.file.entity.File;
 import com.nodatanolife.bifusion_be.domain.file.repository.FileRepository;
 import com.nodatanolife.bifusion_be.domain.notification.entity.NotificationType;
@@ -37,10 +41,13 @@ import com.nodatanolife.bifusion_be.global.exception.ErrorCode;
 import com.nodatanolife.bifusion_be.global.exception.business.BusinessException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Comparator;
+import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -68,6 +75,7 @@ public class InspectionServiceImpl implements InspectionService {
     private final NotificationService notificationService;
     private final InspectionRewardPolicy inspectionRewardPolicy;
     private final FileRepository fileRepository;
+    private final InspectionTargetDisplayResolver inspectionTargetDisplayResolver;
 
     /**
      * 전문가 검수 신청
@@ -139,9 +147,7 @@ public class InspectionServiceImpl implements InspectionService {
      */
     @Override
     public InspectionResponse cancelInspection(User user, Long inspectionRequestId) {
-        InspectionRequest inspectionRequest = inspectionRequestRepository.findById(inspectionRequestId)
-                .filter(found -> found.getUser().getUserId().equals(user.getUserId()))
-                .orElseThrow(() -> new BusinessException(ErrorCode.INSPECTION_NOT_FOUND));
+        InspectionRequest inspectionRequest = getOwnedRequest(user, inspectionRequestId);
 
         Optional<ExpertTask> task = expertTaskRepository.findFirstByInspectionRequestOrderByExpertTaskIdDesc(inspectionRequest);
         if (task.isPresent() && !task.get().isPending()) {
@@ -231,6 +237,82 @@ public class InspectionServiceImpl implements InspectionService {
                 .min(byActiveCount.thenComparing(byLastAssignedAt).thenComparing(Comparator.naturalOrder()))
                 .orElseThrow();
         return userRepository.getReferenceById(expertId);
+    }
+
+    /**
+     * 신청자의 "내가 요청한 검수" 목록
+     * - 취소된 신청은 빼고, 대상 유형·진행 상태·대상 이름으로 거른 뒤 신청일 최신순으로 페이지 조회한다.
+     * - 담당 전문가는 현재 회차 task 기준, 대상 이름·이미지는 종류별로 한 번씩 일괄 조회한다 (N+1 방지).
+     * - 페이징은 컨트롤러에서 전역 PageResponse로 감싼다.
+     */
+    @Override
+    @Transactional(readOnly = true)
+    public Page<MyInspectionRequestResponse> getMyRequests(User user, InspectionTargetType targetType,
+                                                           InspectionProgressStatus status, String keyword,
+                                                           int page, int size) {
+        String trimmedKeyword = keyword == null || keyword.isBlank() ? null : keyword.trim();
+        Page<InspectionRequest> requests = inspectionRequestRepository.findMyRequests(
+                user, targetType, trimmedKeyword, status != null ? status.name() : null,
+                InspectionRequestStatus.CANCELLED, InspectionRequestStatus.APPROVED, InspectionRequestStatus.REJECTED,
+                PageRequest.of(page, size));
+
+        Map<Long, ExpertTask> latestTasks = latestTasksOf(requests.getContent());
+        TargetDisplays displays = inspectionTargetDisplayResolver.resolve(requests.getContent());
+
+        return requests.map(request -> MyInspectionRequestResponse.of(request, latestTasks.get(request.getInspectionRequestId()),
+                MyInspectionRequestResponse.Target.of(request, displays.get(request))));
+    }
+
+    /**
+     * 신청자의 "내가 요청한 검수" 상세. 본인 신청이 아니거나 없거나 취소된 신청이면 404 (취소 API와 같은 기준).
+     */
+    @Override
+    @Transactional(readOnly = true)
+    public MyInspectionRequestDetailResponse getMyRequestDetail(User user, Long inspectionRequestId) {
+        InspectionRequest inspectionRequest = getOwnedRequest(user, inspectionRequestId);
+        if (inspectionRequest.getStatus() == InspectionRequestStatus.CANCELLED) {
+            throw new BusinessException(ErrorCode.INSPECTION_NOT_FOUND);
+        }
+
+        List<InspectionRequest> single = List.of(inspectionRequest);
+        MyInspectionRequestResponse summary = MyInspectionRequestResponse.of(inspectionRequest,
+                latestTasksOf(single).get(inspectionRequestId),
+                MyInspectionRequestResponse.Target.of(inspectionRequest,
+                        inspectionTargetDisplayResolver.resolve(single).get(inspectionRequest)));
+        return MyInspectionRequestDetailResponse.of(inspectionRequest, summary);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Map<InspectionProgressStatus, Long> getMyRequestCounts(User user) {
+        Map<InspectionProgressStatus, Long> counts = new EnumMap<>(InspectionProgressStatus.class);
+        for (InspectionProgressStatus status : InspectionProgressStatus.values()) {
+            counts.put(status, 0L);
+        }
+        inspectionRequestRepository.countMyRequestsByProgress(user, InspectionRequestStatus.CANCELLED)
+                .forEach(row -> {
+                    InspectionProgressStatus status = InspectionProgressStatus.of(row.getRequestStatus(), row.getTaskStatus());
+                    if (status != null) {
+                        counts.merge(status, row.getCount(), Long::sum);
+                    }
+                });
+        return counts;
+    }
+
+    // 신청 ID → 현재 회차 task. 배정되지 않은 신청은 없다
+    private Map<Long, ExpertTask> latestTasksOf(List<InspectionRequest> requests) {
+        if (requests.isEmpty()) {
+            return Map.of();
+        }
+        return expertTaskRepository.findLatestByInspectionRequestIn(requests).stream()
+                .collect(Collectors.toMap(t -> t.getInspectionRequest().getInspectionRequestId(), Function.identity()));
+    }
+
+    // 본인 신청만 찾는다. 다른 사람 신청은 존재를 드러내지 않도록 없는 것과 같이 404
+    private InspectionRequest getOwnedRequest(User user, Long inspectionRequestId) {
+        return inspectionRequestRepository.findById(inspectionRequestId)
+                .filter(found -> found.getUser().getUserId().equals(user.getUserId()))
+                .orElseThrow(() -> new BusinessException(ErrorCode.INSPECTION_NOT_FOUND));
     }
 
     /**
