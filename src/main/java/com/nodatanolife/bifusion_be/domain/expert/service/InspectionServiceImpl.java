@@ -175,6 +175,18 @@ public class InspectionServiceImpl implements InspectionService {
         cancelAndRefund(pending.get(), task);
     }
 
+    @Override
+    public boolean cancelUnassigned(Long inspectionRequestId) {
+        Optional<InspectionRequest> request = inspectionRequestRepository.findById(inspectionRequestId)
+                .filter(found -> found.getStatus() == InspectionRequestStatus.PENDING);
+        if (request.isEmpty()
+                || expertTaskRepository.findFirstByInspectionRequestOrderByExpertTaskIdDesc(request.get()).isPresent()) {
+            return false;
+        }
+        cancelAndRefund(request.get(), Optional.empty());
+        return true;
+    }
+
     /**
      * 신청을 취소하고, 아직 시작되지 않은 task는 기록할 것이 없어 삭제한 뒤 차감했던 포인트를 돌려준다.
      */

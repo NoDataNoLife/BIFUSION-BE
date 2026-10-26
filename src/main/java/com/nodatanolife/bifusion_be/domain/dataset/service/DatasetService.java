@@ -17,6 +17,11 @@ import org.springframework.data.domain.Page;
 public interface DatasetService {
 
     /**
+     * 첨부 파일에서 대표 이미지를 뽑아 채운다 (일회성 채우기용). 이미 있거나 뽑지 못하면 false.
+     */
+    boolean backfillBannerImage(Long datasetId);
+
+    /**
      * 데이터셋을 생성한다. request.isPublic()에 따라 공개(커뮤니티 노출) 또는
      * 비공개(내 자산 전용)로 저장된다.
      */

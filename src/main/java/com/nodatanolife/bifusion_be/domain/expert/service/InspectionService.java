@@ -23,6 +23,13 @@ public interface InspectionService {
      */
     void cancelForTargetDeletion(Long userId, InspectionTargetType targetType, Long targetId);
 
+    /**
+     * 배정 없이 대기 중으로 남은 신청을 취소·환불한다 (일회성 정리용). 그새 상태가 바뀌었으면 건너뛴다.
+     *
+     * @return 취소했으면 true
+     */
+    boolean cancelUnassigned(Long inspectionRequestId);
+
     InspectionDetailResponse getInspectionDetail(User expert, Long inspectionId);
 
     InspectionDraftResponse saveDraftComment(User expert, Long inspectionId, String expertComment);

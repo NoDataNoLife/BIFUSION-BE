@@ -274,6 +274,17 @@ public class DatasetServiceImpl implements DatasetService {
     }
 
     @Override
+    public boolean backfillBannerImage(Long datasetId) {
+        Dataset dataset = datasetRepository.findById(datasetId).orElse(null);
+        if (dataset == null || dataset.getBannerImageUrl() != null) {
+            return false;
+        }
+        String bannerImage = datasetBannerExtractor.extract(dataset.getFile());
+        dataset.updateBannerImage(bannerImage);
+        return bannerImage != null;
+    }
+
+    @Override
     @Transactional(readOnly = true)
     public List<Dataset> getPublicDatasetsByUser(Long userId) {
         return datasetRepository.findPublicByUserId(userId);
