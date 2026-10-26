@@ -21,6 +21,8 @@ public record DatasetDetailResponse(
         Long datasetId,
         String title,
         String description,
+        // 첨부 파일에서 뽑은 대표 이미지 (DatasetBannerExtractor). 뽑지 못했으면 null
+        @PresignedUrl String bannerImageUrl,
         boolean isExpertVerified,
         List<String> tags,
         String fileSize,
@@ -56,6 +58,7 @@ public record DatasetDetailResponse(
                 dataset.getDatasetId(),
                 dataset.getTitle(),
                 dataset.getDescription(),
+                dataset.getBannerImageUrl(),
                 verificationSummary.status() == InspectionStatus.COMPLETED,
                 tags,
                 formatFileSize(file != null ? file.getFileSize() : null),

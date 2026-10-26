@@ -47,6 +47,7 @@ public class DatasetServiceImpl implements DatasetService {
     private final TagMappingRepository tagMappingRepository;
     private final InspectionResultService inspectionResultService;
     private final InspectionService inspectionService;
+    private final DatasetBannerExtractor datasetBannerExtractor;
 
 
     /**
@@ -54,7 +55,8 @@ public class DatasetServiceImpl implements DatasetService {
      * 1) 첨부할 파일이 요청자 본인 소유인지 검증
      * 2) 임시 파일을 영구 보관 대상으로 전환
      * 3) Dataset 엔티티 생성/저장 (isPublic은 request 값을 그대로 반영)
-     * 4) 태그가 있으면 태그 마스터를 조회/생성하고 매핑을 저장
+     * 4) 첨부 파일에서 대표 이미지를 뽑아 저장 (뽑지 못하면 비워 둔다)
+     * 5) 태그가 있으면 태그 마스터를 조회/생성하고 매핑을 저장
      */
     @Override
     public DatasetCreateResponse createDataset(User user, DatasetCreateRequest request) {
@@ -67,6 +69,7 @@ public class DatasetServiceImpl implements DatasetService {
         // 업로드 직후 임시 상태였던 파일을 데이터셋에 실제로 연결되었으므로 영구 보관으로 전환
         file.markAsPermanent();
         Dataset dataset = Dataset.create(user, request, file);
+        dataset.updateBannerImage(datasetBannerExtractor.extract(file));
         Dataset saved = datasetRepository.save(dataset);
 
         // 태그는 존재하면 재사용하고 없으면 새로 생성한 뒤, 데이터셋-태그 매핑을 저장
@@ -245,6 +248,8 @@ public class DatasetServiceImpl implements DatasetService {
             }
             file.markAsPermanent();
             dataset.updateFile(file);
+            // 대표 이미지는 첨부 파일에서 뽑으므로 파일이 바뀌면 다시 뽑는다
+            dataset.updateBannerImage(datasetBannerExtractor.extract(file));
         }
 
         dataset.update(
