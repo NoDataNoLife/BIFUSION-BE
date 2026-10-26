@@ -332,11 +332,13 @@ public class JobCommandServiceImpl implements JobCommandService {
 
     /**
      * 같은 키로 이미 만든 Job이 있으면 그대로 돌려준다. 다른 프로젝트·작업 종류에 같은 키를 쓰면 거절한다.
+     * 실행 요청 단계에서 실패한 Job이면 첫 요청과 같은 에러로 응답한다 (rejectIfSubmitFailed).
      */
     private JobLaunchPlan toExistingPlan(Job job, Long projectId, JobType type) {
         if (!job.getProject().getProjectId().equals(projectId) || job.getType() != type) {
             throw new BusinessException(ErrorCode.IDEMPOTENCY_KEY_REUSED);
         }
+        rejectIfSubmitFailed(job);
         return JobLaunchPlan.existing(job.getJobId(), job.getType());
     }
 
@@ -347,7 +349,19 @@ public class JobCommandServiceImpl implements JobCommandService {
         if (!sourceJobId.equals(job.getRetryOfJobId())) {
             throw new BusinessException(ErrorCode.IDEMPOTENCY_KEY_REUSED);
         }
+        rejectIfSubmitFailed(job);
         return JobLaunchPlan.existing(job.getJobId(), job.getType());
+    }
+
+    /**
+     * 첫 요청이 ML 접수 실패로 에러 응답했으면 같은 키의 재요청에도 같은 에러로 응답한다.
+     * 차감·환불은 첫 요청에서 끝났으므로 여기서는 아무것도 바꾸지 않는다.
+     */
+    private static void rejectIfSubmitFailed(Job job) {
+        ErrorCode errorCode = job.submitFailureErrorCode();
+        if (errorCode != null) {
+            throw new BusinessException(errorCode);
+        }
     }
 
     private void validateProjectMember(Long projectId, Long userId) {

@@ -1,5 +1,6 @@
 package com.nodatanolife.bifusion_be.domain.job.entity;
 
+import com.nodatanolife.bifusion_be.global.exception.ErrorCode;
 import lombok.Getter;
 
 import java.util.List;
@@ -61,6 +62,20 @@ public enum JobFailureReason {
         this.errorPrefixes = errorPrefixes;
         this.errorFragments = errorFragments;
         this.message = message;
+    }
+
+    /**
+     * 실행 요청(ML 접수) 단계에서 이 사유로 실패했을 때 그 요청이 응답한 에러 (JobLaunchFacade.handleSubmitFailure).
+     * 같은 멱등 키로 다시 요청하면 이 에러를 그대로 돌려준다.
+     * UNKNOWN은 원래 에러(ML 요청 형식 오류 200, S3 오류 등)를 구분할 수 없어 null이다.
+     */
+    public ErrorCode submitErrorCode() {
+        return switch (this) {
+            case ML_UNAVAILABLE -> ErrorCode.ML_CONNECTION_FAILED;
+            case ML_SUBMIT_UNCERTAIN -> ErrorCode.ML_SUBMIT_TIMEOUT;
+            case INVALID_IMAGE -> ErrorCode.UNSUPPORTED_IMAGE_FORMAT;
+            default -> null;
+        };
     }
 
     /**
