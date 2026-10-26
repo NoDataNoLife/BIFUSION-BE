@@ -26,6 +26,17 @@ public class JobRequestValidator {
     private final MlProperties mlProperties;
 
     public void validateAugmentation(AugmentationParameters params, List<Long> normalFileIds, List<Long> anomalyFileIds) {
+        validateAugmentationParameters(params);
+        MlProperties.AugmentationLimits limits = mlProperties.limits().augmentation();
+        requireImageCount(normalFileIds, limits.minImagesPerClass(), limits.maxImagesPerClass());
+        requireImageCount(anomalyFileIds, limits.minImagesPerClass(), limits.maxImagesPerClass());
+        requireDistinct(Stream.concat(normalFileIds.stream(), anomalyFileIds.stream()).toList());
+    }
+
+    /**
+     * 이미지 없이 설정값만 검증한다. 예상 비용 조회는 이미지를 고르기 전에도 부를 수 있어 따로 둔다.
+     */
+    public void validateAugmentationParameters(AugmentationParameters params) {
         MlProperties.AugmentationLimits limits = mlProperties.limits().augmentation();
         requireRange(params.numSamplesPerClass(), limits.minNumSamplesPerClass(), limits.maxNumSamplesPerClass());
         if (params.strength() < limits.minStrength() || params.strength() > limits.maxStrength()) {
@@ -34,10 +45,6 @@ public class JobRequestValidator {
         requireRange(params.finetuneSteps(), 1, limits.maxFinetuneSteps());
         requireRange(params.steps(), 1, limits.maxSteps());
         requireSeed(params.seed());
-
-        requireImageCount(normalFileIds, limits.minImagesPerClass(), limits.maxImagesPerClass());
-        requireImageCount(anomalyFileIds, limits.minImagesPerClass(), limits.maxImagesPerClass());
-        requireDistinct(Stream.concat(normalFileIds.stream(), anomalyFileIds.stream()).toList());
     }
 
     public void validateTraining(TrainingParameters params) {
@@ -70,7 +77,7 @@ public class JobRequestValidator {
     }
 
     private static void requireImageCount(List<Long> fileIds, int min, int max) {
-        if (fileIds.size() < min || fileIds.size() > max) {
+        if (fileIds == null || fileIds.size() < min || fileIds.size() > max) {
             throw new BusinessException(ErrorCode.INVALID_IMAGE_COUNT);
         }
     }

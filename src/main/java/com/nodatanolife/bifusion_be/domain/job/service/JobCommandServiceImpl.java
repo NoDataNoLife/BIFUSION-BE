@@ -58,6 +58,8 @@ public class JobCommandServiceImpl implements JobCommandService {
     private final JobRequestValidator jobRequestValidator;
     private final MlProperties mlProperties;
     private final JobResultNotifier jobResultNotifier;
+    private final JobCostPolicy jobCostPolicy;
+    private final JobPointService jobPointService;
 
     @Override
     public JobLaunchPlan createPending(Long userId, Long projectId, JobCreateRequest request, String idempotencyKey) {
@@ -135,6 +137,7 @@ public class JobCommandServiceImpl implements JobCommandService {
         }
         // 폴러가 먼저 SUCCESS·FAILED로 반영했으면 cancel()이 JOB_ALREADY_FINISHED를 던진다.
         job.cancel();
+        jobPointService.refund(job);
     }
 
     @Override
@@ -147,6 +150,7 @@ public class JobCommandServiceImpl implements JobCommandService {
         // 입력 파일은 되돌리지 않고 Job에 연결된 채로 보존한다 (스케줄러의 실패·취소 처리와 동일, 재시도 API 대비).
         Job job = getJob(jobId);
         job.fail(reason, null);
+        jobPointService.refund(job);
         jobResultNotifier.notifyFailed(job);
     }
 
@@ -232,12 +236,14 @@ public class JobCommandServiceImpl implements JobCommandService {
      * 아래 save* 메서드는 검증이 끝난 값으로 Job·Config를 저장하고 입력 파일을 연결한 뒤, ML 실행 계획을 돌려준다.
      * 값을 어디서 만드는지(요청 DTO 또는 원본 Job)와 무관하게 같은 저장 로직을 쓰기 위해 분리했다.
      * saveAndFlush: 멱등 키 unique 위반을 이 트랜잭션 안에서 바로 드러내기 위해.
+     * 실행 비용은 저장한 파라미터로 계산해 여기서 차감한다. 잔액이 모자라면 Job·Config 저장까지 롤백된다.
      */
 
     private JobLaunchPlan saveAugmentation(Job job, AugmentationParameters parameters,
                                            List<Long> normalFileIds, List<Long> anomalyFileIds,
                                            List<File> inputFiles) {
         Job saved = jobRepository.saveAndFlush(job);
+        jobPointService.charge(saved, jobCostPolicy.augmentation(parameters));
         augmentationConfigRepository.save(AugmentationConfig.create(saved, parameters, normalFileIds, anomalyFileIds));
         inputFiles.forEach(file -> file.attachToJob(saved.getJobId()));
         return JobLaunchPlan.augmentation(saved.getJobId(), parameters, normalFileIds, anomalyFileIds);
@@ -245,12 +251,14 @@ public class JobCommandServiceImpl implements JobCommandService {
 
     private JobLaunchPlan saveTraining(Job job, AugmentationConfig source, TrainingParameters parameters) {
         Job saved = jobRepository.saveAndFlush(job);
+        jobPointService.charge(saved, jobCostPolicy.training(parameters));
         trainingConfigRepository.save(TrainingConfig.create(saved, source, parameters));
         return JobLaunchPlan.training(saved.getJobId(), parameters, source.getMlDatasetId());
     }
 
     private JobLaunchPlan saveInference(Job job, TrainedModel model, List<Long> inputFileIds, List<File> inputFiles) {
         Job saved = jobRepository.saveAndFlush(job);
+        jobPointService.charge(saved, jobCostPolicy.inference(inputFileIds.size()));
         inferenceConfigRepository.save(InferenceConfig.create(saved, model, inputFileIds));
         inputFiles.forEach(file -> file.attachToJob(saved.getJobId()));
         return JobLaunchPlan.inference(saved.getJobId(), model.getMlModelId(), inputFileIds);

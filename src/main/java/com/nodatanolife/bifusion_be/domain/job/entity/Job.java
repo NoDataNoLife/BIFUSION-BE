@@ -106,6 +106,10 @@ public class Job extends BaseEntity {
     @Column(name = "retried_by_job_id")
     private Long retriedByJobId;
 
+    // 실행 시 차감한 앤트 (JobCostPolicy). 실패·취소되면 이 금액을 그대로 돌려준다. 차감 도입 전 Job은 null
+    @Column(name = "charged_points")
+    private Integer chargedPoints;
+
     @Version
     @Column(name = "version")
     private Long version;
@@ -251,6 +255,16 @@ public class Job extends BaseEntity {
         if (status == JobStatus.PENDING && mlJobId == null) {
             throw new BusinessException(ErrorCode.JOB_STARTING);
         }
+    }
+
+    /**
+     * 실행 비용 차감을 기록한다. Job 생성 트랜잭션에서 한 번만 호출한다.
+     */
+    public void recordCharge(int points) {
+        if (this.chargedPoints != null) {
+            throw new BusinessException(ErrorCode.JOB_INVALID_STATE);
+        }
+        this.chargedPoints = points;
     }
 
     public boolean isOwnedBy(Long userId) {
