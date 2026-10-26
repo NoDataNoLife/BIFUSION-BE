@@ -149,7 +149,7 @@ public abstract class IntegrationTestSupport {
 
     protected Long recipe(User author, Long forkedFromId, boolean isPublic) {
         RecipeRegisterRequest request = new RecipeRegisterRequest("레시피", "설명", "sd-1.5", 30, "euler", 7.5f, 42,
-                "512x512", 1, "개요", List.of("특징"), List.of("용도"), forkedFromId, isPublic);
+                "512x512", 1, "개요", List.of("특징"), List.of("용도"), forkedFromId, isPublic, null);
         String code = recipeService.registerRecipe(request, author.getUserId()).recipeId();
         return Long.parseLong(code.substring("REC-".length()));
     }

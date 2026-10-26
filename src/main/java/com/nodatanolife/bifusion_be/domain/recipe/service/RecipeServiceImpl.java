@@ -5,6 +5,8 @@ import com.nodatanolife.bifusion_be.domain.expert.dto.response.InspectionTargetR
 import com.nodatanolife.bifusion_be.domain.expert.entity.InspectionTargetType;
 import com.nodatanolife.bifusion_be.domain.expert.service.InspectionResultService;
 import com.nodatanolife.bifusion_be.domain.expert.service.InspectionService;
+import com.nodatanolife.bifusion_be.domain.file.entity.File;
+import com.nodatanolife.bifusion_be.domain.file.repository.FileRepository;
 import com.nodatanolife.bifusion_be.domain.recipe.dto.response.MyRecipeListResponse;
 import com.nodatanolife.bifusion_be.domain.recipe.dto.response.RecipeDetailResponse;
 import com.nodatanolife.bifusion_be.domain.recipe.dto.request.RecipeRegisterRequest;
@@ -41,6 +43,7 @@ public class RecipeServiceImpl implements RecipeService {
     private final RecipeReviewRepository recipeReviewRepository;
     private final RecipeForkHistoryRepository recipeForkHistoryRepository;
     private final UserRepository userRepository;
+    private final FileRepository fileRepository;
 
     /**
      * 회원 탈퇴 시 레시피 익명화
@@ -104,9 +107,31 @@ public class RecipeServiceImpl implements RecipeService {
         }
 
         Recipe recipe = Recipe.create(request, user, forkedFrom);
+        if (request.thumbnailFileId() != null) {
+            recipe.updateThumbnail(takeThumbnail(request.thumbnailFileId(), userId));
+        }
         Recipe savedRecipe = recipeRepository.save(recipe);
 
         return RecipeRegisterResponse.from(savedRecipe);
+    }
+
+    /**
+     * 대표 이미지로 쓸 임시 업로드 파일을 검증하고 영구 보관으로 바꾼다 (데이터셋 첨부 파일과 같은 방식).
+     * - 없는 파일 404, 남이 올린 파일은 도용 방지를 위해 거부(FILE_READ_FAILED), 이미지가 아니면 400(RECIPE_THUMBNAIL_NOT_IMAGE)
+     *
+     * @return 대표 이미지의 S3 key
+     */
+    private String takeThumbnail(Long fileId, Long userId) {
+        File file = fileRepository.findById(fileId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.RESOURCE_NOT_FOUND));
+        if (!file.getUser().getUserId().equals(userId)) {
+            throw new BusinessException(ErrorCode.FILE_READ_FAILED);
+        }
+        if (file.getFileType() == null || !file.getFileType().toLowerCase().startsWith("image/")) {
+            throw new BusinessException(ErrorCode.RECIPE_THUMBNAIL_NOT_IMAGE);
+        }
+        file.markAsPermanent();
+        return file.getS3Key();
     }
 
     /**

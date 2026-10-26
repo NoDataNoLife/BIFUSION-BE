@@ -36,7 +36,9 @@ public class CommunityRecipeController {
                 프론트에서 값을 채운 뒤, forkedFromId에 원본 레시피 ID를 포함하여 요청. \
                 등록 시 원본 레시피의 forkCount가 자동으로 증가합니다.
                 - isPublic(true: 커뮤니티 공개 / false: 내 자산 전용 비공개) 값으로 공개 범위를 지정하며, \
-                생략하면 기존과 동일하게 공개(true)로 등록됩니다."""
+                생략하면 기존과 동일하게 공개(true)로 등록됩니다.
+                - thumbnailFileId(선택): 대표 이미지. POST /api/v1/files/temp로 올린 본인 이미지 파일의 fileId. \
+                없는 파일 404, 남의 파일 거부, 이미지가 아니면 400(CM023). 응답의 bannerUrl로 내려갑니다."""
     )
     @PostMapping
     public CommonResponse<RecipeRegisterResponse> registerRecipe(

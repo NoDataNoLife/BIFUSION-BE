@@ -211,6 +211,13 @@ public class Recipe extends BaseEntity {
     }
 
     /**
+     * 대표 이미지 지정. 값은 S3 key이며 응답 시점에 presign한다.
+     */
+    public void updateThumbnail(String thumbnailUrl) {
+        this.thumbnailUrl = thumbnailUrl;
+    }
+
+    /**
      * 화면에 보여줄 포크 수. 포크한 레시피는 원본의 포크 수를 보여준다 (사본은 비공개라 자기 포크 수가 의미 없다).
      */
     public int getDisplayForkCount() {

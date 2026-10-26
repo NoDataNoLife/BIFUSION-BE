@@ -2,6 +2,7 @@ package com.nodatanolife.bifusion_be.domain.recipe.dto.response;
 
 import com.nodatanolife.bifusion_be.domain.expert.dto.response.InspectionSummary;
 import com.nodatanolife.bifusion_be.domain.expert.entity.InspectionStatus;
+import com.nodatanolife.bifusion_be.domain.file.presign.PresignedUrl;
 import com.nodatanolife.bifusion_be.domain.recipe.entity.Recipe;
 import com.nodatanolife.bifusion_be.domain.user.entity.User;
 
@@ -15,7 +16,7 @@ import com.nodatanolife.bifusion_be.domain.user.entity.User;
 public record RecipeListResponse(
         Long recipeId,
         String title,
-        String bannerUrl,
+        @PresignedUrl String bannerUrl,
         AuthorInfo author,
         // 포크한 레시피는 원본의 포크 수
         int forkCount,
@@ -28,7 +29,7 @@ public record RecipeListResponse(
     /**
      * 작성자 정보.
      */
-    public record AuthorInfo(Long userId, String nickname, String profileImageUrl) {
+    public record AuthorInfo(Long userId, String nickname, @PresignedUrl String profileImageUrl) {
         public static AuthorInfo from(User author) {
             return new AuthorInfo(
                     author.getUserId(),

@@ -37,6 +37,8 @@ public record RecipeRegisterRequest(
         // 포크 등록 시 원본 레시피 ID. null이면 일반 등록으로 처리된다
         Long forkedFromId,
         // 공개 여부. true(또는 생략) = 커뮤니티 공개, false = 내 자산 전용 비공개
-        Boolean isPublic
+        Boolean isPublic,
+        // 대표 이미지 (선택). 임시 업로드(POST /api/v1/files/temp) 응답의 fileId, 본인이 올린 이미지 파일만 가능
+        Long thumbnailFileId
 ) {
 }

@@ -4,6 +4,7 @@ import com.nodatanolife.bifusion_be.domain.expert.dto.response.InspectionResultR
 import com.nodatanolife.bifusion_be.domain.expert.dto.response.InspectionSummary;
 import com.nodatanolife.bifusion_be.domain.expert.dto.response.InspectionTargetResponse;
 import com.nodatanolife.bifusion_be.domain.expert.entity.InspectionStatus;
+import com.nodatanolife.bifusion_be.domain.file.presign.PresignedUrl;
 import com.nodatanolife.bifusion_be.domain.recipe.entity.Recipe;
 import com.nodatanolife.bifusion_be.domain.user.entity.User;
 
@@ -20,7 +21,7 @@ public record RecipeDetailResponse(
         Long recipeId,
         String title,
         String description,
-        String bannerUrl,
+        @PresignedUrl String bannerUrl,
         boolean isExpertVerified,
         AuthorInfo author,
         LocalDateTime createdAt,
@@ -43,7 +44,7 @@ public record RecipeDetailResponse(
     /**
      * 작성자 정보.
      */
-    public record AuthorInfo(Long userId, String nickname, String profileImageUrl) {
+    public record AuthorInfo(Long userId, String nickname, @PresignedUrl String profileImageUrl) {
         public static AuthorInfo from(User author) {
             return new AuthorInfo(
                     author.getUserId(),
