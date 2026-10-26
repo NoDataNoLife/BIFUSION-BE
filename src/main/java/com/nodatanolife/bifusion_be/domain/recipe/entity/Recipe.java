@@ -214,7 +214,8 @@ public class Recipe extends BaseEntity {
      * 화면에 보여줄 포크 수. 포크한 레시피는 원본의 포크 수를 보여준다 (사본은 비공개라 자기 포크 수가 의미 없다).
      */
     public int getDisplayForkCount() {
-        Integer count = forkedFrom != null ? forkedFrom.forkCount : forkCount;
+        // forkedFrom은 지연 로딩 프록시일 수 있어 필드가 아니라 getter로 읽는다 (프록시의 필드는 비어 있다)
+        Integer count = forkedFrom != null ? forkedFrom.getForkCount() : forkCount;
         return count != null ? count : 0;
     }
 
