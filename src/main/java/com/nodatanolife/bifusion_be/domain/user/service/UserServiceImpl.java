@@ -9,9 +9,6 @@ import java.util.List;
 import java.util.Map;
 import com.nodatanolife.bifusion_be.domain.user.dto.response.*;
 import com.nodatanolife.bifusion_be.domain.user.dto.response.WebsiteUpdateResponse;
-import com.nodatanolife.bifusion_be.domain.user.entity.SubscriptionTier;
-import com.nodatanolife.bifusion_be.domain.user.entity.Subscription;
-import com.nodatanolife.bifusion_be.domain.user.repository.SubscriptionRepository;
 import org.springframework.web.multipart.MultipartFile;
 import com.nodatanolife.bifusion_be.domain.activityLog.service.ActivityLogService;
 import com.nodatanolife.bifusion_be.domain.auth.service.AuthService;
@@ -44,15 +41,11 @@ public class UserServiceImpl implements UserService {
 
     private final UserRepository userRepository;
 
-    private final SubscriptionRepository subscriptionRepository;
-
     private final RecipeReviewService recipeReviewService;
     // 인증
     private final AuthService authService;
 
     // 삭제 대상 서비스
-    private final SubscriptionService subscriptionService;
-    private final UsageHistoryService usageHistoryService;
     private final RewardHistoryService rewardHistoryService;
     private final NotificationService notificationService;
     private final ProjectService projectService;
@@ -238,24 +231,6 @@ public class UserServiceImpl implements UserService {
     }
 
     /**
-     * 플랜 변경
-     */
-    @Override
-    @Transactional
-    public PlanChangeResponse changePlan(Long userId, SubscriptionTier newTier) {
-        User user = userRepository.getReferenceById(userId);
-
-        int oldLimit = user.getPlanType().getMaxTokens();
-        int newLimit = newTier.getMaxTokens();
-        long updatedTokens = user.getRemainingTokens() + (newLimit - oldLimit);
-
-        Subscription history = user.changePlan(newTier, updatedTokens);
-
-        subscriptionRepository.save(history);
-        return PlanChangeResponse.of(newTier, "플랜 변경이 완료되었습니다.");
-    }
-
-    /**
      * 온보딩 완료 처리
      * 최초 로그인 후 추가 정보 입력 시 호출
      */
@@ -278,7 +253,7 @@ public class UserServiceImpl implements UserService {
     /**
      * 회원 탈퇴
      * 1. 인증 정보 삭제 (RefreshToken, OauthAccount)
-     * 2. 개인 기록 삭제 (Subscription, UsageHistory 등)
+     * 2. 개인 기록 삭제 (RewardHistory, Notification 등)
      * 3. 공개 콘텐츠 익명화 (Recipe, Dataset 등)
      * 4. User hard delete
      */
@@ -293,8 +268,6 @@ public class UserServiceImpl implements UserService {
         authService.deleteByUser(user);
 
         // 2. 개인 기록 삭제
-        subscriptionService.deleteByUser(user);
-        usageHistoryService.deleteByUser(user);
         rewardHistoryService.deleteByUser(user);
         notificationService.deleteByUser(user);
         projectService.deleteByUser(user);

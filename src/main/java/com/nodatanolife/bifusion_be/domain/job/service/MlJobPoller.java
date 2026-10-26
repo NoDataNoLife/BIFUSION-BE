@@ -323,7 +323,8 @@ public class MlJobPoller {
             return null;
         }
         S3ObjectInfo info = lookup.info();
-        Long size = artifact.sizeBytes() != null ? artifact.sizeBytes() : (info != null ? info.size() : null);
+        // 스토리지 사용량은 실제로 클라우드에 올라간 크기 기준이라 S3 조회 값을 먼저 쓴다
+        Long size = info != null && info.size() != null ? info.size() : artifact.sizeBytes();
         return new ResultFileMeta(artifact.key(), size, info != null ? info.contentType() : null);
     }
 }

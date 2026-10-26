@@ -1,7 +1,6 @@
 package com.nodatanolife.bifusion_be.domain.user.dto.response;
 
 import com.nodatanolife.bifusion_be.domain.file.presign.PresignedUrl;
-import com.nodatanolife.bifusion_be.domain.user.entity.SubscriptionTier;
 import com.nodatanolife.bifusion_be.domain.user.entity.User;
 
 import java.time.LocalDateTime;
@@ -16,7 +15,6 @@ public record MyPageBasicResponse(
         String website,
         String createdAt,
         Boolean isExpert,
-        SubscriptionTier planType,
         @PresignedUrl String profileImageUrl,
         List<PublicActivityResponse> publicActivities
 ) {
@@ -30,7 +28,6 @@ public record MyPageBasicResponse(
                 user.getWebsiteUrl(),
                 formatJoinedAt(user.getCreatedAt()),
                 isExpert,
-                user.getPlanType(),
                 user.getProfileImageUrl(),
                 publicActivities
         );

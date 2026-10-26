@@ -4,7 +4,6 @@ import com.nodatanolife.bifusion_be.global.entity.BaseEntity;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.ColumnDefault;
-import java.time.LocalDate;
 
 @Entity
 @Table(name = "users")
@@ -53,18 +52,8 @@ public class User extends BaseEntity {
     @Column(name = "is_onboarded")
     private Boolean isOnboarded;
 
-    @Column(name = "remaining_tokens")
-    private Long remainingTokens;
-
     @Column(name = "reward_balance")
     private Integer points;
-    @Enumerated(EnumType.STRING)
-    @Column(name = "plan_type", length = 10)
-    private SubscriptionTier planType;
-
-
-    @Column(name = "plan_start_date")
-    private LocalDate planStartDate;
 
     /**
      * 구글 소셜 로그인으로 처음 가입하는 신규 유저 생성
@@ -77,10 +66,7 @@ public class User extends BaseEntity {
         user.profileImageUrl = null;
         user.role = "USER";
         user.isOnboarded = false;
-        user.remainingTokens = 0L;
         user.points = 0;
-        user.planType = SubscriptionTier.BASIC;
-        user.planStartDate = null;
         return user;
     }
 
@@ -108,7 +94,6 @@ public class User extends BaseEntity {
         user.nickname = "탈퇴한 사용자";
         user.role = "DELETED";
         user.isOnboarded = true;
-        user.remainingTokens = 0L;
         user.points = 0;
         return user;
     }
@@ -146,19 +131,5 @@ public class User extends BaseEntity {
     public void addPoints(int amount) {
         int current = this.points == null ? 0 : this.points;
         this.points = current + amount;
-    }
-    /**
-     * 플랜 변경
-     */
-    public Subscription changePlan(SubscriptionTier newTier, long updatedTokens) {
-        this.remainingTokens = updatedTokens;
-        this.planType = newTier;
-        this.planStartDate = LocalDate.now();
-
-        return Subscription.builder()
-                .user(this)
-                .tier(newTier.name())
-                .startedAt(java.time.LocalDateTime.now())
-                .build();
     }
 }

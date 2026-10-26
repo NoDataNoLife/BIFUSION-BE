@@ -2,7 +2,6 @@ package com.nodatanolife.bifusion_be.domain.user.dto.response;
 
 import com.nodatanolife.bifusion_be.domain.expert.entity.ExpertApplicationStatus;
 import com.nodatanolife.bifusion_be.domain.file.presign.PresignedUrl;
-import com.nodatanolife.bifusion_be.domain.user.entity.SubscriptionTier;
 import com.nodatanolife.bifusion_be.domain.user.entity.User;
 import java.time.LocalDateTime;
 
@@ -14,7 +13,6 @@ public record UserResponse(
         String organization,
         String contact,
         @PresignedUrl String profileImageUrl,
-        SubscriptionTier planType,
         ExpertApplicationStatus expertStatus,
         Integer points,
         LocalDateTime createdAt,
@@ -33,7 +31,6 @@ public record UserResponse(
                 user.getOrganization(),
                 user.getContact(),
                 user.getProfileImageUrl(),
-                user.getPlanType(),
                 expertStatus,
                 user.getPoints() == null ? 0 : user.getPoints(),
                 user.getCreatedAt(),

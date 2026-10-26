@@ -1,7 +1,6 @@
 package com.nodatanolife.bifusion_be.domain.user.controller;
 
 import com.nodatanolife.bifusion_be.domain.user.dto.request.BioUpdateRequest;
-import com.nodatanolife.bifusion_be.domain.user.dto.request.PlanChangeRequest;
 import com.nodatanolife.bifusion_be.domain.user.dto.response.*;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -155,17 +154,6 @@ public class UserController {
         ProfileImageUpdateResponse response = userService.updateProfileImage(
                 principal.getUser().getUserId(), image);
         return CommonResponse.success(response, "프로필 사진 수정 성공!");
-    }
-
-    @Operation(summary = "BASIC/PRO 플랜 변경")
-    @PutMapping("/users/me/plan")
-    public CommonResponse<PlanChangeResponse> changePlan(
-            @AuthenticationPrincipal CustomOAuth2User principal,
-            @RequestBody PlanChangeRequest request) {
-
-        PlanChangeResponse response = userService.changePlan(principal.getUser().getUserId(), request.planType());
-
-        return CommonResponse.success(response, "BASIC/PRO 플랜 변경 성공!");
     }
 
     @Operation(

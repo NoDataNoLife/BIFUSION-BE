@@ -124,6 +124,8 @@ public enum ErrorCode {
     JOB_FINISHED_BEFORE_CANCEL(HttpStatus.CONFLICT, "J014", "작업이 이미 끝나 취소할 수 없습니다. 잠시 후 결과를 확인해 주세요."),
     JOB_CANCEL_FORBIDDEN(HttpStatus.FORBIDDEN, "J015", "작업을 만든 사람이나 프로젝트 관리자만 취소할 수 있습니다."),
     JOB_CANCEL_UNAVAILABLE(HttpStatus.SERVICE_UNAVAILABLE, "J016", "현재 작업 취소 기능을 사용할 수 없습니다."),
+    AUGMENTED_DATASET_NOT_FOUND(HttpStatus.NOT_FOUND, "J017", "증강 데이터를 찾을 수 없습니다."),
+    AUGMENTED_DATASET_DELETE_FORBIDDEN(HttpStatus.FORBIDDEN, "J018", "증강 작업을 실행한 사람이나 프로젝트 관리자만 삭제할 수 있습니다."),
 
     /* ================================
      * ML 서버 연동

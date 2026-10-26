@@ -20,10 +20,13 @@ public class RewardHistory extends BaseCreatedEntity {
     public static final String TYPE_INSPECTION_REQUEST = "INSPECTION_REQUEST";
     public static final String TYPE_INSPECTION_REFUND = "INSPECTION_REFUND";
     public static final String TYPE_CHARGE = "CHARGE";
+    public static final String TYPE_JOB_RUN = "JOB_RUN";
+    public static final String TYPE_JOB_REFUND = "JOB_REFUND";
 
     public static final String TARGET_RECIPE = "RECIPE";
     public static final String TARGET_QNA = "QNA";
     public static final String TARGET_INSPECTION_REQUEST = "INSPECTION_REQUEST";
+    public static final String TARGET_JOB = "JOB";
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
