@@ -24,7 +24,8 @@ public class ProjectInvitationController {
 
     @Operation(
             summary = "프로젝트 초대 생성",
-            description = "이메일로 프로젝트 초대를 생성하거나 재발송합니다. 인증된 사용자가 초대자(inviter)로 사용됩니다."
+            description = "이메일로 프로젝트 초대를 생성하거나 재발송합니다. 인증된 사용자가 초대자(inviter)로 사용됩니다. "
+                    + "role 미지정 시 MEMBER로 초대되며, MANAGER 초대는 MANAGER만 가능합니다. 재발송 시 요청한 role로 갱신됩니다."
     )
     @PostMapping
     public CommonResponse<ProjectInvitationResponse> invite(
@@ -35,7 +36,7 @@ public class ProjectInvitationController {
         Long inviterUserId = principal.getUser().getUserId();
 
         ProjectInvitationResponse response =
-                projectInvitationService.invite(projectId, inviterUserId, request.email());
+                projectInvitationService.invite(projectId, inviterUserId, request.email(), request.role());
 
         return CommonResponse.success(response, "초대 생성 성공!");
     }

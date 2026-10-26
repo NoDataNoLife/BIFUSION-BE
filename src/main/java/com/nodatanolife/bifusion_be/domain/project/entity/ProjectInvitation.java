@@ -75,7 +75,8 @@ public class ProjectInvitation extends BaseEntity {
         return invitation;
     }
 
-    public void resend() {
+    public void resend(ProjectRole role) {
+        this.role = role;
         this.lastSentAt = LocalDateTime.now();
     }
 

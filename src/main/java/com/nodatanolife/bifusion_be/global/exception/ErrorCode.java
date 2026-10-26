@@ -81,6 +81,7 @@ public enum ErrorCode {
     PROJECT_VISIBILITY_PRIVATE_FORBIDDEN(HttpStatus.BAD_REQUEST, "P007", "비공개 프로젝트는 마이페이지에 공개로 설정할 수 없습니다."),
     PROJECT_LAST_MANAGER(HttpStatus.BAD_REQUEST, "P008", "관리자가 본인만 남은 경우 자기자신은 삭제 불가합니다."),
     PROJECT_SAME_ROLE(HttpStatus.BAD_REQUEST, "P009", "이미 동일한 역할입니다."),
+    PROJECT_LAST_MANAGER_DEMOTE(HttpStatus.BAD_REQUEST, "P010", "관리자가 한 명뿐인 경우 관리자 권한을 해제할 수 없습니다."),
 
     /* ================================
      * Invitation
