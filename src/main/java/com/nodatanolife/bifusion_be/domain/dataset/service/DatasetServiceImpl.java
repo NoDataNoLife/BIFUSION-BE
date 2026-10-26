@@ -154,12 +154,10 @@ public class DatasetServiceImpl implements DatasetService {
                 .stream()
                 .map(Dataset::getDatasetId)
                 .toList();
-        // 데이터셋 종류에 따라 검증 대상 타입도 다르게 매핑 (업로드 데이터 vs 증강 데이터)
-        InspectionTargetType targetType = type == DatasetType.AUGMENTED
-                ? InspectionTargetType.AUGMENTED_DATA
-                : InspectionTargetType.UPLOADED_DATA;
+        // Dataset 행은 항상 업로드 데이터라(증강 데이터셋은 AI 결과 목록 API가 AugmentationConfig 기준으로 보여준다)
+        // 검수 상태도 UPLOADED_DATA 기준으로만 조회한다. type=AUGMENTED면 목록이 비어 있다.
         Map<Long, InspectionSummary> verificationMap =
-                inspectionResultService.getSummaries(targetType, ids);
+                inspectionResultService.getSummaries(InspectionTargetType.UPLOADED_DATA, ids);
         Map<Long, InspectionTargetResponse> targetMap =
                 inspectionResultService.getUploadedDataTargets(userId, datasetPage.getContent());
 
