@@ -31,7 +31,8 @@ public interface RecipeRepository extends JpaRepository<Recipe, Long> {
     /**
      * "내 자산" 목록 중 FORKED(포크해온 것) 조회용. forkedFrom이 있는 레시피만 대상.
      */
-    @EntityGraph(attributePaths = "user")
+    // 원본 정보(forkedFrom)와 원본 작성자를 함께 읽는다 (원본 포크 수·원본 링크 표시, N+1 방지)
+    @EntityGraph(attributePaths = {"user", "forkedFrom", "forkedFrom.user"})
     Page<Recipe> findAllByForkedFromIsNotNullAndUser_UserIdAndDeletedAtIsNull(Long userId, Pageable pageable);
 
     /**
@@ -39,6 +40,7 @@ public interface RecipeRepository extends JpaRepository<Recipe, Long> {
      * 비공개(내 자산 전용/포크 사본) 레시피가 커뮤니티 목록에 노출되지 않도록 막는다.
      * keyword는 제목 또는 짧은 설명에 대해 대소문자 무시 부분 일치로 검색한다.
      */
+    @EntityGraph(attributePaths = {"user", "forkedFrom", "forkedFrom.user"})
     @Query("SELECT r FROM Recipe r WHERE r.isPublic = true AND r.deletedAt IS NULL AND" +
             "(:keyword IS NULL OR :keyword = '' OR LOWER(r.title) LIKE LOWER(CONCAT('%', :keyword, '%')) OR LOWER(r.shortDescription) LIKE LOWER(CONCAT('%', :keyword, '%')))")
     Page<Recipe> searchRecipes(@Param("keyword") String keyword, Pageable pageable);
@@ -50,8 +52,11 @@ public interface RecipeRepository extends JpaRepository<Recipe, Long> {
      * 커서(createdAt, recipeId) 이후 데이터를 최신순으로 size+1개(hasNext 판단용) 조회한다.
      * hasCursor는 PostgreSQL이 "파라미터 IS NULL"만으로는 파라미터 타입을 추론하지 못해
      * "could not determine data type of parameter"로 실패하는 것을 피하기 위한 우회 파라미터다.
+     * 원본을 그대로 복제한 사본(포크 이력이 있는 레시피)은 활동이 아니라 빼고,
+     * 원본 내용을 불러와 새로 등록한 레시피는 forkedFrom이 있어도 포함한다.
      */
     @Query("SELECT r FROM Recipe r WHERE r.user.userId = :userId AND r.deletedAt IS NULL " +
+            "AND NOT EXISTS (SELECT 1 FROM RecipeForkHistory h WHERE h.forkedRecipe = r) " +
             "AND (:hasCursor = false OR r.createdAt < :cursorCreatedAt " +
             "OR (r.createdAt = :cursorCreatedAt AND r.recipeId < :cursorId)) " +
             "ORDER BY r.createdAt DESC, r.recipeId DESC")

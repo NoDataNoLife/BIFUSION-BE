@@ -17,11 +17,13 @@ public record RecipeListResponse(
         String title,
         String bannerUrl,
         AuthorInfo author,
+        // 포크한 레시피는 원본의 포크 수
         int forkCount,
         int likeCount,
         boolean isExpertVerified,
-        boolean isDeleted
-
+        boolean isDeleted,
+        // 포크한 레시피의 원본. 직접 작성한 레시피는 null
+        ForkedFromInfo forkedFrom
 ) {
     /**
      * 작성자 정보.
@@ -42,10 +44,11 @@ public record RecipeListResponse(
                 recipe.getTitle(),
                 recipe.getThumbnailUrl(),
                 AuthorInfo.from(recipe.getUser()),
-                recipe.getForkCount(),
+                recipe.getDisplayForkCount(),
                 recipe.getLikeCount() != null ? recipe.getLikeCount() : 0,
                 verificationSummary.status() == InspectionStatus.COMPLETED,
-                recipe.isDeleted()
+                recipe.isDeleted(),
+                ForkedFromInfo.of(recipe)
         );
     }
 }

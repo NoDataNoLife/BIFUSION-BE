@@ -17,12 +17,15 @@ public record MyRecipeListResponse(
         String description,
         Boolean expertVerified,
         Double rating,
+        // 포크한 레시피는 원본의 포크 수
         Long forkCount,
         Long viewCount,
         @PresignedUrl String bannerImageUrl,
         boolean isDeleted,
         // 검수 신청 버튼·취소용 (그대로 복제한 사본은 canRequest=false, 다시 등록한 포크는 신청 가능)
-        InspectionTargetResponse inspectionTarget
+        InspectionTargetResponse inspectionTarget,
+        // 포크한 레시피의 원본. 직접 작성한 레시피는 null
+        ForkedFromInfo forkedFrom
 ) {
     public static MyRecipeListResponse from(Recipe recipe, InspectionSummary verificationSummary,
                                             InspectionTargetResponse inspectionTarget) {
@@ -32,11 +35,12 @@ public record MyRecipeListResponse(
                 recipe.getShortDescription(),
                 verificationSummary.status() == InspectionStatus.COMPLETED,
                 recipe.getRating() != null ? recipe.getRating().doubleValue() : 0.0,
-                recipe.getForkCount() != null ? recipe.getForkCount().longValue() : 0L,
+                (long) recipe.getDisplayForkCount(),
                 recipe.getViewCount() != null ? recipe.getViewCount().longValue() : 0L,
                 recipe.getThumbnailUrl(),
                 recipe.isDeleted(),
-                inspectionTarget
+                inspectionTarget,
+                ForkedFromInfo.of(recipe)
         );
     }
 }

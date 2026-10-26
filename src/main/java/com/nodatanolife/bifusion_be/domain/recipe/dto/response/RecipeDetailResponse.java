@@ -26,6 +26,7 @@ public record RecipeDetailResponse(
         LocalDateTime createdAt,
         double rating,
         int reviewCount,
+        // 포크한 레시피는 원본의 포크 수
         int forkCount,
         int viewCount,
         int downloadCount,
@@ -35,7 +36,9 @@ public record RecipeDetailResponse(
         InspectionResultResponse inspectionResult,
         // 검수 신청 버튼·취소용. 작성자 본인에게만 내려주고 그 외에는 null
         InspectionTargetResponse inspectionTarget,
-        boolean isDeleted
+        boolean isDeleted,
+        // 포크한 레시피의 원본. 직접 작성한 레시피는 null
+        ForkedFromInfo forkedFrom
 ) {
     /**
      * 작성자 정보.
@@ -103,7 +106,7 @@ public record RecipeDetailResponse(
                 recipe.getCreatedAt(),
                 recipe.getRating().doubleValue(),
                 (int) reviewCount,
-                recipe.getForkCount(),
+                recipe.getDisplayForkCount(),
                 recipe.getViewCount(),
                 recipe.getDownloadCount(),
                 Overview.from(recipe),
@@ -111,7 +114,8 @@ public record RecipeDetailResponse(
                 verificationSummary.status(),
                 verificationSummary.result(),
                 inspectionTarget,
-                recipe.isDeleted()
+                recipe.isDeleted(),
+                ForkedFromInfo.of(recipe)
         );
     }
 }
