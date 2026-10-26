@@ -62,12 +62,13 @@ public class NotificationServiceImpl implements NotificationService {
     @Override
     @Transactional(readOnly = true)
     public Page<NotificationResponse> getNotifications(
-            Long userId, NotificationCategory category, Boolean isRead, String keyword, Pageable pageable) {
+            Long userId, boolean excludePopupDeleted, NotificationCategory category, Boolean isRead, String keyword,
+            Pageable pageable) {
 
         User user = userRepository.getReferenceById(userId);
         List<NotificationType> types = category == null ? null : category.getTypes();
 
-        return notificationRepository.findByFilters(user, types, isRead, keyword, pageable)
+        return notificationRepository.findByFilters(user, excludePopupDeleted, types, isRead, keyword, pageable)
                 .map(NotificationResponse::from);
     }
 

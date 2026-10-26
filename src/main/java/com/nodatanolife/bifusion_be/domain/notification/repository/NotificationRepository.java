@@ -23,10 +23,11 @@ public interface NotificationRepository extends JpaRepository<Notification, Long
     @Query("UPDATE Notification n SET n.isRead = true WHERE n.user = :user AND n.isRead = false")
     void markAllAsRead(@Param("user") User user);
 
+    // excludePopupDeleted=true면 알림창에서 지운 알림(isDeleted)을 뺀다 (알림창 목록용)
     @Query("""
         SELECT n FROM Notification n
         WHERE n.user = :user
-          AND n.isDeleted = false
+          AND (:excludePopupDeleted = false OR n.isDeleted = false)
           AND (:types IS NULL OR n.type IN :types)
           AND (:isRead IS NULL OR n.isRead = :isRead)
           AND (:keyword IS NULL
@@ -36,6 +37,7 @@ public interface NotificationRepository extends JpaRepository<Notification, Long
         """)
     Page<Notification> findByFilters(
             @Param("user") User user,
+            @Param("excludePopupDeleted") boolean excludePopupDeleted,
             @Param("types") List<NotificationType> types,
             @Param("isRead") Boolean isRead,
             @Param("keyword") String keyword,
