@@ -39,7 +39,7 @@ public record ExpertTaskSummaryResponse(
         return new ExpertTaskSummaryResponse(
                 task.getReviewCode(),
                 task.getStatus(),
-                inspectionRequest.getStatus() == InspectionRequestStatus.PENDING ? null : inspectionRequest.getStatus(),
+                task.reviewResult(),
                 RequesterResponse.from(inspectionRequest.getUser()),
                 targetType,
                 title,
