@@ -466,7 +466,7 @@ public class InspectionServiceImpl implements InspectionService {
 
     /**
      * 대상의 존재 여부(404)와 소유자 일치 여부(403)를 검증한다. 검수는 본인이 소유한 콘텐츠에 대해서만 신청할 수 있다.
-     * - AUGMENTED_DATA: 소유자 정보가 직접 없어 상위 Job의 소유자로 판단한다.
+     * - AUGMENTED_DATA: 소유자 정보가 직접 없어 상위 Job의 소유자로 판단한다. 삭제된 증강 데이터는 404.
      * - RECIPE: 삭제된 레시피는 404, 원본을 그대로 복제한 사본은 남의 레시피 그대로라 400(INSPECTION_FORKED_RECIPE_NOT_ALLOWED).
      *   원본 내용을 불러와 다시 등록한 레시피는 forkedFrom이 있어도 신청할 수 있다.
      * - UPLOADED_DATA: 삭제됐거나 업로드(UPLOADED) 데이터셋이 아니면 404. 증강 데이터셋은 AUGMENTED_DATA로 신청한다.
@@ -477,6 +477,7 @@ public class InspectionServiceImpl implements InspectionService {
         return switch (targetType) {
             case AUGMENTED_DATA -> {
                 AugmentationConfig config = augmentationConfigRepository.findById(targetId)
+                        .filter(found -> !found.isDeleted())
                         .orElseThrow(() -> new BusinessException(ErrorCode.INSPECTION_TARGET_NOT_FOUND));
                 validateOwner(user, config.getJob().getUser());
                 yield inspectionRewardPolicy.forSize(augmentedDatasetSize(config));

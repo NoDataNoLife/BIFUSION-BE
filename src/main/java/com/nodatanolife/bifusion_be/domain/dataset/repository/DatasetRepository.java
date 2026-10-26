@@ -22,6 +22,11 @@ public interface DatasetRepository extends JpaRepository<Dataset, Long> {
     // 파일 다운로드 권한 확인용. 첨부 파일을 교체해도 예전 파일은 남으므로 여러 건일 수 있다
     List<Dataset> findAllByFile(File file);
 
+    // 같은 첨부 파일을 다른 데이터셋도 쓰는지 (파일·S3 객체 삭제 전 확인)
+    boolean existsByFileAndDatasetIdNot(File file, Long datasetId);
+
+    boolean existsByFileAndDatasetIdNotAndDeletedAtIsNull(File file, Long datasetId);
+
     // 대표 이미지 추출 기능 도입 전에 등록돼 대표 이미지가 비어 있는 업로드 데이터셋 (일회성 채우기용)
     @Query("""
             SELECT d.datasetId FROM Dataset d
