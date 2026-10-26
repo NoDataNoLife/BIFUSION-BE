@@ -22,7 +22,7 @@ import java.util.List;
  * 검수 중인 job(전문가 검수 요청) 상세 조회 응답 DTO.
  * inspectionId는 ExpertTask.expertTaskId를 가리킨다 (검수 시작 API와 동일한 리소스 기준).
  * targetType에 해당하는 영역만 채우고 나머지는 null이다.
- * - AUGMENTED_DATA: jobTitle, augmentationParams, sampleImages
+ * - AUGMENTED_DATA: jobTitle, previewUrl, augmentationParams, sampleImages
  * - RECIPE: recipe
  * - UPLOADED_DATA: dataset
  */
@@ -31,6 +31,8 @@ public record InspectionDetailResponse(
         String reviewCode,
         InspectionTargetType targetType,
         String jobTitle,
+        // 증강 결과 미리보기 이미지 (증강 데이터셋 목록의 previewUrl과 같은 값)
+        @PresignedUrl String previewUrl,
         InspectionRequestStatus status,
         Requester requester,
         String reason,
@@ -138,6 +140,7 @@ public record InspectionDetailResponse(
             Long datasetId,
             String title,
             String description,
+            @PresignedUrl String bannerImageUrl,
             String category,
             String license,
             String format,
@@ -156,6 +159,7 @@ public record InspectionDetailResponse(
                     dataset.getDatasetId(),
                     dataset.getTitle(),
                     dataset.getDescription(),
+                    dataset.getBannerImageUrl(),
                     dataset.getCategory(),
                     dataset.getLicense(),
                     dataset.getFormat(),
@@ -172,19 +176,20 @@ public record InspectionDetailResponse(
     }
 
     public static InspectionDetailResponse ofAugmentedData(ExpertTask task, AugmentationConfig config, List<AugmentationSampleImage> images) {
-        return of(task, config.getJob().getProject().getTitle(),
+        return of(task, config.getJob().getProject().getTitle(), config.getPreviewKey(),
                 AugmentationParams.from(config), SampleImages.from(config, images), null, null);
     }
 
     public static InspectionDetailResponse ofRecipe(ExpertTask task, Recipe recipe) {
-        return of(task, null, null, null, RecipeTarget.from(recipe), null);
+        return of(task, null, null, null, null, RecipeTarget.from(recipe), null);
     }
 
     public static InspectionDetailResponse ofUploadedData(ExpertTask task, Dataset dataset) {
-        return of(task, null, null, null, null, DatasetTarget.from(dataset));
+        return of(task, null, null, null, null, null, DatasetTarget.from(dataset));
     }
 
-    private static InspectionDetailResponse of(ExpertTask task, String jobTitle, AugmentationParams augmentationParams,
+    private static InspectionDetailResponse of(ExpertTask task, String jobTitle, String previewUrl,
+                                               AugmentationParams augmentationParams,
                                                SampleImages sampleImages, RecipeTarget recipe, DatasetTarget dataset) {
         InspectionRequest inspectionRequest = task.getInspectionRequest();
 
@@ -193,6 +198,7 @@ public record InspectionDetailResponse(
                 task.getReviewCode(),
                 inspectionRequest.getTargetType(),
                 jobTitle,
+                previewUrl,
                 inspectionRequest.getStatus(),
                 Requester.from(inspectionRequest.getUser(), inspectionRequest.getAppliedAt()),
                 inspectionRequest.getReason(),

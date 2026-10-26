@@ -215,22 +215,32 @@ public class ExpertServiceImpl implements ExpertService {
 
         List<ExpertTask> tasks = expertTaskRepository.findMyReviewTasks(user);
 
-        Map<InspectionTargetType, Map<Long, String>> titlesByType = Map.of(
+        Map<InspectionTargetType, Map<Long, TargetDisplay>> displaysByType = Map.of(
                 InspectionTargetType.AUGMENTED_DATA, augmentationConfigRepository
                         .findAllById(targetIdsOf(tasks, InspectionTargetType.AUGMENTED_DATA)).stream()
                         .filter(c -> c.getJob() != null && c.getJob().getProject() != null)
                         .collect(Collectors.toMap(AugmentationConfig::getAugmentationConfigId,
-                                c -> c.getJob().getProject().getTitle(), (existing, replacement) -> existing)),
+                                c -> new TargetDisplay(c.getJob().getProject().getTitle(), c.getPreviewKey()),
+                                (existing, replacement) -> existing)),
                 InspectionTargetType.RECIPE, recipeRepository
                         .findAllById(targetIdsOf(tasks, InspectionTargetType.RECIPE)).stream()
-                        .collect(Collectors.toMap(Recipe::getRecipeId, Recipe::getTitle, (existing, replacement) -> existing)),
+                        .collect(Collectors.toMap(Recipe::getRecipeId,
+                                r -> new TargetDisplay(r.getTitle(), r.getThumbnailUrl()),
+                                (existing, replacement) -> existing)),
                 InspectionTargetType.UPLOADED_DATA, datasetRepository
                         .findAllById(targetIdsOf(tasks, InspectionTargetType.UPLOADED_DATA)).stream()
-                        .collect(Collectors.toMap(Dataset::getDatasetId, Dataset::getTitle, (existing, replacement) -> existing))
+                        .collect(Collectors.toMap(Dataset::getDatasetId,
+                                d -> new TargetDisplay(d.getTitle(), d.getBannerImageUrl()),
+                                (existing, replacement) -> existing))
         );
 
         Map<String, List<ExpertTaskSummaryResponse>> grouped = tasks.stream()
-                .map(t -> ExpertTaskSummaryResponse.of(t, titleOf(titlesByType, t)))
+                .map(t -> {
+                    TargetDisplay display = displayOf(displaysByType, t);
+                    return ExpertTaskSummaryResponse.of(t,
+                            display != null ? display.title() : null,
+                            display != null ? display.imageUrl() : null);
+                })
                 .collect(Collectors.groupingBy(ExpertTaskSummaryResponse::status));
 
         return new ExpertTaskGroupedResponse(
@@ -240,10 +250,14 @@ public class ExpertServiceImpl implements ExpertService {
         );
     }
 
+    // 검수 목록 항목에 보여줄 대상 이름·대표 이미지
+    private record TargetDisplay(String title, String imageUrl) {
+    }
+
     // targetType이 비어 있는 과거 row는 대상을 알 수 없어 null(→ "알 수 없는 대상")로 둔다.
-    private static String titleOf(Map<InspectionTargetType, Map<Long, String>> titlesByType, ExpertTask task) {
+    private static TargetDisplay displayOf(Map<InspectionTargetType, Map<Long, TargetDisplay>> displaysByType, ExpertTask task) {
         InspectionTargetType targetType = task.getInspectionRequest().getTargetType();
-        return targetType == null ? null : titlesByType.get(targetType).get(task.getInspectionRequest().getTargetId());
+        return targetType == null ? null : displaysByType.get(targetType).get(task.getInspectionRequest().getTargetId());
     }
 
     private static List<Long> targetIdsOf(List<ExpertTask> tasks, InspectionTargetType targetType) {

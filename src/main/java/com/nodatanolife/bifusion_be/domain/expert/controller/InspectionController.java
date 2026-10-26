@@ -84,7 +84,7 @@ public class InspectionController {
                     검수 대기/진행 중인 요청 하나를 상세 조회합니다. inspectionId는 검수 시작 API(PATCH /api/v1/experts/me/tasks/{taskId}/start)와 동일한 리소스입니다.
 
                     - targetType에 해당하는 영역만 채워지고 나머지는 null입니다.
-                      - AUGMENTED_DATA: jobTitle, augmentationParams, sampleImages
+                      - AUGMENTED_DATA: jobTitle, previewUrl(증강 결과 미리보기), augmentationParams, sampleImages
                       - RECIPE: recipe (개요·생성 설정값)
                       - UPLOADED_DATA: dataset (메타데이터·첨부 파일. 파일은 fileId로 POST /api/v1/files/{fileId}/download)
                     - reason: 신청자가 남긴 검증 요청 메모

@@ -85,6 +85,7 @@ public class ExpertController {
                     - 각 항목의 requester: 검수를 신청한 사용자 (userId, nickname, email)
                     - 각 항목의 targetType: 검수 대상 종류 (AUGMENTED_DATA / RECIPE / UPLOADED_DATA)
                     - 각 항목의 targetTitle: 검수 대상 이름 (증강 데이터는 프로젝트명, 레시피·데이터셋은 제목)
+                    - 각 항목의 targetImageUrl: 검수 대상 대표 이미지 (증강 데이터는 증강 결과 미리보기 이미지, 레시피는 썸네일, 데이터셋은 배너). 없으면 null
                     - 각 항목의 projectName: 증강 데이터가 속한 프로젝트명 (레시피·데이터셋 검수는 null)
                     - 각 항목의 requestedAt: 검수 신청일
                     - 각 항목의 updatedAt: 검수 건 최종 수정 일시
