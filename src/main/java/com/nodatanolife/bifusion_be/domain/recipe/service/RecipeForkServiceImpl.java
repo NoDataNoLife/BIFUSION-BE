@@ -5,8 +5,11 @@ import com.nodatanolife.bifusion_be.domain.recipe.entity.Recipe;
 import com.nodatanolife.bifusion_be.domain.recipe.entity.RecipeForkHistory;
 import com.nodatanolife.bifusion_be.domain.recipe.repository.RecipeForkHistoryRepository;
 import com.nodatanolife.bifusion_be.domain.recipe.repository.RecipeRepository;
+import com.nodatanolife.bifusion_be.domain.user.config.PointProperties;
+import com.nodatanolife.bifusion_be.domain.user.entity.RewardHistory;
 import com.nodatanolife.bifusion_be.domain.user.entity.User;
 import com.nodatanolife.bifusion_be.domain.user.repository.UserRepository;
+import com.nodatanolife.bifusion_be.domain.user.service.PointService;
 import com.nodatanolife.bifusion_be.global.exception.ErrorCode;
 import com.nodatanolife.bifusion_be.global.exception.business.BusinessException;
 import lombok.RequiredArgsConstructor;
@@ -20,6 +23,8 @@ public class RecipeForkServiceImpl implements RecipeForkService {
     private final RecipeRepository recipeRepository;
     private final RecipeForkHistoryRepository recipeForkHistoryRepository;
     private final UserRepository userRepository;
+    private final PointService pointService;
+    private final PointProperties pointProperties;
 
     /**
      * 레시피 포크(복제) 처리.
@@ -29,6 +34,8 @@ public class RecipeForkServiceImpl implements RecipeForkService {
      * 4) Recipe.fork()로 비공개(isPublic=false) 사본 생성 후 저장
      * 5) 원본의 forkCount 증가
      * 6) 포크 이력(RecipeForkHistory) 기록
+     * 7) 다른 사람 레시피면 포크한 사람에게서 포인트를 차감하고 원본 작성자에게 지급 (부족하면 400, 포크도 롤백)
+     *    본인 레시피 포크는 주고받지 않으며, 탈퇴한 작성자(DELETED 계정)에게는 지급하지 않는다.
      */
     @Override
     @Transactional
@@ -59,6 +66,16 @@ public class RecipeForkServiceImpl implements RecipeForkService {
 
         RecipeForkHistory history = RecipeForkHistory.create(user, savedForked, original, original.getTitle());
         recipeForkHistoryRepository.save(history);
+
+        User author = original.getUser();
+        if (!author.getUserId().equals(userId)) {
+            pointService.spend(userId, pointProperties.recipeForkCost(),
+                    RewardHistory.TYPE_RECIPE_FORK, RewardHistory.TARGET_RECIPE, original.getRecipeId());
+            if (!"DELETED".equals(author.getRole())) {
+                pointService.earn(author.getUserId(), pointProperties.recipeForkReward(),
+                        RewardHistory.TYPE_RECIPE_FORK_REWARD, RewardHistory.TARGET_RECIPE, original.getRecipeId());
+            }
+        }
 
         return RecipeForkResponse.of(savedForked.getRecipeId(), original.getRecipeId());
     }

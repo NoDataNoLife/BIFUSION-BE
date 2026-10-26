@@ -31,8 +31,8 @@ import com.nodatanolife.bifusion_be.domain.recipe.repository.RecipeForkHistoryRe
 import com.nodatanolife.bifusion_be.domain.recipe.repository.RecipeRepository;
 import com.nodatanolife.bifusion_be.domain.user.entity.RewardHistory;
 import com.nodatanolife.bifusion_be.domain.user.entity.User;
-import com.nodatanolife.bifusion_be.domain.user.repository.RewardHistoryRepository;
 import com.nodatanolife.bifusion_be.domain.user.repository.UserRepository;
+import com.nodatanolife.bifusion_be.domain.user.service.PointService;
 import com.nodatanolife.bifusion_be.global.exception.ErrorCode;
 import com.nodatanolife.bifusion_be.global.exception.business.BusinessException;
 import lombok.RequiredArgsConstructor;
@@ -53,7 +53,6 @@ import java.util.stream.Collectors;
 @Transactional
 public class InspectionServiceImpl implements InspectionService {
 
-    private static final String REWARD_TYPE_EXPERT_TASK = "EXPERT_TASK_REWARD";
     private static final double PLATFORM_FEE_EXCLUDED_RATE = 0.9;
 
     private final InspectionRequestRepository inspectionRequestRepository;
@@ -65,7 +64,7 @@ public class InspectionServiceImpl implements InspectionService {
     private final UserRepository userRepository;
     private final ExpertApplicationRepository expertApplicationRepository;
     private final ExpertTaskRepository expertTaskRepository;
-    private final RewardHistoryRepository rewardHistoryRepository;
+    private final PointService pointService;
     private final NotificationService notificationService;
     private final InspectionRewardPolicy inspectionRewardPolicy;
     private final FileRepository fileRepository;
@@ -106,11 +105,6 @@ public class InspectionServiceImpl implements InspectionService {
         User expert = pickExpert(user.getUserId());
 
         User managedUser = userRepository.getReferenceById(user.getUserId());
-        int currentPoints = managedUser.getPoints() == null ? 0 : managedUser.getPoints();
-        if (currentPoints < rewardPoints) {
-            throw new BusinessException(ErrorCode.INSUFFICIENT_POINTS);
-        }
-        managedUser.deductPoints(rewardPoints);
 
         InspectionRequest saved;
         if (existing.isPresent()) {
@@ -126,6 +120,10 @@ public class InspectionServiceImpl implements InspectionService {
                 throw new BusinessException(ErrorCode.INSPECTION_ALREADY_EXISTS);
             }
         }
+
+        // 포인트가 부족하면 400으로 막히고, 위에서 저장한 신청도 함께 롤백된다
+        pointService.spend(user.getUserId(), rewardPoints, RewardHistory.TYPE_INSPECTION_REQUEST,
+                RewardHistory.TARGET_INSPECTION_REQUEST, saved.getInspectionRequestId());
 
         ExpertTask task = expertTaskRepository.save(ExpertTask.assign(expert, saved));
         task.assignReviewCode();
@@ -185,8 +183,9 @@ public class InspectionServiceImpl implements InspectionService {
         task.ifPresent(expertTaskRepository::delete);
 
         Integer rewardPoints = inspectionRequest.getRewardPoints();
-        if (rewardPoints != null && rewardPoints > 0) {
-            userRepository.getReferenceById(inspectionRequest.getUser().getUserId()).addPoints(rewardPoints);
+        if (rewardPoints != null) {
+            pointService.earn(inspectionRequest.getUser().getUserId(), rewardPoints, RewardHistory.TYPE_INSPECTION_REFUND,
+                    RewardHistory.TARGET_INSPECTION_REQUEST, inspectionRequest.getInspectionRequestId());
         }
     }
 
@@ -396,7 +395,6 @@ public class InspectionServiceImpl implements InspectionService {
     /**
      * ExpertTask.reward에서 플랫폼 수수료 10%를 뗀 나머지(90%)를 전문가에게 지급하고 RewardHistory에 기록한다.
      * reward가 설정되지 않은 task(파이프라인상 아직 배정되지 않은 값 등)는 지급 없이 건너뛴다.
-     * 파라미터로 받은 expert는 트랜잭션 밖에서 로드된 상태일 수 있어 getReferenceById로 다시 관리 대상 엔티티를 얻는다.
      */
     private void payExpertReward(User expert, ExpertTask task) {
         Integer reward = task.getReward();
@@ -405,10 +403,7 @@ public class InspectionServiceImpl implements InspectionService {
         }
 
         int payout = (int) Math.round(reward * PLATFORM_FEE_EXCLUDED_RATE);
-
-        User managedExpert = userRepository.getReferenceById(expert.getUserId());
-        managedExpert.addPoints(payout);
-        rewardHistoryRepository.save(RewardHistory.create(managedExpert, task, payout, REWARD_TYPE_EXPERT_TASK));
+        pointService.earnForExpertTask(expert.getUserId(), task, payout);
     }
 
     /**

@@ -13,6 +13,9 @@ import org.springframework.security.oauth2.core.OAuth2AuthenticationException;
 import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.nodatanolife.bifusion_be.domain.user.config.PointProperties;
+import com.nodatanolife.bifusion_be.domain.user.entity.RewardHistory;
+import com.nodatanolife.bifusion_be.domain.user.service.PointService;
 
 import java.util.Map;
 
@@ -25,6 +28,8 @@ public class CustomOAuth2UserService implements OAuth2UserService<OAuth2UserRequ
     private final UserRepository userRepository;
     private final OauthAccountRepository oauthAccountRepository;
     private final ProjectInvitationService projectInvitationService;
+    private final PointService pointService;
+    private final PointProperties pointProperties;
 
     @Override
     public OAuth2User loadUser(OAuth2UserRequest request) throws OAuth2AuthenticationException {
@@ -50,6 +55,7 @@ public class CustomOAuth2UserService implements OAuth2UserService<OAuth2UserRequ
 
     private User createUserWithPendingInvitations(String email, String name) {
         User newUser = userRepository.save(User.createOAuthUser(email, name));
+        pointService.earn(newUser.getUserId(), pointProperties.signupBonus(), RewardHistory.TYPE_SIGNUP_BONUS, null, null);
         projectInvitationService.linkPendingInvitationsTo(newUser);
         return newUser;
     }

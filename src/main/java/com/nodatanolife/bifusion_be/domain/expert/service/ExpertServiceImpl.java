@@ -18,6 +18,7 @@ import com.nodatanolife.bifusion_be.domain.job.entity.AugmentationConfig;
 import com.nodatanolife.bifusion_be.domain.job.repository.AugmentationConfigRepository;
 import com.nodatanolife.bifusion_be.domain.recipe.entity.Recipe;
 import com.nodatanolife.bifusion_be.domain.recipe.repository.RecipeRepository;
+import com.nodatanolife.bifusion_be.domain.user.entity.RewardHistory;
 import com.nodatanolife.bifusion_be.domain.user.entity.User;
 import com.nodatanolife.bifusion_be.domain.user.repository.RewardHistoryRepository;
 import com.nodatanolife.bifusion_be.domain.user.repository.UserRepository;
@@ -148,7 +149,9 @@ public class ExpertServiceImpl implements ExpertService {
             throw new BusinessException(ErrorCode.EXPERT_NOT_CERTIFIED);
         }
 
-        int totalReward = rewardHistoryRepository.sumAmountByUser(user);
+        // 가입 보너스·포크 수익·차감 내역은 빼고 전문가 활동(검수·Q&A 답변) 보상만 합산한다
+        int totalReward = rewardHistoryRepository.sumAmountByUserAndTypeIn(user,
+                List.of(RewardHistory.TYPE_EXPERT_TASK_REWARD, RewardHistory.TYPE_QNA_ANSWER_REWARD));
 
         Map<String, Long> taskStats = new LinkedHashMap<>();
         taskStats.put(STATUS_PENDING, 0L);
