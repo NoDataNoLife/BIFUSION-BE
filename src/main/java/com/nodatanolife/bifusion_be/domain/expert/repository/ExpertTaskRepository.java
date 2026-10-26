@@ -76,6 +76,15 @@ public interface ExpertTaskRepository extends JpaRepository<ExpertTask, Long> {
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     Optional<ExpertTask> findFirstByInspectionRequestOrderByExpertTaskIdDesc(InspectionRequest inspectionRequest);
 
+    // 신청별 현재 회차 task (신청자 목록·상세용, 잠그지 않음)
+    @Query("""
+            SELECT t FROM ExpertTask t
+            JOIN FETCH t.expert
+            WHERE t.inspectionRequest IN :requests
+              AND t.expertTaskId = (SELECT MAX(t2.expertTaskId) FROM ExpertTask t2 WHERE t2.inspectionRequest = t.inspectionRequest)
+            """)
+    List<ExpertTask> findLatestByInspectionRequestIn(@Param("requests") List<InspectionRequest> requests);
+
     interface StatusCount {
         String getStatus();
         Long getCount();

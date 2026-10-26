@@ -5,7 +5,10 @@ import com.nodatanolife.bifusion_be.domain.expert.dto.response.ExpertTaskSummary
 import com.nodatanolife.bifusion_be.domain.expert.dto.response.InspectionDetailResponse;
 import com.nodatanolife.bifusion_be.domain.expert.dto.response.InspectionResponse;
 import com.nodatanolife.bifusion_be.domain.expert.dto.response.InspectionTargetResponse;
+import com.nodatanolife.bifusion_be.domain.expert.dto.response.MyInspectionRequestDetailResponse;
+import com.nodatanolife.bifusion_be.domain.expert.dto.response.MyInspectionRequestResponse;
 import com.nodatanolife.bifusion_be.domain.expert.entity.ExpertTask;
+import com.nodatanolife.bifusion_be.domain.expert.entity.InspectionProgressStatus;
 import com.nodatanolife.bifusion_be.domain.expert.entity.InspectionRequest;
 import com.nodatanolife.bifusion_be.domain.expert.entity.InspectionRequestStatus;
 import com.nodatanolife.bifusion_be.domain.expert.entity.InspectionTargetType;
@@ -33,6 +36,7 @@ import com.nodatanolife.bifusion_be.support.IntegrationTestSupport;
 import org.assertj.core.api.ThrowableAssert;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
 
 import java.util.List;
 import java.util.Map;
@@ -284,6 +288,95 @@ class InspectionIntegrationTest extends IntegrationTestSupport {
                 ErrorCode.INSPECTION_IMAGE_NOT_FOUND);
     }
 
+    // ---------- 신청자 목록·상세 ----------
+
+    @Test
+    void 내가_요청한_검수_목록은_진행_상태와_대상_정보를_담고_필터와_무관한_상태별_건수를_준다() {
+        User owner = user("owner@test.com", 3000);
+        User expert = expert("expert@test.com", 0);
+        Long recipeId = recipe(owner, null, true);
+        Long datasetId = dataset(owner, true, tempFile(owner, "application/zip", MB));
+        Long configId = augmentedConfig(owner, project(owner), 50 * MB);
+        Long recipeRequestId = inspectionService.createInspection(owner, create(InspectionTargetType.RECIPE, recipeId, 500)).inspectionRequestId();
+        inspectionService.createInspection(owner, create(InspectionTargetType.UPLOADED_DATA, datasetId, 500));
+        inspectionService.createInspection(owner, create(InspectionTargetType.AUGMENTED_DATA, configId, 500));
+        inspectionService.approveInspection(expert, taskOf(InspectionTargetType.RECIPE).getExpertTaskId(), "좋습니다");
+        expertTaskService.startTask(expert, taskOf(InspectionTargetType.UPLOADED_DATA).getExpertTaskId());
+
+        Page<MyInspectionRequestResponse> all = inspectionService.getMyRequests(owner, null, null, null, 0, 10);
+
+        assertThat(inspectionService.getMyRequestCounts(owner)).containsExactlyInAnyOrderEntriesOf(Map.of(
+                InspectionProgressStatus.PENDING, 1L, InspectionProgressStatus.IN_PROGRESS, 1L,
+                InspectionProgressStatus.APPROVED, 1L, InspectionProgressStatus.REJECTED, 0L));
+        assertThat(all.getTotalElements()).isEqualTo(3);
+        // 신청일 최신순
+        assertThat(all.getContent()).extracting(r -> r.target().type()).containsExactly(
+                InspectionTargetType.AUGMENTED_DATA, InspectionTargetType.UPLOADED_DATA, InspectionTargetType.RECIPE);
+
+        MyInspectionRequestResponse augmented = all.getContent().get(0);
+        assertThat(augmented.status()).isEqualTo(InspectionProgressStatus.PENDING);
+        assertThat(augmented.target().id()).isEqualTo(configId);
+        assertThat(augmented.target().jobId()).isNotNull();
+        assertThat(augmented.target().name()).isEqualTo("프로젝트");
+        assertThat(augmented.target().imageUrl()).isEqualTo("ml-results/preview.png");
+        assertThat(augmented.expert().nickname()).isEqualTo(reload(expert).getNickname());
+        assertThat(augmented.result()).isNull();
+        assertThat(augmented.completedAt()).isNull();
+
+        MyInspectionRequestResponse recipe = all.getContent().get(2);
+        assertThat(recipe.inspectionRequestId()).isEqualTo(recipeRequestId);
+        assertThat(recipe.status()).isEqualTo(InspectionProgressStatus.APPROVED);
+        assertThat(recipe.target().name()).isEqualTo("레시피");
+        assertThat(recipe.result().comment()).isEqualTo("좋습니다");
+        assertThat(recipe.completedAt()).isNotNull();
+
+        assertThat(inspectionService.getMyRequests(owner, null, InspectionProgressStatus.IN_PROGRESS, null, 0, 10)
+                .getContent()).extracting(r -> r.target().type()).containsExactly(InspectionTargetType.UPLOADED_DATA);
+        assertThat(inspectionService.getMyRequests(owner, null, InspectionProgressStatus.PENDING, null, 0, 10)
+                .getContent()).extracting(r -> r.target().type()).containsExactly(InspectionTargetType.AUGMENTED_DATA);
+        assertThat(inspectionService.getMyRequests(owner, InspectionTargetType.RECIPE, null, null, 0, 10)
+                .getContent()).extracting(MyInspectionRequestResponse::inspectionRequestId).containsExactly(recipeRequestId);
+        assertThat(inspectionService.getMyRequests(owner, null, null, "  데이터 ", 0, 10)
+                .getContent()).extracting(r -> r.target().type()).containsExactly(InspectionTargetType.UPLOADED_DATA);
+        assertThat(inspectionService.getMyRequests(owner, null, null, "프로젝", 0, 10)
+                .getContent()).extracting(r -> r.target().type()).containsExactly(InspectionTargetType.AUGMENTED_DATA);
+
+        Page<MyInspectionRequestResponse> firstPage = inspectionService.getMyRequests(owner, null, null, null, 0, 2);
+        assertThat(firstPage.getContent()).hasSize(2);
+        assertThat(firstPage.getTotalPages()).isEqualTo(2);
+    }
+
+    @Test
+    void 내가_요청한_검수에는_취소한_신청과_남의_신청이_나오지_않고_반려_사유와_삭제된_대상이_보인다() {
+        User owner = user("owner@test.com", 2000);
+        User other = user("other@test.com", 1000);
+        User expert = expert("expert@test.com", 0);
+        Long cancelledRecipe = recipe(owner, null, true);
+        Long rejectedRecipe = recipe(owner, null, true);
+        Long cancelledId = inspectionService.createInspection(owner, create(InspectionTargetType.RECIPE, cancelledRecipe, 500)).inspectionRequestId();
+        inspectionService.cancelInspection(owner, cancelledId);
+        Long rejectedId = inspectionService.createInspection(owner, create(InspectionTargetType.RECIPE, rejectedRecipe, 500)).inspectionRequestId();
+        inspectionService.rejectInspection(expert, onlyTask().getExpertTaskId(), "설명이 부족합니다");
+        recipeService.deleteRecipe(rejectedRecipe, owner.getUserId());
+        inspectionService.createInspection(other, create(InspectionTargetType.RECIPE, recipe(other, null, true), 500));
+
+        Page<MyInspectionRequestResponse> list = inspectionService.getMyRequests(owner, null, null, null, 0, 10);
+        assertThat(list.getContent()).extracting(MyInspectionRequestResponse::inspectionRequestId).containsExactly(rejectedId);
+        assertThat(inspectionService.getMyRequestCounts(owner).get(InspectionProgressStatus.REJECTED)).isEqualTo(1L);
+        assertThat(inspectionService.getMyRequestCounts(owner).get(InspectionProgressStatus.PENDING)).isZero();
+
+        MyInspectionRequestDetailResponse detail = inspectionService.getMyRequestDetail(owner, rejectedId);
+        assertThat(detail.status()).isEqualTo(InspectionProgressStatus.REJECTED);
+        assertThat(detail.result().comment()).isEqualTo("설명이 부족합니다");
+        assertThat(detail.reason()).isEqualTo("검수 부탁드립니다");
+        assertThat(detail.rewardPoints()).isEqualTo(500);
+        assertThat(detail.target().deleted()).isTrue();
+        assertThat(detail.target().name()).isEqualTo("레시피");
+
+        assertError(() -> inspectionService.getMyRequestDetail(other, rejectedId), ErrorCode.INSPECTION_NOT_FOUND);
+        assertError(() -> inspectionService.getMyRequestDetail(owner, cancelledId), ErrorCode.INSPECTION_NOT_FOUND);
+    }
+
     // ---------- 대상 삭제 ----------
 
     @Test
@@ -347,6 +440,12 @@ class InspectionIntegrationTest extends IntegrationTestSupport {
         List<ExpertTask> tasks = expertTaskRepository.findAll();
         assertThat(tasks).hasSize(1);
         return tasks.get(0);
+    }
+
+    private ExpertTask taskOf(InspectionTargetType targetType) {
+        return transactionTemplate.execute(status -> expertTaskRepository.findAll().stream()
+                .filter(t -> t.getInspectionRequest().getTargetType() == targetType)
+                .findFirst().orElseThrow());
     }
 
     private void assertRange(User owner, long fileSize, int min, int max) {

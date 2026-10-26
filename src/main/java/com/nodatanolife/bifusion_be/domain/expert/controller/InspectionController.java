@@ -10,8 +10,13 @@ import com.nodatanolife.bifusion_be.domain.expert.dto.response.InspectionDetailR
 import com.nodatanolife.bifusion_be.domain.expert.dto.response.InspectionDraftResponse;
 import com.nodatanolife.bifusion_be.domain.expert.dto.response.InspectionImageCommentResponse;
 import com.nodatanolife.bifusion_be.domain.expert.dto.response.InspectionResponse;
+import com.nodatanolife.bifusion_be.domain.expert.dto.response.MyInspectionRequestDetailResponse;
+import com.nodatanolife.bifusion_be.domain.expert.dto.response.MyInspectionRequestResponse;
+import com.nodatanolife.bifusion_be.domain.expert.entity.InspectionProgressStatus;
+import com.nodatanolife.bifusion_be.domain.expert.entity.InspectionTargetType;
 import com.nodatanolife.bifusion_be.domain.expert.service.InspectionService;
 import com.nodatanolife.bifusion_be.domain.user.entity.User;
+import com.nodatanolife.bifusion_be.global.dto.response.PageResponse;
 import com.nodatanolife.bifusion_be.global.response.CommonResponse;
 import com.nodatanolife.bifusion_be.global.security.oauth2.CustomOAuth2User;
 import io.swagger.v3.oas.annotations.Operation;
@@ -22,7 +27,9 @@ import org.springframework.http.HttpStatus;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
-@Tag(name = "Inspection", description = "전문가 검수 신청/처리 API. 조회·처리 API는 전문가 인증(APPROVED) 아니면 403, 존재하지 않거나 본인에게 배정되지 않은 검수 요청이면 404.")
+import java.util.Map;
+
+@Tag(name = "Inspection", description = "전문가 검수 신청/처리 API. 전문가용 조회·처리 API는 전문가 인증(APPROVED) 아니면 403, 존재하지 않거나 본인에게 배정되지 않은 검수 요청이면 404. /me/requests는 신청자용.")
 @RestController
 @RequestMapping("/api/v1/inspections")
 @RequiredArgsConstructor
@@ -80,6 +87,69 @@ public class InspectionController {
     ) {
         InspectionResponse response = inspectionService.cancelInspection(principal.getUser(), inspectionRequestId);
         return CommonResponse.success(response, "전문가 검수 신청이 취소되었습니다.");
+    }
+
+    @Operation(
+            summary = "내가 요청한 검수 목록",
+            description = """
+                    로그인한 사용자가 신청한 검수 목록을 신청일 최신순으로 조회합니다. 전문가 인증은 필요 없습니다. 취소한 신청은 나오지 않습니다.
+
+                    - targetType: RECIPE / UPLOADED_DATA / AUGMENTED_DATA (생략 시 전체)
+                    - status: PENDING(전문가 시작 전) / IN_PROGRESS(검수 중) / APPROVED / REJECTED (생략 시 전체)
+                    - keyword: 대상 이름 검색 (레시피·데이터셋 제목, 증강 데이터는 프로젝트명)
+                    - page는 0부터, size 기본 10
+                    - 상단 요약 카드의 상태별 건수는 GET /api/v1/inspections/me/requests/counts
+                    - target.id는 검수 신청 API의 targetId (증강 데이터는 AugmentationConfig ID). 증강 데이터는 target.jobId도 내려줍니다.
+                    - 삭제된 대상도 이력으로 나오며 target.deleted=true. 대상을 찾을 수 없으면 name은 "알 수 없는 대상", imageUrl은 null
+                    - expert: 배정 전이면 null. completedAt·result: 승인·반려 전이면 null
+                    - 반려·취소 후 같은 대상에 다시 신청하면 기존 신청이 갱신되므로, 대상마다 최신 신청 1건만 나옵니다.
+                    """
+    )
+    @GetMapping("/me/requests")
+    public CommonResponse<PageResponse<MyInspectionRequestResponse>> getMyRequests(
+            @AuthenticationPrincipal CustomOAuth2User principal,
+            @RequestParam(required = false) InspectionTargetType targetType,
+            @RequestParam(required = false) InspectionProgressStatus status,
+            @RequestParam(required = false) String keyword,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size
+    ) {
+        PageResponse<MyInspectionRequestResponse> response = PageResponse.from(
+                inspectionService.getMyRequests(principal.getUser(), targetType, status, keyword, page, size));
+        return CommonResponse.success(response, "내가 요청한 검수 목록 조회 성공");
+    }
+
+    @Operation(
+            summary = "내가 요청한 검수 상태별 건수",
+            description = """
+                    목록 상단 요약 카드용. 검색·필터와 무관한 본인 전체 신청(취소 제외)의 상태별 건수입니다.
+                    PENDING / IN_PROGRESS / APPROVED / REJECTED 네 키가 항상 포함됩니다 (없으면 0).
+                    """
+    )
+    @GetMapping("/me/requests/counts")
+    public CommonResponse<Map<InspectionProgressStatus, Long>> getMyRequestCounts(
+            @AuthenticationPrincipal CustomOAuth2User principal
+    ) {
+        return CommonResponse.success(inspectionService.getMyRequestCounts(principal.getUser()),
+                "내가 요청한 검수 상태별 건수 조회 성공");
+    }
+
+    @Operation(
+            summary = "내가 요청한 검수 상세",
+            description = """
+                    내가 신청한 검수 하나의 요청 정보와 결과를 조회합니다. 목록 항목 정보에 reason(요청 메모)·rewardPoints가 더해집니다.
+
+                    - inspectionRequestId: 목록·신청 API 응답의 inspectionRequestId (전문가용 GET /inspections/{inspectionId}의 ID와 다름)
+                    - 본인 신청이 아니거나 없거나 취소된 신청이면 404(IS009)
+                    """
+    )
+    @GetMapping("/me/requests/{inspectionRequestId}")
+    public CommonResponse<MyInspectionRequestDetailResponse> getMyRequestDetail(
+            @AuthenticationPrincipal CustomOAuth2User principal,
+            @PathVariable Long inspectionRequestId
+    ) {
+        MyInspectionRequestDetailResponse response = inspectionService.getMyRequestDetail(principal.getUser(), inspectionRequestId);
+        return CommonResponse.success(response, "내가 요청한 검수 상세 조회 성공");
     }
 
     @Operation(
