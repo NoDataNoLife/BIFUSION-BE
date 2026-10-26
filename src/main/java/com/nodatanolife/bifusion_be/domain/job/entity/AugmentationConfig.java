@@ -99,11 +99,21 @@ public class AugmentationConfig extends BaseEntity {
     }
 
     /**
-     * 학습 데이터로 쓸 수 있는 증강 결과인지. (증강 Job이 SUCCESS이고 ML 데이터셋 ID가 있음)
-     * 학습 요청 검증과 증강 데이터셋 목록이 같은 기준을 쓰도록 이 메서드로만 판정한다.
+     * 학습 데이터로 쓸 수 있는 증강 결과인지. (삭제되지 않았고, 증강 Job이 SUCCESS이고 ML 데이터셋 ID가 있음)
+     * 학습 요청 검증과 증강 데이터셋 목록, 삭제 API가 같은 기준을 쓰도록 이 메서드로만 판정한다.
      */
     public boolean isReadyForTraining() {
-        return job.getStatus() == JobStatus.SUCCESS && mlDatasetId != null;
+        return !isDeleted() && job.getStatus() == JobStatus.SUCCESS && mlDatasetId != null;
+    }
+
+    /**
+     * 증강 데이터 삭제. 결과 파일(다운로드·미리보기)은 호출 측에서 S3와 File 행을 지우고, 여기서는 key를 비운다.
+     * 실행 기록(파라미터·입력 파일 목록·생성 장수)과 이 데이터로 만든 학습 모델은 남는다.
+     */
+    public void deleteResult() {
+        markDeleted();
+        this.datasetKey = null;
+        this.previewKey = null;
     }
 
     public void recordResult(String mlDatasetId, String datasetKey, String previewKey,

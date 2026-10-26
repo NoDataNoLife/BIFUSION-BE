@@ -97,6 +97,24 @@ points:
     enabled: ${POINT_CHARGE_ENABLED:true}
     options: [500, 1000, 3000, 5000]
 
+# AI 작업 실행 비용 (1토큰 = 1앤트). ML이 실제 사용량을 주지 않아 실행 파라미터로 계산량을 추정한다 (JobCostPolicy).
+# 작업을 만들 때 차감하고, 실패·취소되면 전액 환불한다. 기본 설정 기준 증강 50, 학습 16, 추론 2 + 이미지 수.
+job:
+  cost:
+    # base + ceil(finetune-steps / 20) + ceil(2 × num-samples-per-class × steps / 100)  (최대 설정 470)
+    augmentation:
+      base: 20
+      finetune-steps-per-point: 20
+      generation-steps-per-point: 100
+    # base + ceil(epochs × episodes-per-epoch / 50)  (최대 설정 410)
+    training:
+      base: 10
+      episodes-per-point: 50
+    # base + 이미지 수 × points-per-image  (최대 20장 22)
+    inference:
+      base: 2
+      points-per-image: 1
+
 jwt:
   secret: ${JWT_SECRET}
   access-expiration: 1800000

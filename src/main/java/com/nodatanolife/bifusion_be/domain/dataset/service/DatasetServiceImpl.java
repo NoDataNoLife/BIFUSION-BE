@@ -21,6 +21,7 @@ import com.nodatanolife.bifusion_be.domain.dataset.entity.DatasetType;
 import com.nodatanolife.bifusion_be.domain.dataset.repository.DatasetRepository;
 import com.nodatanolife.bifusion_be.domain.file.entity.File;
 import com.nodatanolife.bifusion_be.domain.file.repository.FileRepository;
+import com.nodatanolife.bifusion_be.domain.file.service.S3ObjectCleaner;
 import com.nodatanolife.bifusion_be.domain.user.entity.User;
 import com.nodatanolife.bifusion_be.global.exception.ErrorCode;
 import com.nodatanolife.bifusion_be.global.exception.business.BusinessException;
@@ -31,6 +32,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -48,6 +50,7 @@ public class DatasetServiceImpl implements DatasetService {
     private final InspectionResultService inspectionResultService;
     private final InspectionService inspectionService;
     private final DatasetBannerExtractor datasetBannerExtractor;
+    private final S3ObjectCleaner s3ObjectCleaner;
 
 
     /**
@@ -220,6 +223,28 @@ public class DatasetServiceImpl implements DatasetService {
             inspectionService.cancelForTargetDeletion(userId, InspectionTargetType.UPLOADED_DATA, datasetId);
         }
         dataset.delete();
+        deleteStoredObjects(dataset);
+    }
+
+    /**
+     * 삭제한 데이터셋의 첨부 파일·대표 이미지를 S3에서 지운다 (커밋 후). 스토리지 사용량은 실제 객체 기준이라 함께 줄어든다.
+     * File 행은 삭제된 데이터셋이 계속 가리키므로 남긴다 (사용량 집계에서는 빠지고, 다운로드는 404).
+     * 같은 파일을 쓰는 다른 데이터셋이 남아 있으면 파일은 지우지 않는다.
+     */
+    private void deleteStoredObjects(Dataset dataset) {
+        File file = dataset.getFile();
+        List<String> keys = new ArrayList<>();
+        boolean fileInUse = file != null
+                && datasetRepository.existsByFileAndDatasetIdNotAndDeletedAtIsNull(file, dataset.getDatasetId());
+        if (file != null && !fileInUse) {
+            keys.add(file.getS3Key());
+        }
+        String banner = dataset.getBannerImageUrl();
+        // 첨부 파일이 이미지면 대표 이미지가 첨부 파일 자체라, 파일을 지울 때만 함께 지워진다
+        if (banner != null && (file == null || !banner.equals(file.getS3Key()))) {
+            keys.add(banner);
+        }
+        s3ObjectCleaner.deleteAfterCommit(keys);
     }
 
     /**
@@ -244,10 +269,13 @@ public class DatasetServiceImpl implements DatasetService {
             if (!file.getUser().getUserId().equals(userId)) {
                 throw new BusinessException(ErrorCode.FILE_READ_FAILED);
             }
+            File previousFile = dataset.getFile();
+            String previousBanner = dataset.getBannerImageUrl();
             file.markAsPermanent();
             dataset.updateFile(file);
             // 대표 이미지는 첨부 파일에서 뽑으므로 파일이 바뀌면 다시 뽑는다
             dataset.updateBannerImage(datasetBannerExtractor.extract(file));
+            deleteReplacedObjects(dataset, previousFile, previousBanner);
         }
 
         dataset.update(
@@ -271,6 +299,25 @@ public class DatasetServiceImpl implements DatasetService {
         }
 
         return DatasetUpdateResponse.from(dataset, tagNames);
+    }
+
+    /**
+     * 교체돼 더 이상 쓰지 않는 이전 첨부 파일(File 행 + S3 객체)과 이전 대표 이미지를 지운다.
+     * 이전 파일을 다른 데이터셋(삭제된 것 포함)이 가리키고 있으면 남긴다.
+     */
+    private void deleteReplacedObjects(Dataset dataset, File previousFile, String previousBanner) {
+        List<String> keys = new ArrayList<>();
+        if (previousFile != null && !previousFile.getFileId().equals(dataset.getFile().getFileId())
+                && !datasetRepository.existsByFileAndDatasetIdNot(previousFile, dataset.getDatasetId())) {
+            fileRepository.delete(previousFile);
+            keys.add(previousFile.getS3Key());
+        }
+        // 이전 대표 이미지가 이전 첨부 파일 자체였으면 위에서 파일과 함께 처리된다
+        boolean bannerIsPreviousFile = previousFile != null && previousFile.getS3Key().equals(previousBanner);
+        if (previousBanner != null && !bannerIsPreviousFile && !previousBanner.equals(dataset.getBannerImageUrl())) {
+            keys.add(previousBanner);
+        }
+        s3ObjectCleaner.deleteAfterCommit(keys);
     }
 
     @Override

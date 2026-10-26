@@ -63,7 +63,7 @@ class FileDownloadPermissionIntegrationTest extends IntegrationTestSupport {
     }
 
     @Test
-    void 삭제된_데이터셋_파일은_작성자만_받을_수_있다() {
+    void 삭제된_데이터셋_파일은_S3에서_지워져_작성자도_받을_수_없다() {
         User owner = user("owner@test.com", 0);
         User other = user("other@test.com", 0);
         File file = tempFile(owner, "application/zip", 1000);
@@ -72,7 +72,7 @@ class FileDownloadPermissionIntegrationTest extends IntegrationTestSupport {
         datasetService.deleteDataset(owner.getUserId(), datasetId);
 
         assertNotFound(other, file);
-        assertThat(fileService.getDownloadUrl(owner.getUserId(), file.getFileId()).presignedUrl()).isEqualTo(SIGNED_URL);
+        assertNotFound(owner, file);
     }
 
     @Test

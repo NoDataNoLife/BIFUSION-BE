@@ -36,6 +36,8 @@ public record JobResponse(
         boolean retryable,
         @Schema(description = "이 작업이 다시 시도한 원본 작업 번호 (없으면 null)")
         Long retryOfJobId,
+        @Schema(description = "실행 시 차감한 앤트. 실패·취소되면 전액 돌려받습니다. 차감 도입 전 작업은 null", example = "50")
+        Integer chargedPoints,
         @Schema(description = "생성 시각")
         LocalDateTime createdAt,
         @Schema(description = "AI 서버 접수 시각. 대기(PENDING) 시간은 이 값부터 잰다. 접수 전이면 null")
@@ -63,6 +65,7 @@ public record JobResponse(
                 job.getErrorMessage(),
                 job.isRetryable(),
                 job.getRetryOfJobId(),
+                job.getChargedPoints(),
                 job.getCreatedAt(),
                 job.getStartedAt(),
                 job.getStatus().isTerminal() ? null : mlUnreachableSince,

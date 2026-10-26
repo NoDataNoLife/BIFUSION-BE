@@ -1,11 +1,13 @@
 package com.nodatanolife.bifusion_be.domain.job.controller;
 
 import com.nodatanolife.bifusion_be.domain.job.dto.request.JobCreateRequest;
+import com.nodatanolife.bifusion_be.domain.job.dto.response.JobCostEstimateResponse;
 import com.nodatanolife.bifusion_be.domain.job.dto.response.JobResponse;
 import com.nodatanolife.bifusion_be.domain.job.dto.response.ProjectJobListResponse;
 import com.nodatanolife.bifusion_be.domain.job.entity.JobStatus;
 import com.nodatanolife.bifusion_be.domain.job.entity.JobType;
 import com.nodatanolife.bifusion_be.domain.job.service.JobCancelFacade;
+import com.nodatanolife.bifusion_be.domain.job.service.JobCostEstimateService;
 import com.nodatanolife.bifusion_be.domain.job.service.JobLaunchFacade;
 import com.nodatanolife.bifusion_be.domain.job.service.JobQueryService;
 import com.nodatanolife.bifusion_be.global.response.CommonResponse;
@@ -31,6 +33,7 @@ public class AiJobController {
     private final JobLaunchFacade jobLaunchFacade;
     private final JobCancelFacade jobCancelFacade;
     private final JobQueryService jobQueryService;
+    private final JobCostEstimateService jobCostEstimateService;
 
     @Operation(
             summary = "AI 작업 실행",
@@ -40,9 +43,10 @@ public class AiJobController {
                     - 학습 dataset_id는 증강 데이터셋 목록의 datasetId, 추론 model_id는 학습 모델 목록의 trainedModelId입니다.
                     - 생략한 설정값은 서버 기본값으로 채워지고, 실제 사용한 값이 기록됩니다.
                     - 진행 상태는 GET /api/v1/jobs/{jobId}로 확인합니다.
+                    - 실행 비용(앤트)은 작업을 만들 때 차감되고, 실패·취소되면 전액 돌려받습니다. 금액은 POST /api/v1/jobs/cost-estimate로 미리 확인합니다.
 
                     주요 오류
-                    - 400 J004 설정값 범위 위반 / J005 이미지 장수 위반 / J006 같은 이미지 중복 / J007 학습에 쓸 수 없는 증강 데이터 / F006 JPG·PNG 아님 / F007 이미지 합계 용량 초과
+                    - 400 J004 설정값 범위 위반 / J005 이미지 장수 위반 / J006 같은 이미지 중복 / J007 학습에 쓸 수 없는 증강 데이터 / F006 JPG·PNG 아님 / F007 이미지 합계 용량 초과 / IS004 앤트 부족(작업을 만들지 않음)
                     - 403 P002 프로젝트 멤버 아님 / F005 본인이 올린 파일 아님
                     - 404 J008 모델 없음 / F004 파일 없음
                     - 409 F008 이미 다른 작업에 쓴 이미지 / J009 다른 요청에 쓴 Idempotency-Key
@@ -59,6 +63,26 @@ public class AiJobController {
         JobResponse response = jobLaunchFacade.launch(
                 principal.getUser().getUserId(), projectId, request, idempotencyKey);
         return CommonResponse.success(response, "작업 요청이 접수되었습니다.");
+    }
+
+    @Operation(
+            summary = "AI 작업 예상 비용",
+            description = """
+                    실행 요청과 같은 본문을 보내면 실행 시 차감될 앤트와 현재 보유 앤트를 돌려줍니다. 작업은 만들지 않습니다.
+                    - 생략한 설정값은 실행할 때와 같은 서버 기본값으로 채워 계산합니다.
+                    - 비용은 설정값으로만 정해지고, 추론만 이미지 수(fileIds 장수)가 들어갑니다. 증강·학습은 이미지·데이터셋을 고르기 전에도 조회할 수 있습니다.
+                    - 다시 시도는 원본과 같은 설정이라 원본 작업의 chargedPoints와 같은 금액이 차감됩니다.
+
+                    주요 오류
+                    - 400 J004 설정값 범위 위반 / J005 추론 이미지 장수 위반 / J006 같은 이미지 중복"""
+    )
+    @PostMapping("/jobs/cost-estimate")
+    public CommonResponse<JobCostEstimateResponse> estimateJobCost(
+            @RequestBody JobCreateRequest request,
+            @AuthenticationPrincipal CustomOAuth2User principal
+    ) {
+        JobCostEstimateResponse response = jobCostEstimateService.estimate(principal.getUser().getUserId(), request);
+        return CommonResponse.success(response, "작업 예상 비용 조회 성공");
     }
 
     @Operation(
