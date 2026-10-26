@@ -121,14 +121,7 @@ public class ProjectInvitationServiceImpl implements ProjectInvitationService {
 
         if (inviteeOpt.isPresent()) {
             mailService.sendInvitationMail(email, project.getTitle(), inviter.getName());
-            notificationService.create(
-                    inviteeOpt.get(),
-                    NotificationType.PROJECT_INVITATION,
-                    "새로운 팀 프로젝트 초대",
-                    inviter.getName() + "님이 \"" + project.getTitle() + "\" 프로젝트로 초대했습니다.",
-                    TargetType.PROJECT,
-                    project.getProjectId()
-            );
+            notifyInvitation(inviteeOpt.get(), saved);
         } else {
             mailService.sendSignUpInvitationMail(email, project.getTitle(), inviter.getName());
         }
@@ -203,6 +196,7 @@ public class ProjectInvitationServiceImpl implements ProjectInvitationService {
 
     /**
      * 신규 가입자에게 미가입 시점에 도착해 있던 PENDING 초대를 연결한다.
+     * 미가입자에게는 초대 알림을 만들 수 없었으므로, 연결하면서 초대 알림을 보내 알림창에서 응답할 수 있게 한다.
      */
     @Override
     public void linkPendingInvitationsTo(User user) {
@@ -210,6 +204,23 @@ public class ProjectInvitationServiceImpl implements ProjectInvitationService {
 
         projectInvitationRepository
                 .findAllByInviteeEmailAndStatus(email, InvitationStatus.PENDING)
-                .forEach(invitation -> invitation.linkInvitee(user));
+                .forEach(invitation -> {
+                    invitation.linkInvitee(user);
+                    notifyInvitation(user, invitation);
+                });
+    }
+
+    /**
+     * 초대 알림. targetId에 초대 ID를 담아 알림창에서 바로 수락·거절할 수 있게 한다.
+     */
+    private void notifyInvitation(User invitee, ProjectInvitation invitation) {
+        notificationService.create(
+                invitee,
+                NotificationType.PROJECT_INVITATION,
+                "새로운 팀 프로젝트 초대",
+                invitation.getInviter().getName() + "님이 \"" + invitation.getProject().getTitle() + "\" 프로젝트로 초대했습니다.",
+                TargetType.INVITATION,
+                invitation.getProjectInvitationId()
+        );
     }
 }

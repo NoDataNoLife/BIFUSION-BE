@@ -48,6 +48,9 @@ public class NotificationController {
             description = """
                     category(전문가/검수, 데이터 증강, 팀/프로젝트, 커뮤니티), isRead, keyword로 필터링해 페이지 조회합니다.
                     알림창에서 지운 알림(DELETE /popup)도 포함됩니다. 영구 삭제(DELETE)한 알림만 빠집니다.
+                    프로젝트 초대 알림(PROJECT_INVITATION)에는 invitation(invitationId, projectId, status, role)이 함께 내려옵니다.
+                    status가 PENDING일 때만 PATCH /api/v1/projects/{projectId}/invitations/{invitationId}로 수락·거절할 수 있습니다.
+                    초대 알림의 targetType은 INVITATION(targetId=초대 ID)이며, 이전에 만들어진 초대 알림은 PROJECT(targetId=프로젝트 ID)입니다.
                     """
     )
     @GetMapping
@@ -69,6 +72,7 @@ public class NotificationController {
             summary = "알림창(팝업) 목록 조회",
             description = """
                     알림창용 목록입니다. 전체목록 조회와 파라미터·응답이 같고, 알림창에서 지운 알림(DELETE /popup)만 빠집니다.
+                    초대 알림의 invitation 필드도 전체목록 조회와 같습니다.
                     """
     )
     @GetMapping("/popup")
