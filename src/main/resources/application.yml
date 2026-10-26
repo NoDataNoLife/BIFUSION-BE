@@ -61,6 +61,19 @@ usage:
   # 월간 집계 기간을 나누는 타임존
   timezone: Asia/Seoul
 
+# 전문가 검수 신청 리워드(rewardPoints) 허용 범위. 검수 대상이 차지하는 스토리지 크기(MB, 올림)에 비례한다.
+# - 증강 데이터: 증강 결과 데이터셋 파일 크기 / 업로드 데이터셋: 첨부 파일 크기
+# - 최소 = max(min-points, MB × min-points-per-mb)
+# - 최대 = min(max-points, max(base-max-points, MB × max-points-per-mb))
+# 레시피나 크기를 알 수 없는 대상은 min-points ~ base-max-points.
+inspection:
+  reward:
+    min-points: 100
+    base-max-points: 1000
+    max-points: 10000
+    min-points-per-mb: 10
+    max-points-per-mb: 100
+
 jwt:
   secret: ${JWT_SECRET}
   access-expiration: 1800000

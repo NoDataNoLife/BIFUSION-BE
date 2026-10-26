@@ -175,6 +175,7 @@ public enum ErrorCode {
     INSPECTION_CANNOT_CANCEL(HttpStatus.CONFLICT, "IS010", "전문가가 검수를 시작했거나 이미 처리된 신청은 취소할 수 없습니다."),
     INSPECTION_FORKED_RECIPE_NOT_ALLOWED(HttpStatus.BAD_REQUEST, "IS011", "그대로 복제한 레시피는 전문가 검수를 신청할 수 없습니다."),
     INSPECTION_IN_PROGRESS_TARGET_DELETE(HttpStatus.CONFLICT, "IS012", "전문가 검수가 진행 중인 대상은 삭제할 수 없습니다."),
+    INSPECTION_REWARD_OUT_OF_RANGE(HttpStatus.BAD_REQUEST, "IS013", "검수 리워드가 허용 범위를 벗어났습니다."),
 
     /* ================================
      * Notification

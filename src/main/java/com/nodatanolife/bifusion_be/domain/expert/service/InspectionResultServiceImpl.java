@@ -7,6 +7,8 @@ import com.nodatanolife.bifusion_be.domain.expert.dto.response.InspectionTargetR
 import com.nodatanolife.bifusion_be.domain.expert.entity.InspectionRequest;
 import com.nodatanolife.bifusion_be.domain.expert.entity.InspectionRequestStatus;
 import com.nodatanolife.bifusion_be.domain.expert.entity.InspectionTargetType;
+import com.nodatanolife.bifusion_be.domain.file.entity.File;
+import com.nodatanolife.bifusion_be.domain.file.repository.FileRepository;
 import com.nodatanolife.bifusion_be.domain.job.entity.AugmentationConfig;
 import com.nodatanolife.bifusion_be.domain.expert.repository.InspectionRequestRepository;
 import com.nodatanolife.bifusion_be.domain.recipe.entity.Recipe;
@@ -18,6 +20,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.function.Function;
 import java.util.function.Predicate;
@@ -30,6 +33,8 @@ public class InspectionResultServiceImpl implements InspectionResultService {
 
     private final InspectionRequestRepository inspectionRequestRepository;
     private final RecipeForkHistoryRepository recipeForkHistoryRepository;
+    private final InspectionRewardPolicy inspectionRewardPolicy;
+    private final FileRepository fileRepository;
 
     @Override
     public InspectionSummary getSummary(InspectionTargetType targetType, Long targetId) {
@@ -61,9 +66,17 @@ public class InspectionResultServiceImpl implements InspectionResultService {
 
     @Override
     public Map<Long, InspectionTargetResponse> getAugmentedDataTargets(Long userId, List<AugmentationConfig> configs) {
+        // 리워드 범위의 기준인 증강 결과 파일 크기를 한 번에 조회한다
+        List<String> datasetKeys = configs.stream().map(AugmentationConfig::getDatasetKey).filter(Objects::nonNull).toList();
+        Map<String, Long> sizeByKey = datasetKeys.isEmpty() ? Map.of()
+                : fileRepository.findAllByS3KeyIn(datasetKeys).stream()
+                .filter(file -> file.getFileSize() != null)
+                .collect(Collectors.toMap(File::getS3Key, File::getFileSize, (existing, replacement) -> existing));
         return getTargets(userId, InspectionTargetType.AUGMENTED_DATA, configs,
                 AugmentationConfig::getAugmentationConfigId,
-                config -> config.getJob().isOwnedBy(userId));
+                config -> config.getJob().isOwnedBy(userId),
+                config -> inspectionRewardPolicy.forSize(
+                        config.getDatasetKey() != null ? sizeByKey.get(config.getDatasetKey()) : null));
     }
 
     /**
@@ -81,7 +94,8 @@ public class InspectionResultServiceImpl implements InspectionResultService {
                 Recipe::getRecipeId,
                 recipe -> recipe.getUser().getUserId().equals(userId)
                         && !copiedRecipeIds.contains(recipe.getRecipeId())
-                        && !recipe.isDeleted());
+                        && !recipe.isDeleted(),
+                recipe -> inspectionRewardPolicy.forRecipe());
     }
 
     /**
@@ -94,7 +108,8 @@ public class InspectionResultServiceImpl implements InspectionResultService {
                 .toList();
         return getTargets(userId, InspectionTargetType.UPLOADED_DATA, uploaded,
                 Dataset::getDatasetId,
-                dataset -> dataset.getUser().getUserId().equals(userId) && !dataset.isDeleted());
+                dataset -> dataset.getUser().getUserId().equals(userId) && !dataset.isDeleted(),
+                inspectionRewardPolicy::forDataset);
     }
 
     /**
@@ -104,7 +119,8 @@ public class InspectionResultServiceImpl implements InspectionResultService {
      *   검수 신청 API(InspectionServiceImpl.createInspection)의 소유자·중복 검증과 같은 기준이며, 포인트는 신청 시 검증한다.
      */
     private <T> Map<Long, InspectionTargetResponse> getTargets(Long userId, InspectionTargetType targetType, List<T> targets,
-                                                             Function<T, Long> idOf, Predicate<T> eligible) {
+                                                             Function<T, Long> idOf, Predicate<T> eligible,
+                                                             Function<T, InspectionRewardPolicy.RewardRange> rewardRangeOf) {
         if (targets.isEmpty()) {
             return Map.of();
         }
@@ -127,7 +143,9 @@ public class InspectionResultServiceImpl implements InspectionResultService {
                                     && request.getStatus() != InspectionRequestStatus.REJECTED
                                     && request.getStatus() != InspectionRequestStatus.CANCELLED);
                     boolean canRequest = eligible.test(target) && !hasActiveRequest;
-                    return InspectionTargetResponse.of(targetType, idOf.apply(target), canRequest, latest);
+                    InspectionRewardPolicy.RewardRange range = rewardRangeOf.apply(target);
+                    return InspectionTargetResponse.of(targetType, idOf.apply(target), canRequest, latest,
+                            range.min(), range.max());
                 }
         ));
     }

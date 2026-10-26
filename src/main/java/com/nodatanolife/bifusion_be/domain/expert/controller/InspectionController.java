@@ -41,6 +41,10 @@ public class InspectionController {
                         원본 내용을 불러와 다시 등록한 레시피(등록 API + forkedFromId)는 신청 가능
                       - UPLOADED_DATA: 업로드 Dataset ID. 증강 데이터셋은 AUGMENTED_DATA로 신청
                     - reason: 검증 요청 메모(필수), rewardPoints: 전문가 리워드(신청 즉시 차감)
+                    - rewardPoints는 대상별 범위 안이어야 합니다(벗어나면 400, IS013). 범위는 각 화면 응답의 inspectionTarget.minRewardPoints·maxRewardPoints
+                      - 대상의 스토리지 크기(MB, 올림) 기준. 증강 데이터는 증강 결과 데이터셋 파일, 업로드 데이터셋은 첨부 파일
+                      - 최소: max(100, MB × 10), 최대: min(10,000, max(1,000, MB × 100))
+                      - 레시피와 크기를 알 수 없는 대상: 100 ~ 1,000
                     - 대상이 없거나 삭제됐으면 404, 본인 소유 대상만 신청 가능(아니면 403), 중복 신청 409, 포인트 부족 400
                     - 신청과 동시에 전문가 1명에게 자동 배정됩니다 (진행 중인 검수가 가장 적은 전문가, 신청자 본인 제외).
                       배정할 전문가가 없으면 409(IS008)이며 포인트는 차감되지 않습니다.

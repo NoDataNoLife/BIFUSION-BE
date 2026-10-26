@@ -21,6 +21,8 @@ import com.nodatanolife.bifusion_be.domain.job.entity.AugmentationConfig;
 import com.nodatanolife.bifusion_be.domain.job.entity.AugmentationSampleImage;
 import com.nodatanolife.bifusion_be.domain.job.repository.AugmentationConfigRepository;
 import com.nodatanolife.bifusion_be.domain.job.repository.AugmentationSampleImageRepository;
+import com.nodatanolife.bifusion_be.domain.file.entity.File;
+import com.nodatanolife.bifusion_be.domain.file.repository.FileRepository;
 import com.nodatanolife.bifusion_be.domain.notification.entity.NotificationType;
 import com.nodatanolife.bifusion_be.domain.notification.entity.TargetType;
 import com.nodatanolife.bifusion_be.domain.notification.service.NotificationService;
@@ -41,6 +43,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -64,6 +67,8 @@ public class InspectionServiceImpl implements InspectionService {
     private final ExpertTaskRepository expertTaskRepository;
     private final RewardHistoryRepository rewardHistoryRepository;
     private final NotificationService notificationService;
+    private final InspectionRewardPolicy inspectionRewardPolicy;
+    private final FileRepository fileRepository;
 
     /**
      * 전문가 검수 신청
@@ -88,7 +93,8 @@ public class InspectionServiceImpl implements InspectionService {
         Long targetId = request.getTargetId();
         Integer rewardPoints = request.getRewardPoints();
 
-        validateTargetOwnership(user, targetType, targetId);
+        InspectionRewardPolicy.RewardRange rewardRange = validateTargetOwnership(user, targetType, targetId);
+        inspectionRewardPolicy.validate(rewardPoints, rewardRange);
 
         Optional<InspectionRequest> existing = inspectionRequestRepository
                 .findForUpdate(user, targetType, targetId);
@@ -457,13 +463,16 @@ public class InspectionServiceImpl implements InspectionService {
      * - RECIPE: 삭제된 레시피는 404, 원본을 그대로 복제한 사본은 남의 레시피 그대로라 400(INSPECTION_FORKED_RECIPE_NOT_ALLOWED).
      *   원본 내용을 불러와 다시 등록한 레시피는 forkedFrom이 있어도 신청할 수 있다.
      * - UPLOADED_DATA: 삭제됐거나 업로드(UPLOADED) 데이터셋이 아니면 404. 증강 데이터셋은 AUGMENTED_DATA로 신청한다.
+     *
+     * @return 대상의 리워드 허용 범위 (InspectionRewardPolicy)
      */
-    private void validateTargetOwnership(User user, InspectionTargetType targetType, Long targetId) {
-        switch (targetType) {
+    private InspectionRewardPolicy.RewardRange validateTargetOwnership(User user, InspectionTargetType targetType, Long targetId) {
+        return switch (targetType) {
             case AUGMENTED_DATA -> {
                 AugmentationConfig config = augmentationConfigRepository.findById(targetId)
                         .orElseThrow(() -> new BusinessException(ErrorCode.INSPECTION_TARGET_NOT_FOUND));
                 validateOwner(user, config.getJob().getUser());
+                yield inspectionRewardPolicy.forSize(augmentedDatasetSize(config));
             }
             case RECIPE -> {
                 Recipe recipe = recipeRepository.findByRecipeIdAndDeletedAtIsNull(targetId)
@@ -472,14 +481,28 @@ public class InspectionServiceImpl implements InspectionService {
                 if (recipeForkHistoryRepository.existsByForkedRecipe(recipe)) {
                     throw new BusinessException(ErrorCode.INSPECTION_FORKED_RECIPE_NOT_ALLOWED);
                 }
+                yield inspectionRewardPolicy.forRecipe();
             }
             case UPLOADED_DATA -> {
                 Dataset dataset = datasetRepository.findById(targetId)
                         .filter(found -> !found.isDeleted() && found.getType() == DatasetType.UPLOADED)
                         .orElseThrow(() -> new BusinessException(ErrorCode.INSPECTION_TARGET_NOT_FOUND));
                 validateOwner(user, dataset.getUser());
+                yield inspectionRewardPolicy.forDataset(dataset);
             }
+        };
+    }
+
+    // 증강 결과 데이터셋 파일 크기. 결과 파일이 아직 없으면 null
+    private Long augmentedDatasetSize(AugmentationConfig config) {
+        if (config.getDatasetKey() == null) {
+            return null;
         }
+        return fileRepository.findAllByS3KeyIn(List.of(config.getDatasetKey())).stream()
+                .map(File::getFileSize)
+                .filter(Objects::nonNull)
+                .findFirst()
+                .orElse(null);
     }
 
     private static void validateOwner(User user, User owner) {
