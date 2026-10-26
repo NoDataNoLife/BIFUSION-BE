@@ -1,9 +1,11 @@
 package com.nodatanolife.bifusion_be.domain.expert.service;
 
+import com.nodatanolife.bifusion_be.domain.dataset.entity.Dataset;
 import com.nodatanolife.bifusion_be.domain.expert.dto.response.InspectionSummary;
 import com.nodatanolife.bifusion_be.domain.expert.dto.response.InspectionTargetResponse;
 import com.nodatanolife.bifusion_be.domain.job.entity.AugmentationConfig;
 import com.nodatanolife.bifusion_be.domain.expert.entity.InspectionTargetType;
+import com.nodatanolife.bifusion_be.domain.recipe.entity.Recipe;
 
 import java.util.List;
 import java.util.Map;
@@ -25,4 +27,16 @@ public interface InspectionResultService {
      * @return AugmentationConfig ID → 검수 신청 대상 정보
      */
     Map<Long, InspectionTargetResponse> getAugmentedDataTargets(Long userId, List<AugmentationConfig> configs);
+
+    /**
+     * @return Recipe ID → 검수 신청 대상 정보
+     */
+    Map<Long, InspectionTargetResponse> getRecipeTargets(Long userId, List<Recipe> recipes);
+
+    /**
+     * 업로드(UPLOADED) 데이터셋만 담는다. 증강 데이터셋은 결과에 없다.
+     *
+     * @return Dataset ID → 검수 신청 대상 정보
+     */
+    Map<Long, InspectionTargetResponse> getUploadedDataTargets(Long userId, List<Dataset> datasets);
 }

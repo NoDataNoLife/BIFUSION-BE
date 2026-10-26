@@ -1,8 +1,10 @@
 package com.nodatanolife.bifusion_be.domain.dataset.service;
 
 import com.nodatanolife.bifusion_be.domain.expert.dto.response.InspectionSummary;
+import com.nodatanolife.bifusion_be.domain.expert.dto.response.InspectionTargetResponse;
 import com.nodatanolife.bifusion_be.domain.expert.entity.InspectionTargetType;
 import com.nodatanolife.bifusion_be.domain.expert.service.InspectionResultService;
+import com.nodatanolife.bifusion_be.domain.expert.service.InspectionService;
 import com.nodatanolife.bifusion_be.domain.tag.entity.Tag;
 import com.nodatanolife.bifusion_be.domain.tag.entity.TagMapping;
 import com.nodatanolife.bifusion_be.domain.tag.repository.TagRepository;
@@ -44,6 +46,7 @@ public class DatasetServiceImpl implements DatasetService {
     private final TagRepository tagRepository;
     private final TagMappingRepository tagMappingRepository;
     private final InspectionResultService inspectionResultService;
+    private final InspectionService inspectionService;
 
 
     /**
@@ -154,10 +157,13 @@ public class DatasetServiceImpl implements DatasetService {
                 : InspectionTargetType.UPLOADED_DATA;
         Map<Long, InspectionSummary> verificationMap =
                 inspectionResultService.getSummaries(targetType, ids);
+        Map<Long, InspectionTargetResponse> targetMap =
+                inspectionResultService.getUploadedDataTargets(userId, datasetPage.getContent());
 
         return datasetPage.map(dataset -> MyDatasetListResponse.from(
                 dataset,
-                verificationMap.getOrDefault(dataset.getDatasetId(), InspectionSummary.none())
+                verificationMap.getOrDefault(dataset.getDatasetId(), InspectionSummary.none()),
+                targetMap.get(dataset.getDatasetId())
         ));
     }
 
@@ -186,8 +192,12 @@ public class DatasetServiceImpl implements DatasetService {
 
         InspectionSummary verificationSummary =
                 inspectionResultService.getSummary(InspectionTargetType.UPLOADED_DATA, datasetId);
+        // 검수 신청 정보(신청 ID 포함)는 작성자 본인에게만 내려준다. 증강 데이터셋은 결과 맵에 없어 null
+        InspectionTargetResponse inspectionTarget = dataset.getUser().getUserId().equals(userId)
+                ? inspectionResultService.getUploadedDataTargets(userId, List.of(dataset)).get(datasetId)
+                : null;
 
-        return DatasetDetailResponse.from(dataset, tags, verificationSummary);
+        return DatasetDetailResponse.from(dataset, tags, verificationSummary, inspectionTarget);
     }
 
     /**
@@ -204,6 +214,10 @@ public class DatasetServiceImpl implements DatasetService {
             throw new BusinessException(ErrorCode.POST_ACCESS_DENIED);
         }
 
+        // 전문가가 시작하기 전인 검수 신청은 자동 취소·환불하고, 이미 시작됐으면 삭제를 막는다(409)
+        if (dataset.getType() == DatasetType.UPLOADED) {
+            inspectionService.cancelForTargetDeletion(userId, InspectionTargetType.UPLOADED_DATA, datasetId);
+        }
         dataset.delete();
     }
 

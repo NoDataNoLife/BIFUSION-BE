@@ -2,6 +2,7 @@ package com.nodatanolife.bifusion_be.domain.recipe.dto.response;
 
 import com.nodatanolife.bifusion_be.domain.expert.dto.response.InspectionResultResponse;
 import com.nodatanolife.bifusion_be.domain.expert.dto.response.InspectionSummary;
+import com.nodatanolife.bifusion_be.domain.expert.dto.response.InspectionTargetResponse;
 import com.nodatanolife.bifusion_be.domain.expert.entity.InspectionStatus;
 import com.nodatanolife.bifusion_be.domain.recipe.entity.Recipe;
 import com.nodatanolife.bifusion_be.domain.user.entity.User;
@@ -32,6 +33,8 @@ public record RecipeDetailResponse(
         Settings settings,
         InspectionStatus inspectionStatus,
         InspectionResultResponse inspectionResult,
+        // 검수 신청 버튼·취소용. 작성자 본인에게만 내려주고 그 외에는 null
+        InspectionTargetResponse inspectionTarget,
         boolean isDeleted
 ) {
     /**
@@ -88,7 +91,8 @@ public record RecipeDetailResponse(
     /**
      * @param reviewCount 최상위 리뷰 + 대댓글 합산 (리뷰 목록 API의 totalElements는 최상위 리뷰 수라 다르다)
      */
-    public static RecipeDetailResponse from(Recipe recipe, InspectionSummary verificationSummary, long reviewCount) {
+    public static RecipeDetailResponse from(Recipe recipe, InspectionSummary verificationSummary, long reviewCount,
+                                            InspectionTargetResponse inspectionTarget) {
         return new RecipeDetailResponse(
                 recipe.getRecipeId(),
                 recipe.getTitle(),
@@ -106,6 +110,7 @@ public record RecipeDetailResponse(
                 Settings.from(recipe),
                 verificationSummary.status(),
                 verificationSummary.result(),
+                inspectionTarget,
                 recipe.isDeleted()
         );
     }

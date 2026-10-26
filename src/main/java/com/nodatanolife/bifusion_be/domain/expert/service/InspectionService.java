@@ -6,6 +6,7 @@ import com.nodatanolife.bifusion_be.domain.expert.dto.response.InspectionDetailR
 import com.nodatanolife.bifusion_be.domain.expert.dto.response.InspectionDraftResponse;
 import com.nodatanolife.bifusion_be.domain.expert.dto.response.InspectionImageCommentResponse;
 import com.nodatanolife.bifusion_be.domain.expert.dto.response.InspectionResponse;
+import com.nodatanolife.bifusion_be.domain.expert.entity.InspectionTargetType;
 import com.nodatanolife.bifusion_be.domain.user.entity.User;
 
 public interface InspectionService {
@@ -16,6 +17,11 @@ public interface InspectionService {
      * 신청자 취소. 전문가가 검수를 시작하기 전에만 가능하며 포인트를 환불한다.
      */
     InspectionResponse cancelInspection(User user, Long inspectionRequestId);
+
+    /**
+     * 검수 대상 삭제 전 정리. 시작 전 신청은 취소·환불하고, 전문가가 검수를 시작했으면 삭제를 막는다(409).
+     */
+    void cancelForTargetDeletion(Long userId, InspectionTargetType targetType, Long targetId);
 
     InspectionDetailResponse getInspectionDetail(User expert, Long inspectionId);
 

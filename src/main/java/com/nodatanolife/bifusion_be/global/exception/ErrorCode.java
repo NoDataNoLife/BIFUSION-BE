@@ -173,6 +173,8 @@ public enum ErrorCode {
     INSPECTION_NO_AVAILABLE_EXPERT(HttpStatus.CONFLICT, "IS008", "배정할 수 있는 전문가가 없습니다. 잠시 후 다시 신청해 주세요."),
     INSPECTION_NOT_FOUND(HttpStatus.NOT_FOUND, "IS009", "검수 신청을 찾을 수 없습니다."),
     INSPECTION_CANNOT_CANCEL(HttpStatus.CONFLICT, "IS010", "전문가가 검수를 시작했거나 이미 처리된 신청은 취소할 수 없습니다."),
+    INSPECTION_FORKED_RECIPE_NOT_ALLOWED(HttpStatus.BAD_REQUEST, "IS011", "그대로 복제한 레시피는 전문가 검수를 신청할 수 없습니다."),
+    INSPECTION_IN_PROGRESS_TARGET_DELETE(HttpStatus.CONFLICT, "IS012", "전문가 검수가 진행 중인 대상은 삭제할 수 없습니다."),
 
     /* ================================
      * Notification

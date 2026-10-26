@@ -2,6 +2,7 @@ package com.nodatanolife.bifusion_be.domain.dataset.dto.response;
 
 import com.nodatanolife.bifusion_be.domain.dataset.entity.Dataset;
 import com.nodatanolife.bifusion_be.domain.expert.dto.response.InspectionSummary;
+import com.nodatanolife.bifusion_be.domain.expert.dto.response.InspectionTargetResponse;
 import com.nodatanolife.bifusion_be.domain.expert.entity.InspectionStatus;
 import com.nodatanolife.bifusion_be.domain.file.presign.PresignedUrl;
 
@@ -21,9 +22,12 @@ public record MyDatasetListResponse(
         Long totalSize,
         Long fileCount,
         LocalDate uploadedAt,
-        List<String> fileFormats
+        List<String> fileFormats,
+        // 검수 신청 버튼·취소용. 업로드 데이터셋에만 채우고 증강 데이터셋은 null
+        InspectionTargetResponse inspectionTarget
 ) {
-    public static MyDatasetListResponse from(Dataset dataset, InspectionSummary verificationSummary) {
+    public static MyDatasetListResponse from(Dataset dataset, InspectionSummary verificationSummary,
+                                             InspectionTargetResponse inspectionTarget) {
         return new MyDatasetListResponse(
                 dataset.getDatasetId(),
                 dataset.getTitle(),
@@ -32,7 +36,8 @@ public record MyDatasetListResponse(
                 dataset.getFile() != null ? dataset.getFile().getFileSize() : null,
                 dataset.getFileCount() != null ? dataset.getFileCount().longValue() : 0L,
                 dataset.getCreatedAt().toLocalDate(),
-                dataset.getFormat() != null ? List.of(dataset.getFormat()) : List.of()
+                dataset.getFormat() != null ? List.of(dataset.getFormat()) : List.of(),
+                inspectionTarget
         );
     }
 }

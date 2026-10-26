@@ -2,7 +2,6 @@ package com.nodatanolife.bifusion_be.domain.expert.repository;
 
 import com.nodatanolife.bifusion_be.domain.expert.entity.ExpertTask;
 import com.nodatanolife.bifusion_be.domain.expert.entity.InspectionRequest;
-import com.nodatanolife.bifusion_be.domain.expert.entity.InspectionTargetType;
 import com.nodatanolife.bifusion_be.domain.user.entity.User;
 import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -34,13 +33,9 @@ public interface ExpertTaskRepository extends JpaRepository<ExpertTask, Long> {
             JOIN FETCH t.inspectionRequest v
             JOIN FETCH v.user
             WHERE t.expert = :expert
-              AND v.targetType = :targetType
             ORDER BY t.updatedAt DESC
             """)
-    List<ExpertTask> findMyReviewTasks(
-            @Param("expert") User expert,
-            @Param("targetType") InspectionTargetType targetType
-    );
+    List<ExpertTask> findMyReviewTasks(@Param("expert") User expert);
 
     @Query("SELECT t.status AS status, COUNT(t) AS count FROM ExpertTask t WHERE t.expert = :expert GROUP BY t.status")
     List<StatusCount> countGroupedByStatus(@Param("expert") User expert);

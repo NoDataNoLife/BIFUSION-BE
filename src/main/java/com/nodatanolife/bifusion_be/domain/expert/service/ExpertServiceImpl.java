@@ -1,5 +1,7 @@
 package com.nodatanolife.bifusion_be.domain.expert.service;
 
+import com.nodatanolife.bifusion_be.domain.dataset.entity.Dataset;
+import com.nodatanolife.bifusion_be.domain.dataset.repository.DatasetRepository;
 import com.nodatanolife.bifusion_be.domain.expert.dto.response.ExpertApplicationResponse;
 import com.nodatanolife.bifusion_be.domain.expert.dto.response.ExpertPerformanceResponse;
 import com.nodatanolife.bifusion_be.domain.expert.dto.response.ExpertTaskGroupedResponse;
@@ -14,6 +16,8 @@ import com.nodatanolife.bifusion_be.domain.expert.repository.InspectionRequestRe
 import com.nodatanolife.bifusion_be.domain.file.service.S3Service;
 import com.nodatanolife.bifusion_be.domain.job.entity.AugmentationConfig;
 import com.nodatanolife.bifusion_be.domain.job.repository.AugmentationConfigRepository;
+import com.nodatanolife.bifusion_be.domain.recipe.entity.Recipe;
+import com.nodatanolife.bifusion_be.domain.recipe.repository.RecipeRepository;
 import com.nodatanolife.bifusion_be.domain.user.entity.User;
 import com.nodatanolife.bifusion_be.domain.user.repository.RewardHistoryRepository;
 import com.nodatanolife.bifusion_be.domain.user.repository.UserRepository;
@@ -49,6 +53,8 @@ public class ExpertServiceImpl implements ExpertService {
     private final ExpertTaskRepository expertTaskRepository;
     private final InspectionRequestRepository inspectionRequestRepository;
     private final AugmentationConfigRepository augmentationConfigRepository;
+    private final RecipeRepository recipeRepository;
+    private final DatasetRepository datasetRepository;
     private final RewardHistoryRepository rewardHistoryRepository;
     private final UserRepository userRepository;
     private final S3Service s3Service;
@@ -197,7 +203,8 @@ public class ExpertServiceImpl implements ExpertService {
     /**
      * 전문가 검수 요청 목록 조회
      * 전문가 인증(APPROVED)을 받지 않은 사용자는 조회할 수 없다.
-     * 증강 데이터(AUGMENTED_DATA) 검수만 대상으로 하며, 검수 상태(PENDING/IN_PROGRESS/COMPLETED)별로 묶어 반환한다.
+     * 증강 데이터·레시피·업로드 데이터셋 검수를 모두 담고, 검수 상태(PENDING/IN_PROGRESS/COMPLETED)별로 묶어 반환한다.
+     * 대상 이름은 종류별로 한 번씩 일괄 조회한다 (N+1 방지).
      */
     @Override
     @Transactional(readOnly = true)
@@ -206,16 +213,24 @@ public class ExpertServiceImpl implements ExpertService {
             throw new BusinessException(ErrorCode.EXPERT_NOT_CERTIFIED);
         }
 
-        List<ExpertTask> tasks = expertTaskRepository.findMyReviewTasks(user, InspectionTargetType.AUGMENTED_DATA);
+        List<ExpertTask> tasks = expertTaskRepository.findMyReviewTasks(user);
 
-        List<Long> targetIds = tasks.stream()
-                .map(t -> t.getInspectionRequest().getTargetId())
-                .toList();
-        Map<Long, AugmentationConfig> configById = augmentationConfigRepository.findAllById(targetIds).stream()
-                .collect(Collectors.toMap(AugmentationConfig::getAugmentationConfigId, c -> c, (existing, replacement) -> existing));
+        Map<InspectionTargetType, Map<Long, String>> titlesByType = Map.of(
+                InspectionTargetType.AUGMENTED_DATA, augmentationConfigRepository
+                        .findAllById(targetIdsOf(tasks, InspectionTargetType.AUGMENTED_DATA)).stream()
+                        .filter(c -> c.getJob() != null && c.getJob().getProject() != null)
+                        .collect(Collectors.toMap(AugmentationConfig::getAugmentationConfigId,
+                                c -> c.getJob().getProject().getTitle(), (existing, replacement) -> existing)),
+                InspectionTargetType.RECIPE, recipeRepository
+                        .findAllById(targetIdsOf(tasks, InspectionTargetType.RECIPE)).stream()
+                        .collect(Collectors.toMap(Recipe::getRecipeId, Recipe::getTitle, (existing, replacement) -> existing)),
+                InspectionTargetType.UPLOADED_DATA, datasetRepository
+                        .findAllById(targetIdsOf(tasks, InspectionTargetType.UPLOADED_DATA)).stream()
+                        .collect(Collectors.toMap(Dataset::getDatasetId, Dataset::getTitle, (existing, replacement) -> existing))
+        );
 
         Map<String, List<ExpertTaskSummaryResponse>> grouped = tasks.stream()
-                .map(t -> ExpertTaskSummaryResponse.of(t, configById.get(t.getInspectionRequest().getTargetId())))
+                .map(t -> ExpertTaskSummaryResponse.of(t, titleOf(titlesByType, t)))
                 .collect(Collectors.groupingBy(ExpertTaskSummaryResponse::status));
 
         return new ExpertTaskGroupedResponse(
@@ -223,6 +238,20 @@ public class ExpertServiceImpl implements ExpertService {
                 grouped.getOrDefault(STATUS_IN_PROGRESS, List.of()),
                 grouped.getOrDefault(STATUS_COMPLETED, List.of())
         );
+    }
+
+    // targetType이 비어 있는 과거 row는 대상을 알 수 없어 null(→ "알 수 없는 대상")로 둔다.
+    private static String titleOf(Map<InspectionTargetType, Map<Long, String>> titlesByType, ExpertTask task) {
+        InspectionTargetType targetType = task.getInspectionRequest().getTargetType();
+        return targetType == null ? null : titlesByType.get(targetType).get(task.getInspectionRequest().getTargetId());
+    }
+
+    private static List<Long> targetIdsOf(List<ExpertTask> tasks, InspectionTargetType targetType) {
+        return tasks.stream()
+                .filter(t -> t.getInspectionRequest().getTargetType() == targetType)
+                .map(t -> t.getInspectionRequest().getTargetId())
+                .distinct()
+                .toList();
     }
 
     private void validateFile(MultipartFile file) {

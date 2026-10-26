@@ -1,6 +1,7 @@
 package com.nodatanolife.bifusion_be.domain.recipe.dto.response;
 
 import com.nodatanolife.bifusion_be.domain.expert.dto.response.InspectionSummary;
+import com.nodatanolife.bifusion_be.domain.expert.dto.response.InspectionTargetResponse;
 import com.nodatanolife.bifusion_be.domain.expert.entity.InspectionStatus;
 import com.nodatanolife.bifusion_be.domain.file.presign.PresignedUrl;
 import com.nodatanolife.bifusion_be.domain.recipe.entity.Recipe;
@@ -19,9 +20,12 @@ public record MyRecipeListResponse(
         Long forkCount,
         Long viewCount,
         @PresignedUrl String bannerImageUrl,
-        boolean isDeleted
+        boolean isDeleted,
+        // 검수 신청 버튼·취소용 (그대로 복제한 사본은 canRequest=false, 다시 등록한 포크는 신청 가능)
+        InspectionTargetResponse inspectionTarget
 ) {
-    public static MyRecipeListResponse from(Recipe recipe, InspectionSummary verificationSummary) {
+    public static MyRecipeListResponse from(Recipe recipe, InspectionSummary verificationSummary,
+                                            InspectionTargetResponse inspectionTarget) {
         return new MyRecipeListResponse(
                 recipe.getRecipeId(),
                 recipe.getTitle(),
@@ -31,7 +35,8 @@ public record MyRecipeListResponse(
                 recipe.getForkCount() != null ? recipe.getForkCount().longValue() : 0L,
                 recipe.getViewCount() != null ? recipe.getViewCount().longValue() : 0L,
                 recipe.getThumbnailUrl(),
-                recipe.isDeleted()
+                recipe.isDeleted(),
+                inspectionTarget
         );
     }
 }
