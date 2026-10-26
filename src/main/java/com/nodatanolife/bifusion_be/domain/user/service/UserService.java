@@ -3,7 +3,6 @@ package com.nodatanolife.bifusion_be.domain.user.service;
 
 import com.nodatanolife.bifusion_be.domain.user.dto.response.*;
 import com.nodatanolife.bifusion_be.domain.user.dto.request.OnboardingRequest;
-import com.nodatanolife.bifusion_be.domain.user.entity.SubscriptionTier;
 import org.springframework.web.multipart.MultipartFile;
 
 
@@ -22,8 +21,6 @@ public interface UserService {
     LocationUpdateResponse updateLocation(Long userId, String location);
 
     WebsiteUpdateResponse updateWebsiteUrl(Long userId, String websiteUrl);
-
-    PlanChangeResponse changePlan(Long userId, SubscriptionTier newTier);
 
     UserResponse onboard(Long userId, OnboardingRequest request);
 
