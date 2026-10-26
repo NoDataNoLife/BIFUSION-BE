@@ -22,20 +22,25 @@ public record InspectionTargetResponse(
         @Schema(description = "가장 최근 신청 상태 (PENDING/APPROVED/REJECTED/CANCELLED). 신청 이력이 없으면 null")
         InspectionRequestStatus status,
         @Schema(description = "승인·반려 결과 (검수자·점수·코멘트·처리 시각). 처리 전이거나 신청 이력이 없으면 null")
-        InspectionResultResponse result
+        InspectionResultResponse result,
+        @Schema(description = "신청할 수 있는 최소 리워드. 대상의 스토리지 크기(MB)에 비례", example = "100")
+        int minRewardPoints,
+        @Schema(description = "신청할 수 있는 최대 리워드. 대상의 스토리지 크기(MB)에 비례", example = "1000")
+        int maxRewardPoints
 ) {
 
     /**
      * @param latest 대상의 가장 최근 신청. 없으면 null
      */
     public static InspectionTargetResponse of(InspectionTargetType targetType, Long targetId, boolean canRequest,
-                                              InspectionRequest latest) {
+                                              InspectionRequest latest, int minRewardPoints, int maxRewardPoints) {
         if (latest == null) {
-            return new InspectionTargetResponse(targetType, targetId, null, canRequest, null, null);
+            return new InspectionTargetResponse(targetType, targetId, null, canRequest, null, null,
+                    minRewardPoints, maxRewardPoints);
         }
         InspectionRequestStatus status = latest.getStatus();
         boolean processed = status == InspectionRequestStatus.APPROVED || status == InspectionRequestStatus.REJECTED;
         return new InspectionTargetResponse(targetType, targetId, latest.getInspectionRequestId(), canRequest, status,
-                processed ? InspectionResultResponse.from(latest) : null);
+                processed ? InspectionResultResponse.from(latest) : null, minRewardPoints, maxRewardPoints);
     }
 }

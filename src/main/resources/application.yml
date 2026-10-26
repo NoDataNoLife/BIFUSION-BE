@@ -61,6 +61,42 @@ usage:
   # 월간 집계 기간을 나누는 타임존
   timezone: Asia/Seoul
 
+# 전문가 검수 신청 리워드(rewardPoints) 허용 범위. 검수 대상이 차지하는 스토리지 크기(MB, 올림)에 비례한다.
+# - 증강 데이터: 증강 결과 데이터셋 파일 크기 / 업로드 데이터셋: 첨부 파일 크기
+# - 최소 = max(min-points, MB × min-points-per-mb)
+# - 최대 = min(max-points, max(base-max-points, MB × max-points-per-mb))
+# 레시피나 크기를 알 수 없는 대상은 min-points ~ base-max-points. (임시 단가 1앤트 = 10원)
+inspection:
+  reward:
+    min-points: 500
+    base-max-points: 3000
+    max-points: 10000
+    min-points-per-mb: 10
+    max-points-per-mb: 100
+  # 일회성: 전문가 배정 없이 대기 중으로 남은 예전 검수 신청을 취소·환불한다. 한 번 켜고 띄운 뒤 다시 끈다.
+  unassigned-cleanup:
+    enabled: ${INSPECTION_UNASSIGNED_CLEANUP_ENABLED:false}
+
+# 일회성: 대표 이미지가 비어 있는 기존 업로드 데이터셋에 첨부 파일에서 뽑은 대표 이미지를 채운다. 한 번 켜고 띄운 뒤 다시 끈다.
+dataset:
+  banner-backfill:
+    enabled: ${DATASET_BANNER_BACKFILL_ENABLED:false}
+
+# 서비스 이용에 따른 포인트(앤트) 지급·차감. 임시 단가 1앤트 = 10원. 0으로 두면 그 항목은 지급·차감하지 않는다.
+points:
+  # 가입 시 지급 (결제 도입 전까지 처음 쓸 포인트)
+  signup-bonus: 500
+  # 다른 사람 레시피 포크: 포크한 사람 차감, 원본 작성자 지급 (수수료 10%)
+  recipe-fork-cost: 30
+  recipe-fork-reward: 27
+  # 전문가 Q&A: 질문 등록 시 차감, 전문가 답변 시 지급 (질문 하나당 전문가 한 명에게 1회)
+  qna-question-cost: 100
+  qna-answer-reward: 90
+  # 앤트 충전 (POST /api/v1/points/charge). 결제 연동 전 체험용이라 요청만으로 지급된다. 운영에서 막으려면 false
+  charge:
+    enabled: ${POINT_CHARGE_ENABLED:true}
+    options: [500, 1000, 3000, 5000]
+
 jwt:
   secret: ${JWT_SECRET}
   access-expiration: 1800000
@@ -126,9 +162,9 @@ ml:
     # ML이 계속 RUNNING만 돌려줄 때(워커 멈춤)의 상한 (ML 접수 시각부터)
     running-timeout: 72h
     # ML이 PENDING을 이 시간 넘게 돌려주면 경고 로그 (ML 큐 대기·작업 유실 확인용, 같은 간격으로 반복)
-    pending-warn-after: 10m
+    pending-warn-after: 1m
     # ML 연결 불가(연결 오류·5xx·프록시 404)가 이 시간 넘게 이어지면 진행 중 Job을 ML_UNREACHABLE로 실패 처리
-    unreachable-timeout: ${ML_UNREACHABLE_TIMEOUT:30m}
+    unreachable-timeout: ${ML_UNREACHABLE_TIMEOUT:1m}
   cancel:
     # ML 취소 엔드포인트 배포 전까지 false. false면 취소 API는 검증 후 503, 폴러의 타임아웃 취소 호출도 생략
     enabled: ${ML_CANCEL_ENABLED:false}

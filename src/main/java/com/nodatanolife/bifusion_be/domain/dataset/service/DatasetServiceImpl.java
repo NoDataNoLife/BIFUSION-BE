@@ -1,8 +1,10 @@
 package com.nodatanolife.bifusion_be.domain.dataset.service;
 
 import com.nodatanolife.bifusion_be.domain.expert.dto.response.InspectionSummary;
+import com.nodatanolife.bifusion_be.domain.expert.dto.response.InspectionTargetResponse;
 import com.nodatanolife.bifusion_be.domain.expert.entity.InspectionTargetType;
 import com.nodatanolife.bifusion_be.domain.expert.service.InspectionResultService;
+import com.nodatanolife.bifusion_be.domain.expert.service.InspectionService;
 import com.nodatanolife.bifusion_be.domain.tag.entity.Tag;
 import com.nodatanolife.bifusion_be.domain.tag.entity.TagMapping;
 import com.nodatanolife.bifusion_be.domain.tag.repository.TagRepository;
@@ -44,6 +46,8 @@ public class DatasetServiceImpl implements DatasetService {
     private final TagRepository tagRepository;
     private final TagMappingRepository tagMappingRepository;
     private final InspectionResultService inspectionResultService;
+    private final InspectionService inspectionService;
+    private final DatasetBannerExtractor datasetBannerExtractor;
 
 
     /**
@@ -51,7 +55,8 @@ public class DatasetServiceImpl implements DatasetService {
      * 1) 첨부할 파일이 요청자 본인 소유인지 검증
      * 2) 임시 파일을 영구 보관 대상으로 전환
      * 3) Dataset 엔티티 생성/저장 (isPublic은 request 값을 그대로 반영)
-     * 4) 태그가 있으면 태그 마스터를 조회/생성하고 매핑을 저장
+     * 4) 첨부 파일에서 대표 이미지를 뽑아 저장 (뽑지 못하면 비워 둔다)
+     * 5) 태그가 있으면 태그 마스터를 조회/생성하고 매핑을 저장
      */
     @Override
     public DatasetCreateResponse createDataset(User user, DatasetCreateRequest request) {
@@ -64,6 +69,7 @@ public class DatasetServiceImpl implements DatasetService {
         // 업로드 직후 임시 상태였던 파일을 데이터셋에 실제로 연결되었으므로 영구 보관으로 전환
         file.markAsPermanent();
         Dataset dataset = Dataset.create(user, request, file);
+        dataset.updateBannerImage(datasetBannerExtractor.extract(file));
         Dataset saved = datasetRepository.save(dataset);
 
         // 태그는 존재하면 재사용하고 없으면 새로 생성한 뒤, 데이터셋-태그 매핑을 저장
@@ -148,16 +154,17 @@ public class DatasetServiceImpl implements DatasetService {
                 .stream()
                 .map(Dataset::getDatasetId)
                 .toList();
-        // 데이터셋 종류에 따라 검증 대상 타입도 다르게 매핑 (업로드 데이터 vs 증강 데이터)
-        InspectionTargetType targetType = type == DatasetType.AUGMENTED
-                ? InspectionTargetType.AUGMENTED_DATA
-                : InspectionTargetType.UPLOADED_DATA;
+        // Dataset 행은 항상 업로드 데이터라(증강 데이터셋은 AI 결과 목록 API가 AugmentationConfig 기준으로 보여준다)
+        // 검수 상태도 UPLOADED_DATA 기준으로만 조회한다. type=AUGMENTED면 목록이 비어 있다.
         Map<Long, InspectionSummary> verificationMap =
-                inspectionResultService.getSummaries(targetType, ids);
+                inspectionResultService.getSummaries(InspectionTargetType.UPLOADED_DATA, ids);
+        Map<Long, InspectionTargetResponse> targetMap =
+                inspectionResultService.getUploadedDataTargets(userId, datasetPage.getContent());
 
         return datasetPage.map(dataset -> MyDatasetListResponse.from(
                 dataset,
-                verificationMap.getOrDefault(dataset.getDatasetId(), InspectionSummary.none())
+                verificationMap.getOrDefault(dataset.getDatasetId(), InspectionSummary.none()),
+                targetMap.get(dataset.getDatasetId())
         ));
     }
 
@@ -186,8 +193,12 @@ public class DatasetServiceImpl implements DatasetService {
 
         InspectionSummary verificationSummary =
                 inspectionResultService.getSummary(InspectionTargetType.UPLOADED_DATA, datasetId);
+        // 검수 신청 정보(신청 ID 포함)는 작성자 본인에게만 내려준다. 증강 데이터셋은 결과 맵에 없어 null
+        InspectionTargetResponse inspectionTarget = dataset.getUser().getUserId().equals(userId)
+                ? inspectionResultService.getUploadedDataTargets(userId, List.of(dataset)).get(datasetId)
+                : null;
 
-        return DatasetDetailResponse.from(dataset, tags, verificationSummary);
+        return DatasetDetailResponse.from(dataset, tags, verificationSummary, inspectionTarget);
     }
 
     /**
@@ -204,6 +215,10 @@ public class DatasetServiceImpl implements DatasetService {
             throw new BusinessException(ErrorCode.POST_ACCESS_DENIED);
         }
 
+        // 전문가가 시작하기 전인 검수 신청은 자동 취소·환불하고, 이미 시작됐으면 삭제를 막는다(409)
+        if (dataset.getType() == DatasetType.UPLOADED) {
+            inspectionService.cancelForTargetDeletion(userId, InspectionTargetType.UPLOADED_DATA, datasetId);
+        }
         dataset.delete();
     }
 
@@ -231,6 +246,8 @@ public class DatasetServiceImpl implements DatasetService {
             }
             file.markAsPermanent();
             dataset.updateFile(file);
+            // 대표 이미지는 첨부 파일에서 뽑으므로 파일이 바뀌면 다시 뽑는다
+            dataset.updateBannerImage(datasetBannerExtractor.extract(file));
         }
 
         dataset.update(
@@ -254,6 +271,17 @@ public class DatasetServiceImpl implements DatasetService {
         }
 
         return DatasetUpdateResponse.from(dataset, tagNames);
+    }
+
+    @Override
+    public boolean backfillBannerImage(Long datasetId) {
+        Dataset dataset = datasetRepository.findById(datasetId).orElse(null);
+        if (dataset == null || dataset.getBannerImageUrl() != null) {
+            return false;
+        }
+        String bannerImage = datasetBannerExtractor.extract(dataset.getFile());
+        dataset.updateBannerImage(bannerImage);
+        return bannerImage != null;
     }
 
     @Override

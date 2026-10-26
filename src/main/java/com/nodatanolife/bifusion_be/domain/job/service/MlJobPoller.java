@@ -41,15 +41,13 @@ public class MlJobPoller {
     private final JobPollingService jobPollingService;
     private final S3Service s3Service;
     private final MlProperties mlProperties;
+    private final MlConnectionState mlConnectionState;
 
     @Value("${spring.cloud.aws.s3.bucket}")
     private String bucketName;
 
     // PENDING 지속 경고를 마지막으로 남긴 시각 (jobId별). 메모리에만 두며 서버 재시작 시 초기화된다.
     private final Map<Long, LocalDateTime> pendingWarnedAt = new ConcurrentHashMap<>();
-
-    // 폴링 조회로 ML 연결 불가가 처음 확인된 시각. ML 앱이 응답하면 null. 메모리에만 두며 서버 재시작 시 초기화된다.
-    private volatile LocalDateTime mlUnreachableSince;
 
     /**
      * @param job 폴링 대상 조회 시점의 스냅샷 (판정용). 상태 변경은 반영 서비스가 Job을 다시 읽어 수행한다.
@@ -84,7 +82,7 @@ public class MlJobPoller {
         // 연결 불가가 이어지는 동안에는 ML 조회 없이 시간으로 판정한다 (ML이 작업을 계속하는지 알 수 없다).
         if (isUnreachableTimedOut(job, now)) {
             log.warn("[Polling] ML 연결 불가 지속 - 실패 처리, jobId: {}, mlJobId: {}, 연결 불가 시작: {}",
-                    job.getJobId(), job.getMlJobId(), mlUnreachableSince);
+                    job.getJobId(), job.getMlJobId(), mlConnectionState.getUnreachableSince());
             jobPollingService.fail(job.getJobId(), JobFailureReason.ML_UNREACHABLE, null);
             return;
         }
@@ -269,7 +267,7 @@ public class MlJobPoller {
      * 연결 불가가 unreachableTimeout 넘게 이어졌는지. 연결 불가 시작 시각과 ML 접수 시각 중 늦은 쪽부터 잰다.
      */
     private boolean isUnreachableTimedOut(Job job, LocalDateTime now) {
-        LocalDateTime since = mlUnreachableSince;
+        LocalDateTime since = mlConnectionState.getUnreachableSince();
         if (since == null || job.getStartedAt() == null) {
             return false;
         }
@@ -278,8 +276,7 @@ public class MlJobPoller {
     }
 
     private void markMlUnreachable(LocalDateTime now) {
-        if (mlUnreachableSince == null) {
-            mlUnreachableSince = now;
+        if (mlConnectionState.markUnreachable(now)) {
             log.warn("[Polling] ML 연결 불가 시작 - {} 넘게 이어지면 진행 중 Job을 실패 처리",
                     mlProperties.polling().unreachableTimeout());
         }
@@ -289,9 +286,8 @@ public class MlJobPoller {
      * ML 앱이 응답했으면(오류 응답 포함) 연결 불가 구간을 끝낸다.
      */
     private void markMlReachable(LocalDateTime now) {
-        LocalDateTime since = mlUnreachableSince;
+        LocalDateTime since = mlConnectionState.markReachable();
         if (since != null) {
-            mlUnreachableSince = null;
             log.info("[Polling] ML 연결 복구 - 연결 불가 {}분", Duration.between(since, now).toMinutes());
         }
     }

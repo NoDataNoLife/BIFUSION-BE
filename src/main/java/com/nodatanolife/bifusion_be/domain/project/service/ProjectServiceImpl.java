@@ -285,6 +285,15 @@ public class  ProjectServiceImpl implements ProjectService {
             throw new BusinessException(ErrorCode.PROJECT_SAME_ROLE);
         }
 
+        // 마지막 관리자를 MEMBER로 내리면 관리자 없는 프로젝트가 되므로 차단
+        if (targetMember.getRole() == ProjectRole.MANAGER) {
+            long managerCount = projectMemberRepository
+                    .countByProjectProjectIdAndRole(projectId, ProjectRole.MANAGER);
+            if (managerCount <= 1) {
+                throw new BusinessException(ErrorCode.PROJECT_LAST_MANAGER_DEMOTE);
+            }
+        }
+
         targetMember.updateRole(request.role());
 
         return MemberRoleUpdateResponse.of(targetMember);

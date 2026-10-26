@@ -3,6 +3,7 @@ package com.nodatanolife.bifusion_be.domain.dataset.dto.response;
 import com.nodatanolife.bifusion_be.domain.dataset.entity.Dataset;
 import com.nodatanolife.bifusion_be.domain.expert.dto.response.InspectionResultResponse;
 import com.nodatanolife.bifusion_be.domain.expert.dto.response.InspectionSummary;
+import com.nodatanolife.bifusion_be.domain.expert.dto.response.InspectionTargetResponse;
 import com.nodatanolife.bifusion_be.domain.expert.entity.InspectionStatus;
 import com.nodatanolife.bifusion_be.domain.file.entity.File;
 import com.nodatanolife.bifusion_be.domain.file.presign.PresignedUrl;
@@ -20,6 +21,8 @@ public record DatasetDetailResponse(
         Long datasetId,
         String title,
         String description,
+        // 첨부 파일에서 뽑은 대표 이미지 (DatasetBannerExtractor). 뽑지 못했으면 null
+        @PresignedUrl String bannerImageUrl,
         boolean isExpertVerified,
         List<String> tags,
         String fileSize,
@@ -38,20 +41,24 @@ public record DatasetDetailResponse(
         Long fileId,
         String fileName,
         InspectionStatus inspectionStatus,
-        InspectionResultResponse inspectionResult
+        InspectionResultResponse inspectionResult,
+        // 검수 신청 버튼·취소용. 작성자 본인의 업로드 데이터셋에만 내려주고 그 외에는 null
+        InspectionTargetResponse inspectionTarget
 ) {
     /**
      * 작성자 정보. profileImageUrl은 @PresignedUrl로 직렬화 시점에 presign된다 (S3 버킷 private).
      */
     public record AuthorInfo(Long userId, String nickname, @PresignedUrl String profileImageUrl) {}
 
-    public static DatasetDetailResponse from(Dataset dataset, List<String> tags, InspectionSummary verificationSummary) {
+    public static DatasetDetailResponse from(Dataset dataset, List<String> tags, InspectionSummary verificationSummary,
+                                             InspectionTargetResponse inspectionTarget) {
         File file = dataset.getFile();
 
         return new DatasetDetailResponse(
                 dataset.getDatasetId(),
                 dataset.getTitle(),
                 dataset.getDescription(),
+                dataset.getBannerImageUrl(),
                 verificationSummary.status() == InspectionStatus.COMPLETED,
                 tags,
                 formatFileSize(file != null ? file.getFileSize() : null),
@@ -73,7 +80,8 @@ public record DatasetDetailResponse(
                 file != null ? file.getFileId() : null,
                 file != null ? file.getFileName() : null,
                 verificationSummary.status(),
-                verificationSummary.result()
+                verificationSummary.result(),
+                inspectionTarget
         );
     }
 

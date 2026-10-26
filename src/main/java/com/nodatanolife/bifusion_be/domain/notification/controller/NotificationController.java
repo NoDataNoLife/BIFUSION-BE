@@ -44,10 +44,13 @@ public class NotificationController {
     }
 
     @Operation(
-            summary = "알림 목록 조회",
+            summary = "알림 전체목록 조회",
             description = """
                     category(전문가/검수, 데이터 증강, 팀/프로젝트, 커뮤니티), isRead, keyword로 필터링해 페이지 조회합니다.
-                    소프트 삭제된 알림은 결과에서 제외됩니다.
+                    알림창에서 지운 알림(DELETE /popup)도 포함됩니다. 영구 삭제(DELETE)한 알림만 빠집니다.
+                    프로젝트 초대 알림(PROJECT_INVITATION)에는 invitation(invitationId, projectId, status, role)이 함께 내려옵니다.
+                    status가 PENDING일 때만 PATCH /api/v1/projects/{projectId}/invitations/{invitationId}로 수락·거절할 수 있습니다.
+                    초대 알림의 targetType은 INVITATION(targetId=초대 ID)이며, 이전에 만들어진 초대 알림은 PROJECT(targetId=프로젝트 ID)입니다.
                     """
     )
     @GetMapping
@@ -61,8 +64,30 @@ public class NotificationController {
     ) {
         Pageable pageable = PageRequest.of(page, size);
         Page<NotificationResponse> result = notificationService.getNotifications(
-                userDetails.getUser().getUserId(), category, isRead, keyword, pageable);
+                userDetails.getUser().getUserId(), false, category, isRead, keyword, pageable);
         return CommonResponse.success(PageResponse.from(result), "알림 목록 조회 성공!");
+    }
+
+    @Operation(
+            summary = "알림창(팝업) 목록 조회",
+            description = """
+                    알림창용 목록입니다. 전체목록 조회와 파라미터·응답이 같고, 알림창에서 지운 알림(DELETE /popup)만 빠집니다.
+                    초대 알림의 invitation 필드도 전체목록 조회와 같습니다.
+                    """
+    )
+    @GetMapping("/popup")
+    public CommonResponse<PageResponse<NotificationResponse>> getPopupNotifications(
+            @AuthenticationPrincipal CustomOAuth2User userDetails,
+            @RequestParam(required = false) NotificationCategory category,
+            @RequestParam(required = false) Boolean isRead,
+            @RequestParam(required = false) String keyword,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size
+    ) {
+        Pageable pageable = PageRequest.of(page, size);
+        Page<NotificationResponse> result = notificationService.getNotifications(
+                userDetails.getUser().getUserId(), true, category, isRead, keyword, pageable);
+        return CommonResponse.success(PageResponse.from(result), "알림창 목록 조회 성공!");
     }
 
     @Operation(
@@ -84,8 +109,8 @@ public class NotificationController {
     @Operation(
             summary = "알림 팝업 삭제(soft) - 알림창",
             description = """
-                    notificationId가 있으면 해당 알림 하나만, 없으면 본인 알림 전체를 소프트 삭제(isDeleted=true)합니다.
-                    실제로 삭제되지 않고 목록 조회/안읽음 카운트에서만 제외됩니다.
+                    notificationId가 있으면 해당 알림 하나만, 없으면 본인 알림 전체를 알림창에서 지웁니다(isDeleted=true).
+                    알림창 목록(GET /popup)에서만 빠지고, 알림 전체목록(GET)에는 그대로 남습니다.
                     개별 삭제 시 존재하지 않거나 본인 알림이 아니거나 이미 삭제된 경우 404가 반환됩니다.
                     """
     )

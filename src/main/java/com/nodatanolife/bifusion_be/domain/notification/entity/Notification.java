@@ -1,5 +1,6 @@
 package com.nodatanolife.bifusion_be.domain.notification.entity;
 
+import com.nodatanolife.bifusion_be.domain.notification.entity.converter.TargetTypeConverter;
 import com.nodatanolife.bifusion_be.domain.user.entity.User;
 import com.nodatanolife.bifusion_be.global.entity.BaseCreatedEntity;
 import jakarta.persistence.*;
@@ -30,7 +31,9 @@ public class Notification extends BaseCreatedEntity {
     @Column(name = "content")
     private String content;
 
-    @Enumerated(EnumType.STRING)
+    // 컨버터로 매핑: @Enumerated는 enum 값 목록 CHECK 제약을 만들어 INVITATION 같은 값 추가 시 저장이 막힌다.
+    // 기존 DB의 notification_target_type_check 제약은 직접 삭제해야 한다.
+    @Convert(converter = TargetTypeConverter.class)
     @Column(name = "target_type", length = 50)
     private TargetType targetType;
 
@@ -40,6 +43,7 @@ public class Notification extends BaseCreatedEntity {
     @Column(name = "is_read", nullable = false)
     private Boolean isRead;
 
+    // 알림창(팝업)에서 지운 알림. 알림창 목록에서만 빠지고 알림 전체목록에는 그대로 남는다
     @Column(name = "is_deleted", nullable = false)
     @org.hibernate.annotations.ColumnDefault("false")
     private Boolean isDeleted = false;

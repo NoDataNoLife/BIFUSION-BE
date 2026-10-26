@@ -38,11 +38,19 @@ public record JobResponse(
         Long retryOfJobId,
         @Schema(description = "생성 시각")
         LocalDateTime createdAt,
+        @Schema(description = "AI 서버 접수 시각. 대기(PENDING) 시간은 이 값부터 잰다. 접수 전이면 null")
+        LocalDateTime startedAt,
+        @Schema(description = "AI 서버 연결이 끊긴 시각. 진행 중(PENDING·RUNNING)인 작업이고 지금 연결이 끊겨 있을 때만 값이 있다. "
+                + "연결이 1분(ml.polling.unreachable-timeout) 넘게 끊기면 작업은 실패(FAILED, ML_UNREACHABLE) 처리된다")
+        LocalDateTime mlUnreachableSince,
         @Schema(description = "마지막 변경 시각")
         LocalDateTime updatedAt
 ) {
 
-    public static JobResponse from(Job job, JobResult result) {
+    /**
+     * @param mlUnreachableSince 현재 ML 연결 불가 시작 시각 (MlConnectionState). 연결돼 있으면 null
+     */
+    public static JobResponse from(Job job, JobResult result, LocalDateTime mlUnreachableSince) {
         return new JobResponse(
                 job.getJobId(),
                 job.getType(),
@@ -56,6 +64,8 @@ public record JobResponse(
                 job.isRetryable(),
                 job.getRetryOfJobId(),
                 job.getCreatedAt(),
+                job.getStartedAt(),
+                job.getStatus().isTerminal() ? null : mlUnreachableSince,
                 job.getUpdatedAt()
         );
     }

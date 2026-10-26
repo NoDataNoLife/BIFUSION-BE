@@ -216,6 +216,13 @@ public class Dataset extends BaseEntity {
     }
 
     /**
+     * 대표 이미지 교체. 첨부 파일에서 뽑은 이미지의 S3 key이며, 뽑을 수 없으면 null.
+     */
+    public void updateBannerImage(String bannerImageUrl) {
+        this.bannerImageUrl = bannerImageUrl;
+    }
+
+    /**
      * 첨부 파일 교체. 수정 요청에 새 fileId가 포함된 경우에만 호출되며,
      * 생략 시(기존 파일 유지) 이 메서드는 호출되지 않는다.
      */

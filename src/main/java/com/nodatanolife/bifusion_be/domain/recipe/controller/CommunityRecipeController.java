@@ -36,7 +36,9 @@ public class CommunityRecipeController {
                 프론트에서 값을 채운 뒤, forkedFromId에 원본 레시피 ID를 포함하여 요청. \
                 등록 시 원본 레시피의 forkCount가 자동으로 증가합니다.
                 - isPublic(true: 커뮤니티 공개 / false: 내 자산 전용 비공개) 값으로 공개 범위를 지정하며, \
-                생략하면 기존과 동일하게 공개(true)로 등록됩니다."""
+                생략하면 기존과 동일하게 공개(true)로 등록됩니다.
+                - thumbnailFileId(선택): 대표 이미지. POST /api/v1/files/temp로 올린 본인 이미지 파일의 fileId. \
+                없는 파일 404, 남의 파일 거부, 이미지가 아니면 400(CM023). 응답의 bannerUrl로 내려갑니다."""
     )
     @PostMapping
     public CommonResponse<RecipeRegisterResponse> registerRecipe(
@@ -110,7 +112,8 @@ public class CommunityRecipeController {
             본인이 아닌 사용자가 요청하면 접근이 거부됩니다(403).
 
             삭제 시 다음과 같이 처리됩니다.
-            - 전문가 검수가 진행 중(PENDING)인 레시피는 삭제할 수 없습니다(409).
+            - 전문가가 아직 시작하지 않은 검수 신청은 자동으로 취소되고 포인트가 환불됩니다.
+            - 전문가가 검수를 시작한 레시피는 삭제할 수 없습니다(409, IS012).
             - 삭제 후에는 레시피 목록 조회, 상세 조회, 검색, 포크 조회에서 노출되지 않습니다.
             - 삭제된 레시피에는 리뷰를 조회하거나 새로 작성할 수 없으며, 요청 시 404로 처리됩니다.
             - 삭제된 레시피는 마이페이지 노출 설정 변경 대상에서 제외되며, 요청 시 404(ACTIVITY_NOT_FOUND)로 처리됩니다.

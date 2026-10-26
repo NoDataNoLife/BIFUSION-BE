@@ -57,6 +57,7 @@ public class JobCommandServiceImpl implements JobCommandService {
     private final UserRepository userRepository;
     private final JobRequestValidator jobRequestValidator;
     private final MlProperties mlProperties;
+    private final JobResultNotifier jobResultNotifier;
 
     @Override
     public JobLaunchPlan createPending(Long userId, Long projectId, JobCreateRequest request, String idempotencyKey) {
@@ -144,7 +145,9 @@ public class JobCommandServiceImpl implements JobCommandService {
     @Override
     public void markFailed(Long jobId, JobFailureReason reason) {
         // 입력 파일은 되돌리지 않고 Job에 연결된 채로 보존한다 (스케줄러의 실패·취소 처리와 동일, 재시도 API 대비).
-        getJob(jobId).fail(reason, null);
+        Job job = getJob(jobId);
+        job.fail(reason, null);
+        jobResultNotifier.notifyFailed(job);
     }
 
     private JobLaunchPlan createAugmentation(Project project, User user, AugmentationJobCreateRequest request,

@@ -18,8 +18,12 @@ public interface NotificationService {
     void markAsRead(Long userId, Long notificationId);
     void markAllAsRead(Long userId);
 
+    /**
+     * @param excludePopupDeleted true면 알림창에서 지운 알림을 뺀다 (알림창 목록). false면 전부 포함 (알림 전체목록)
+     */
     Page<NotificationResponse> getNotifications(
-            Long userId, NotificationCategory category, Boolean isRead, String keyword, Pageable pageable);
+            Long userId, boolean excludePopupDeleted, NotificationCategory category, Boolean isRead, String keyword,
+            Pageable pageable);
 
     void hardDeleteNotifications(Long userId, Long notificationId);
 

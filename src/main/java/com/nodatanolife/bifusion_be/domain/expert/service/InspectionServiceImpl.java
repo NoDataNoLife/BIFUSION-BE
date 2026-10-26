@@ -1,5 +1,8 @@
 package com.nodatanolife.bifusion_be.domain.expert.service;
 
+import com.nodatanolife.bifusion_be.domain.dataset.entity.Dataset;
+import com.nodatanolife.bifusion_be.domain.dataset.entity.DatasetType;
+import com.nodatanolife.bifusion_be.domain.dataset.repository.DatasetRepository;
 import com.nodatanolife.bifusion_be.domain.expert.dto.request.InspectionCreateRequest;
 import com.nodatanolife.bifusion_be.domain.expert.dto.response.InspectionDecisionResponse;
 import com.nodatanolife.bifusion_be.domain.expert.dto.response.InspectionDetailResponse;
@@ -18,13 +21,18 @@ import com.nodatanolife.bifusion_be.domain.job.entity.AugmentationConfig;
 import com.nodatanolife.bifusion_be.domain.job.entity.AugmentationSampleImage;
 import com.nodatanolife.bifusion_be.domain.job.repository.AugmentationConfigRepository;
 import com.nodatanolife.bifusion_be.domain.job.repository.AugmentationSampleImageRepository;
+import com.nodatanolife.bifusion_be.domain.file.entity.File;
+import com.nodatanolife.bifusion_be.domain.file.repository.FileRepository;
 import com.nodatanolife.bifusion_be.domain.notification.entity.NotificationType;
 import com.nodatanolife.bifusion_be.domain.notification.entity.TargetType;
 import com.nodatanolife.bifusion_be.domain.notification.service.NotificationService;
+import com.nodatanolife.bifusion_be.domain.recipe.entity.Recipe;
+import com.nodatanolife.bifusion_be.domain.recipe.repository.RecipeForkHistoryRepository;
+import com.nodatanolife.bifusion_be.domain.recipe.repository.RecipeRepository;
 import com.nodatanolife.bifusion_be.domain.user.entity.RewardHistory;
 import com.nodatanolife.bifusion_be.domain.user.entity.User;
-import com.nodatanolife.bifusion_be.domain.user.repository.RewardHistoryRepository;
 import com.nodatanolife.bifusion_be.domain.user.repository.UserRepository;
+import com.nodatanolife.bifusion_be.domain.user.service.PointService;
 import com.nodatanolife.bifusion_be.global.exception.ErrorCode;
 import com.nodatanolife.bifusion_be.global.exception.business.BusinessException;
 import lombok.RequiredArgsConstructor;
@@ -35,6 +43,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -44,25 +53,26 @@ import java.util.stream.Collectors;
 @Transactional
 public class InspectionServiceImpl implements InspectionService {
 
-    private static final String REWARD_TYPE_EXPERT_TASK = "EXPERT_TASK_REWARD";
     private static final double PLATFORM_FEE_EXCLUDED_RATE = 0.9;
 
     private final InspectionRequestRepository inspectionRequestRepository;
     private final AugmentationConfigRepository augmentationConfigRepository;
     private final AugmentationSampleImageRepository augmentationSampleImageRepository;
+    private final RecipeRepository recipeRepository;
+    private final RecipeForkHistoryRepository recipeForkHistoryRepository;
+    private final DatasetRepository datasetRepository;
     private final UserRepository userRepository;
     private final ExpertApplicationRepository expertApplicationRepository;
     private final ExpertTaskRepository expertTaskRepository;
-    private final RewardHistoryRepository rewardHistoryRepository;
+    private final PointService pointService;
     private final NotificationService notificationService;
+    private final InspectionRewardPolicy inspectionRewardPolicy;
+    private final FileRepository fileRepository;
 
     /**
      * 전문가 검수 신청
-     * - 현재는 AUGMENTED_DATA만 지원한다. RECIPE/UPLOADED_DATA는 승인/거절할 방법이 없어(이 도메인의
-     *   검수 처리 플로우 전체가 ExpertTask 기준 AUGMENTED_DATA만 지원) 신청 자체를 막는다.
-     *   InspectionTargetType 자체는 Dataset/Recipe의 기존 검수 결과 조회 기능이 여전히 참조하고 있어
-     *   (기존 RECIPE/UPLOADED_DATA row도 남아있어) enum에서 제거하지 않는다.
-     * - 대상(AugmentationConfig)의 존재 여부와 본인(Job) 소유 여부를 먼저 검증한다.
+     * - AUGMENTED_DATA(AugmentationConfig), RECIPE(Recipe), UPLOADED_DATA(업로드 Dataset)를 지원한다.
+     * - 대상의 존재 여부와 본인 소유 여부를 먼저 검증한다 (validateTargetOwnership).
      * - 같은 사용자 + 같은 대상 조합의 신청이 이미 PENDING/APPROVED로 존재하면 409로 막는다.
      * - REJECTED로 종료된 기존 신청이 있으면, (user, target_type, target_id) DB unique 제약 때문에
      *   새 row를 insert할 수 없어 그 row를 재사용(InspectionRequest.reapply)해 PENDING으로 되돌린다.
@@ -82,11 +92,8 @@ public class InspectionServiceImpl implements InspectionService {
         Long targetId = request.getTargetId();
         Integer rewardPoints = request.getRewardPoints();
 
-        if (targetType != InspectionTargetType.AUGMENTED_DATA) {
-            throw new BusinessException(ErrorCode.INSPECTION_TARGET_TYPE_NOT_SUPPORTED);
-        }
-
-        validateAugmentedDataOwnership(user, targetId);
+        InspectionRewardPolicy.RewardRange rewardRange = validateTargetOwnership(user, targetType, targetId);
+        inspectionRewardPolicy.validate(rewardPoints, rewardRange);
 
         Optional<InspectionRequest> existing = inspectionRequestRepository
                 .findForUpdate(user, targetType, targetId);
@@ -98,11 +105,6 @@ public class InspectionServiceImpl implements InspectionService {
         User expert = pickExpert(user.getUserId());
 
         User managedUser = userRepository.getReferenceById(user.getUserId());
-        int currentPoints = managedUser.getPoints() == null ? 0 : managedUser.getPoints();
-        if (currentPoints < rewardPoints) {
-            throw new BusinessException(ErrorCode.INSUFFICIENT_POINTS);
-        }
-        managedUser.deductPoints(rewardPoints);
 
         InspectionRequest saved;
         if (existing.isPresent()) {
@@ -118,6 +120,10 @@ public class InspectionServiceImpl implements InspectionService {
                 throw new BusinessException(ErrorCode.INSPECTION_ALREADY_EXISTS);
             }
         }
+
+        // 포인트가 부족하면 400으로 막히고, 위에서 저장한 신청도 함께 롤백된다
+        pointService.spend(user.getUserId(), rewardPoints, RewardHistory.TYPE_INSPECTION_REQUEST,
+                RewardHistory.TARGET_INSPECTION_REQUEST, saved.getInspectionRequestId());
 
         ExpertTask task = expertTaskRepository.save(ExpertTask.assign(expert, saved));
         task.assignReviewCode();
@@ -142,14 +148,57 @@ public class InspectionServiceImpl implements InspectionService {
             throw new BusinessException(ErrorCode.INSPECTION_CANNOT_CANCEL);
         }
 
+        cancelAndRefund(inspectionRequest, task);
+        return InspectionResponse.from(inspectionRequest);
+    }
+
+    /**
+     * 검수 대상(레시피·데이터셋) 삭제 직전에 호출한다.
+     * - 진행 중인(PENDING) 신청이 없으면 아무것도 하지 않는다.
+     * - 전문가가 아직 시작하지 않았으면 신청자 취소와 똑같이 취소·포인트 환불한다.
+     * - 전문가가 이미 검수를 시작했으면 삭제를 409(INSPECTION_IN_PROGRESS_TARGET_DELETE)로 막는다.
+     */
+    @Override
+    public void cancelForTargetDeletion(Long userId, InspectionTargetType targetType, Long targetId) {
+        User user = userRepository.getReferenceById(userId);
+        Optional<InspectionRequest> pending = inspectionRequestRepository.findForUpdate(user, targetType, targetId)
+                .filter(found -> found.getStatus() == InspectionRequestStatus.PENDING);
+        if (pending.isEmpty()) {
+            return;
+        }
+
+        Optional<ExpertTask> task = expertTaskRepository.findFirstByInspectionRequestOrderByExpertTaskIdDesc(pending.get());
+        if (task.isPresent() && !task.get().isPending()) {
+            throw new BusinessException(ErrorCode.INSPECTION_IN_PROGRESS_TARGET_DELETE);
+        }
+
+        cancelAndRefund(pending.get(), task);
+    }
+
+    @Override
+    public boolean cancelUnassigned(Long inspectionRequestId) {
+        Optional<InspectionRequest> request = inspectionRequestRepository.findById(inspectionRequestId)
+                .filter(found -> found.getStatus() == InspectionRequestStatus.PENDING);
+        if (request.isEmpty()
+                || expertTaskRepository.findFirstByInspectionRequestOrderByExpertTaskIdDesc(request.get()).isPresent()) {
+            return false;
+        }
+        cancelAndRefund(request.get(), Optional.empty());
+        return true;
+    }
+
+    /**
+     * 신청을 취소하고, 아직 시작되지 않은 task는 기록할 것이 없어 삭제한 뒤 차감했던 포인트를 돌려준다.
+     */
+    private void cancelAndRefund(InspectionRequest inspectionRequest, Optional<ExpertTask> task) {
         inspectionRequest.cancel();
         task.ifPresent(expertTaskRepository::delete);
 
         Integer rewardPoints = inspectionRequest.getRewardPoints();
-        if (rewardPoints != null && rewardPoints > 0) {
-            userRepository.getReferenceById(user.getUserId()).addPoints(rewardPoints);
+        if (rewardPoints != null) {
+            pointService.earn(inspectionRequest.getUser().getUserId(), rewardPoints, RewardHistory.TYPE_INSPECTION_REFUND,
+                    RewardHistory.TARGET_INSPECTION_REQUEST, inspectionRequest.getInspectionRequestId());
         }
-        return InspectionResponse.from(inspectionRequest);
     }
 
     private static boolean isReapplicable(InspectionRequestStatus status) {
@@ -189,18 +238,24 @@ public class InspectionServiceImpl implements InspectionService {
      * inspectionId는 ExpertTask.expertTaskId를 가리킨다 (검수 시작 API와 동일한 리소스 기준).
      * - 전문가 인증(APPROVED)을 받지 않은 사용자는 조회할 수 없다. (403)
      * - 본인에게 배정되지 않았거나 존재하지 않는 task는 startTask와 동일하게 404로 처리한다.
-     * - AUGMENTED_DATA 검수만 대상으로 한다. (증강 파라미터/샘플 이미지가 있는 대상)
+     * - 대상 종류에 따라 증강 파라미터·샘플 이미지 / 레시피 / 데이터셋 정보를 채운다.
      */
     @Override
     @Transactional(readOnly = true)
     public InspectionDetailResponse getInspectionDetail(User expert, Long inspectionId) {
-        ExpertTask task = getOwnedAugmentedDataTask(expert, inspectionId);
-        AugmentationConfig config = getAugmentationConfig(task);
+        ExpertTask task = getOwnedTask(expert, inspectionId);
+        InspectionRequest inspectionRequest = task.getInspectionRequest();
 
-        List<AugmentationSampleImage> images = augmentationSampleImageRepository
-                .findAllByAugmentationConfigOrderByAugmentationSampleImageIdAsc(config);
-
-        return InspectionDetailResponse.from(task, config, images);
+        return switch (inspectionRequest.getTargetType()) {
+            case AUGMENTED_DATA -> {
+                AugmentationConfig config = getAugmentationConfig(task);
+                List<AugmentationSampleImage> images = augmentationSampleImageRepository
+                        .findAllByAugmentationConfigOrderByAugmentationSampleImageIdAsc(config);
+                yield InspectionDetailResponse.ofAugmentedData(task, config, images);
+            }
+            case RECIPE -> InspectionDetailResponse.ofRecipe(task, getRecipe(inspectionRequest));
+            case UPLOADED_DATA -> InspectionDetailResponse.ofUploadedData(task, getDataset(inspectionRequest));
+        };
     }
 
     /**
@@ -211,7 +266,7 @@ public class InspectionServiceImpl implements InspectionService {
      */
     @Override
     public InspectionDraftResponse saveDraftComment(User expert, Long inspectionId, String expertComment) {
-        ExpertTask task = getOwnedAugmentedDataTask(expert, inspectionId);
+        ExpertTask task = getOwnedTask(expert, inspectionId);
         task.validateNotCompleted();
         task.getInspectionRequest().validateNotProcessed();
 
@@ -224,11 +279,15 @@ public class InspectionServiceImpl implements InspectionService {
     /**
      * 이미지별 검수 의견 저장 ("이미지 정밀 검수" 모달의 "코멘트 저장" 버튼)
      * imageId는 해당 검수 건(inspectionId)의 AugmentationConfig에 속한 샘플 이미지여야 한다.
+     * 샘플 이미지가 없는 레시피·데이터셋 검수 건은 404(INSPECTION_IMAGE_NOT_FOUND).
      * 검수가 이미 승인/거절로 확정된 건은 400(INSPECTION_ALREADY_PROCESSED)으로 막는다.
      */
     @Override
     public InspectionImageCommentResponse saveImageComment(User expert, Long inspectionId, Long imageId, String comment) {
-        ExpertTask task = getOwnedAugmentedDataTask(expert, inspectionId);
+        ExpertTask task = getOwnedTask(expert, inspectionId);
+        if (task.getInspectionRequest().getTargetType() != InspectionTargetType.AUGMENTED_DATA) {
+            throw new BusinessException(ErrorCode.INSPECTION_IMAGE_NOT_FOUND);
+        }
         task.validateNotCompleted();
         task.getInspectionRequest().validateNotProcessed();
         AugmentationConfig config = getAugmentationConfig(task);
@@ -253,10 +312,10 @@ public class InspectionServiceImpl implements InspectionService {
      */
     @Override
     public InspectionDecisionResponse approveInspection(User expert, Long inspectionId, String expertComment) {
-        ExpertTask task = getOwnedAugmentedDataTaskForUpdate(expert, inspectionId);
+        ExpertTask task = getOwnedTaskForUpdate(expert, inspectionId);
         task.validateNotCompleted();
         InspectionRequest inspectionRequest = task.getInspectionRequest();
-        AugmentationConfig config = getAugmentationConfig(task);
+        DecisionNotice notice = resolveDecisionNotice(task);
 
         inspectionRequest.approve(expert, expertComment);
         task.complete(expertComment);
@@ -264,11 +323,11 @@ public class InspectionServiceImpl implements InspectionService {
 
         notificationService.create(
                 inspectionRequest.getUser(),
-                NotificationType.AUGMENTATION_INSPECTION_APPROVED,
+                notice.approvedType(),
                 "검수 승인 안내",
-                "\"" + config.getJob().getProject().getTitle() + "\" 증강 데이터 검수가 승인되었습니다.",
-                TargetType.JOB,
-                config.getJob().getJobId()
+                notice.subject() + " 검수가 승인되었습니다.",
+                notice.targetType(),
+                notice.targetId()
         );
 
         return InspectionDecisionResponse.from(task, inspectionRequest);
@@ -283,10 +342,10 @@ public class InspectionServiceImpl implements InspectionService {
      */
     @Override
     public InspectionDecisionResponse rejectInspection(User expert, Long inspectionId, String expertComment) {
-        ExpertTask task = getOwnedAugmentedDataTaskForUpdate(expert, inspectionId);
+        ExpertTask task = getOwnedTaskForUpdate(expert, inspectionId);
         task.validateNotCompleted();
         InspectionRequest inspectionRequest = task.getInspectionRequest();
-        AugmentationConfig config = getAugmentationConfig(task);
+        DecisionNotice notice = resolveDecisionNotice(task);
 
         inspectionRequest.reject(expert, expertComment);
         task.complete(expertComment);
@@ -294,20 +353,60 @@ public class InspectionServiceImpl implements InspectionService {
 
         notificationService.create(
                 inspectionRequest.getUser(),
-                NotificationType.AUGMENTATION_INSPECTION_REJECTED,
+                notice.rejectedType(),
                 "검수 거절 안내",
-                "\"" + config.getJob().getProject().getTitle() + "\" 증강 데이터 검수가 거절되었습니다. 사유: " + expertComment,
-                TargetType.JOB,
-                config.getJob().getJobId()
+                notice.subject() + " 검수가 거절되었습니다. 사유: " + expertComment,
+                notice.targetType(),
+                notice.targetId()
         );
 
         return InspectionDecisionResponse.from(task, inspectionRequest);
     }
 
     /**
+     * 승인·거절 알림의 대상 종류별 문구와 이동 대상.
+     * 증강 데이터는 Job 화면, 레시피·데이터셋은 각 상세 화면으로 이동한다.
+     */
+    private record DecisionNotice(String subject, NotificationType approvedType, NotificationType rejectedType,
+                                  TargetType targetType, Long targetId) {
+    }
+
+    private DecisionNotice resolveDecisionNotice(ExpertTask task) {
+        InspectionRequest inspectionRequest = task.getInspectionRequest();
+        return switch (inspectionRequest.getTargetType()) {
+            case AUGMENTED_DATA -> {
+                AugmentationConfig config = getAugmentationConfig(task);
+                yield new DecisionNotice(
+                        "\"" + config.getJob().getProject().getTitle() + "\" 증강 데이터",
+                        NotificationType.AUGMENTATION_INSPECTION_APPROVED,
+                        NotificationType.AUGMENTATION_INSPECTION_REJECTED,
+                        TargetType.JOB,
+                        config.getJob().getJobId());
+            }
+            case RECIPE -> {
+                Recipe recipe = getRecipe(inspectionRequest);
+                yield new DecisionNotice(
+                        "\"" + recipe.getTitle() + "\" 레시피",
+                        NotificationType.RECIPE_APPROVED,
+                        NotificationType.RECIPE_REJECTED,
+                        TargetType.RECIPE,
+                        recipe.getRecipeId());
+            }
+            case UPLOADED_DATA -> {
+                Dataset dataset = getDataset(inspectionRequest);
+                yield new DecisionNotice(
+                        "\"" + dataset.getTitle() + "\" 데이터셋",
+                        NotificationType.DATASET_VERIFIED,
+                        NotificationType.DATASET_VERIFY_REJECTED,
+                        TargetType.DATASET,
+                        dataset.getDatasetId());
+            }
+        };
+    }
+
+    /**
      * ExpertTask.reward에서 플랫폼 수수료 10%를 뗀 나머지(90%)를 전문가에게 지급하고 RewardHistory에 기록한다.
      * reward가 설정되지 않은 task(파이프라인상 아직 배정되지 않은 값 등)는 지급 없이 건너뛴다.
-     * 파라미터로 받은 expert는 트랜잭션 밖에서 로드된 상태일 수 있어 getReferenceById로 다시 관리 대상 엔티티를 얻는다.
      */
     private void payExpertReward(User expert, ExpertTask task) {
         Integer reward = task.getReward();
@@ -316,44 +415,34 @@ public class InspectionServiceImpl implements InspectionService {
         }
 
         int payout = (int) Math.round(reward * PLATFORM_FEE_EXCLUDED_RATE);
-
-        User managedExpert = userRepository.getReferenceById(expert.getUserId());
-        managedExpert.addPoints(payout);
-        rewardHistoryRepository.save(RewardHistory.create(managedExpert, task, payout, REWARD_TYPE_EXPERT_TASK));
+        pointService.earnForExpertTask(expert.getUserId(), task, payout);
     }
 
     /**
-     * inspectionId(ExpertTask.expertTaskId)로 "본인에게 배정된 AUGMENTED_DATA 검수 건"을 조회한다.
+     * inspectionId(ExpertTask.expertTaskId)로 "본인에게 배정된 검수 건"을 조회한다.
      * - 전문가 인증(APPROVED)을 받지 않은 사용자는 403.
-     * - 존재하지 않거나 본인에게 배정되지 않은 task, 또는 AUGMENTED_DATA가 아닌 검수 건은
-     *   startTask와 동일하게 404(EXPERT_TASK_NOT_FOUND)로 처리한다.
+     * - 존재하지 않거나 본인에게 배정되지 않은 task는 startTask와 동일하게 404(EXPERT_TASK_NOT_FOUND)로 처리한다.
      */
-    private ExpertTask getOwnedAugmentedDataTask(User expert, Long inspectionId) {
-        return getOwnedAugmentedDataTask(expert, inspectionId, false);
+    private ExpertTask getOwnedTask(User expert, Long inspectionId) {
+        return getOwnedTask(expert, inspectionId, false);
     }
 
     /**
      * 승인·반려용. task row를 잠가 신청자 취소와 동시에 처리되지 않게 한다 (ExpertTaskRepository.findForUpdate).
      */
-    private ExpertTask getOwnedAugmentedDataTaskForUpdate(User expert, Long inspectionId) {
-        return getOwnedAugmentedDataTask(expert, inspectionId, true);
+    private ExpertTask getOwnedTaskForUpdate(User expert, Long inspectionId) {
+        return getOwnedTask(expert, inspectionId, true);
     }
 
-    private ExpertTask getOwnedAugmentedDataTask(User expert, Long inspectionId, boolean forUpdate) {
+    private ExpertTask getOwnedTask(User expert, Long inspectionId, boolean forUpdate) {
         if (!expertApplicationRepository.existsByUserAndStatus(expert, ExpertApplicationStatus.APPROVED)) {
             throw new BusinessException(ErrorCode.EXPERT_NOT_CERTIFIED);
         }
 
-        ExpertTask task = (forUpdate
+        return (forUpdate
                 ? expertTaskRepository.findForUpdate(inspectionId, expert)
                 : expertTaskRepository.findByExpertTaskIdAndExpert(inspectionId, expert))
                 .orElseThrow(() -> new BusinessException(ErrorCode.EXPERT_TASK_NOT_FOUND));
-
-        if (task.getInspectionRequest().getTargetType() != InspectionTargetType.AUGMENTED_DATA) {
-            throw new BusinessException(ErrorCode.EXPERT_TASK_NOT_FOUND);
-        }
-
-        return task;
     }
 
     private AugmentationConfig getAugmentationConfig(ExpertTask task) {
@@ -362,14 +451,69 @@ public class InspectionServiceImpl implements InspectionService {
     }
 
     /**
-     * 대상 AugmentationConfig의 존재 여부(404)와 소유자 일치 여부(403)를 검증한다.
-     * 증강 데이터는 소유자 정보가 직접 없어 상위 Job의 소유자로 판단한다.
-     * 검수는 본인이 소유한 콘텐츠에 대해서만 신청할 수 있다.
+     * 전문가 화면용 조회라 삭제된 레시피·데이터셋도 찾는다. 진행 중인 검수가 있으면 삭제가 막히므로
+     * 삭제된 대상은 이미 완료된 검수 건에서만 보인다.
      */
-    private void validateAugmentedDataOwnership(User user, Long targetId) {
-        AugmentationConfig config = augmentationConfigRepository.findById(targetId)
+    private Recipe getRecipe(InspectionRequest inspectionRequest) {
+        return recipeRepository.findById(inspectionRequest.getTargetId())
                 .orElseThrow(() -> new BusinessException(ErrorCode.INSPECTION_TARGET_NOT_FOUND));
-        if (!config.getJob().getUser().getUserId().equals(user.getUserId())) {
+    }
+
+    private Dataset getDataset(InspectionRequest inspectionRequest) {
+        return datasetRepository.findById(inspectionRequest.getTargetId())
+                .orElseThrow(() -> new BusinessException(ErrorCode.INSPECTION_TARGET_NOT_FOUND));
+    }
+
+    /**
+     * 대상의 존재 여부(404)와 소유자 일치 여부(403)를 검증한다. 검수는 본인이 소유한 콘텐츠에 대해서만 신청할 수 있다.
+     * - AUGMENTED_DATA: 소유자 정보가 직접 없어 상위 Job의 소유자로 판단한다.
+     * - RECIPE: 삭제된 레시피는 404, 원본을 그대로 복제한 사본은 남의 레시피 그대로라 400(INSPECTION_FORKED_RECIPE_NOT_ALLOWED).
+     *   원본 내용을 불러와 다시 등록한 레시피는 forkedFrom이 있어도 신청할 수 있다.
+     * - UPLOADED_DATA: 삭제됐거나 업로드(UPLOADED) 데이터셋이 아니면 404. 증강 데이터셋은 AUGMENTED_DATA로 신청한다.
+     *
+     * @return 대상의 리워드 허용 범위 (InspectionRewardPolicy)
+     */
+    private InspectionRewardPolicy.RewardRange validateTargetOwnership(User user, InspectionTargetType targetType, Long targetId) {
+        return switch (targetType) {
+            case AUGMENTED_DATA -> {
+                AugmentationConfig config = augmentationConfigRepository.findById(targetId)
+                        .orElseThrow(() -> new BusinessException(ErrorCode.INSPECTION_TARGET_NOT_FOUND));
+                validateOwner(user, config.getJob().getUser());
+                yield inspectionRewardPolicy.forSize(augmentedDatasetSize(config));
+            }
+            case RECIPE -> {
+                Recipe recipe = recipeRepository.findByRecipeIdAndDeletedAtIsNull(targetId)
+                        .orElseThrow(() -> new BusinessException(ErrorCode.INSPECTION_TARGET_NOT_FOUND));
+                validateOwner(user, recipe.getUser());
+                if (recipeForkHistoryRepository.existsByForkedRecipe(recipe)) {
+                    throw new BusinessException(ErrorCode.INSPECTION_FORKED_RECIPE_NOT_ALLOWED);
+                }
+                yield inspectionRewardPolicy.forRecipe();
+            }
+            case UPLOADED_DATA -> {
+                Dataset dataset = datasetRepository.findById(targetId)
+                        .filter(found -> !found.isDeleted() && found.getType() == DatasetType.UPLOADED)
+                        .orElseThrow(() -> new BusinessException(ErrorCode.INSPECTION_TARGET_NOT_FOUND));
+                validateOwner(user, dataset.getUser());
+                yield inspectionRewardPolicy.forDataset(dataset);
+            }
+        };
+    }
+
+    // 증강 결과 데이터셋 파일 크기. 결과 파일이 아직 없으면 null
+    private Long augmentedDatasetSize(AugmentationConfig config) {
+        if (config.getDatasetKey() == null) {
+            return null;
+        }
+        return fileRepository.findAllByS3KeyIn(List.of(config.getDatasetKey())).stream()
+                .map(File::getFileSize)
+                .filter(Objects::nonNull)
+                .findFirst()
+                .orElse(null);
+    }
+
+    private static void validateOwner(User user, User owner) {
+        if (!owner.getUserId().equals(user.getUserId())) {
             throw new BusinessException(ErrorCode.INSPECTION_FORBIDDEN);
         }
     }

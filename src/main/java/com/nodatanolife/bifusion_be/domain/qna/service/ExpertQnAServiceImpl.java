@@ -17,7 +17,10 @@ import com.nodatanolife.bifusion_be.domain.tag.entity.Tag;
 import com.nodatanolife.bifusion_be.domain.tag.entity.TagMapping;
 import com.nodatanolife.bifusion_be.domain.tag.repository.TagMappingRepository;
 import com.nodatanolife.bifusion_be.domain.tag.repository.TagRepository;
+import com.nodatanolife.bifusion_be.domain.user.config.PointProperties;
+import com.nodatanolife.bifusion_be.domain.user.entity.RewardHistory;
 import com.nodatanolife.bifusion_be.domain.user.repository.UserRepository;
+import com.nodatanolife.bifusion_be.domain.user.service.PointService;
 import com.nodatanolife.bifusion_be.domain.qna.repository.ExpertQnARepository;
 import com.nodatanolife.bifusion_be.domain.user.entity.User;
 import com.nodatanolife.bifusion_be.global.exception.ErrorCode;
@@ -47,6 +50,8 @@ public class ExpertQnAServiceImpl implements ExpertQnAService {
     private final UserRepository userRepository;
     private final ExpertService expertService;
     private final NotificationService notificationService;
+    private final PointService pointService;
+    private final PointProperties pointProperties;
 
     /**
      * 회원 탈퇴 시 전문가 Q&A 익명화
@@ -71,8 +76,17 @@ public class ExpertQnAServiceImpl implements ExpertQnAService {
         ExpertQnA qna = expertQnARepository.findActiveForUpdate(qnaId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.BOARD_NOT_FOUND));
 
+        // 같은 질문에 이미 답변한 전문가, 본인 질문에 답변한 경우는 보상하지 않는다 (짧은 답변 반복으로 포인트를 모으지 못하게)
+        boolean rewardable = !qna.getUser().getUserId().equals(userId)
+                && !expertQnAAnswerRepository.existsByExpertQnAAndUser(qna, user);
+
         ExpertQnAAnswer answer = ExpertQnAAnswer.create(qna, user, request.getContent());
         expertQnAAnswerRepository.save(answer);
+
+        if (rewardable) {
+            pointService.earn(userId, pointProperties.qnaAnswerReward(),
+                    RewardHistory.TYPE_QNA_ANSWER_REWARD, RewardHistory.TARGET_QNA, qna.getExpertQnAId());
+        }
 
         qna.addExpertReply();
 
@@ -94,6 +108,10 @@ public class ExpertQnAServiceImpl implements ExpertQnAService {
 
         ExpertQnA qna = ExpertQnA.create(user, request.getTitle(), request.getContent());
         expertQnARepository.save(qna);
+
+        // 포인트가 부족하면 400으로 막히고 질문도 롤백된다
+        pointService.spend(userId, pointProperties.qnaQuestionCost(),
+                RewardHistory.TYPE_QNA_QUESTION, RewardHistory.TARGET_QNA, qna.getExpertQnAId());
 
         List<String> tags = request.getTags() != null ? request.getTags() : List.of();
 

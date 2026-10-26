@@ -39,6 +39,7 @@ public class JobQueryServiceImpl implements JobQueryService {
     private final TrainedModelRepository trainedModelRepository;
     private final InferenceResultRepository inferenceResultRepository;
     private final ProjectMemberRepository projectMemberRepository;
+    private final MlConnectionState mlConnectionState;
 
     @Override
     public JobResponse getJob(Long userId, Long jobId) {
@@ -109,7 +110,8 @@ public class JobQueryServiceImpl implements JobQueryService {
         if (!projectMemberRepository.existsByProjectProjectIdAndUserUserId(job.getProject().getProjectId(), userId)) {
             throw new BusinessException(ErrorCode.PROJECT_ACCESS_DENIED);
         }
-        return JobResponse.from(job, job.getStatus() == JobStatus.SUCCESS ? findResult(job) : null);
+        return JobResponse.from(job, job.getStatus() == JobStatus.SUCCESS ? findResult(job) : null,
+                mlConnectionState.getUnreachableSince());
     }
 
     private JobResult findResult(Job job) {
