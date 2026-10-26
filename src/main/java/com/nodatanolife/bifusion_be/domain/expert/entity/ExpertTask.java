@@ -16,6 +16,7 @@ import java.time.LocalDateTime;
 public class ExpertTask extends BaseEntity {
 
     public static final String STATUS_PENDING = "PENDING";
+    public static final String STATUS_IN_PROGRESS = "IN_PROGRESS";
     public static final String STATUS_COMPLETED = "COMPLETED";
 
     @Id
@@ -101,7 +102,7 @@ public class ExpertTask extends BaseEntity {
     }
 
     public void start() {
-        this.status = "IN_PROGRESS";
+        this.status = STATUS_IN_PROGRESS;
         this.startedAt = LocalDateTime.now();
     }
 
