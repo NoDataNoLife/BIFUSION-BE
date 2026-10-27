@@ -40,7 +40,7 @@ public class User extends BaseEntity {
     @Column(name = "bio")
     private String bio;
 
-    // 기본값 USER. 탈퇴 익명화 계정만 DELETED (createDeletedUser).
+    // 기본값 USER. 탈퇴 익명화 계정만 DELETED (createDeletedUser), 관리자는 ADMIN (AdminRoleScheduler).
     // @ColumnDefault는 테이블을 새로 만들 때만 적용되므로, 기존 DB는 ALTER로 기본값을 따로 넣어야 한다.
     @ColumnDefault("'USER'")
     @Column(name = "role", length = 20)

@@ -122,6 +122,9 @@ app:
     frontend-uri: http://localhost:3000
   cookie:
     secure: false  # prod에서는 true로 변경
+  admin:
+    # 관리자(role = ADMIN)로 올릴 계정 이메일 (쉼표 구분). AdminRoleScheduler가 주기적으로 반영한다.
+    emails: ${ADMIN_EMAILS:bifusionlab@gmail.com}
 
 ml:
   # ML 서버(RunPod) 주소. 비어 있으면 ML 호출은 모두 연결 실패(ML_CONNECTION_FAILED)로 처리된다.
