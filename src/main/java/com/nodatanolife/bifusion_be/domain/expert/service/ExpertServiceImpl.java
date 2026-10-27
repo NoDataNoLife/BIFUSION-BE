@@ -7,6 +7,8 @@ import com.nodatanolife.bifusion_be.domain.expert.dto.response.ExpertTaskSummary
 import com.nodatanolife.bifusion_be.domain.expert.entity.ExpertApplication;
 import com.nodatanolife.bifusion_be.domain.expert.entity.ExpertApplicationStatus;
 import com.nodatanolife.bifusion_be.domain.expert.entity.ExpertTask;
+import com.nodatanolife.bifusion_be.domain.expert.entity.InspectionRequest;
+import com.nodatanolife.bifusion_be.domain.expert.entity.InspectionRequestStatus;
 import com.nodatanolife.bifusion_be.domain.expert.repository.ExpertApplicationRepository;
 import com.nodatanolife.bifusion_be.domain.expert.repository.ExpertTaskRepository;
 import com.nodatanolife.bifusion_be.domain.expert.repository.InspectionRequestRepository;
@@ -32,6 +34,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 @Service
 @RequiredArgsConstructor
@@ -113,7 +116,7 @@ public class ExpertServiceImpl implements ExpertService {
 
     /**
      * 전문가 심사 진행 상태 판정
-     * 승인 기록이 하나라도 있으면 APPROVED (검수 배정·전문가 목록의 existsByUserAndStatus(APPROVED)와 같은 기준).
+     * 승인 기록이 하나라도 있으면 APPROVED (검수 요청 알림·전문가 목록의 existsByUserAndStatus(APPROVED)와 같은 기준).
      * 승인 후 재신청은 apply에서 막지만, 관리자가 DB에서 상태를 바꿔 승인 뒤에 다른 기록이 생겨도 판정이 어긋나지 않게 한다.
      * 승인 기록이 없으면 가장 최근 신청의 상태, 신청 내역이 없으면 NONE.
      */
@@ -199,7 +202,9 @@ public class ExpertServiceImpl implements ExpertService {
     /**
      * 전문가 검수 요청 목록 조회
      * 전문가 인증(APPROVED)을 받지 않은 사용자는 조회할 수 없다.
-     * 증강 데이터·레시피·업로드 데이터셋 검수를 모두 담고, 검수 상태(PENDING/IN_PROGRESS/COMPLETED)별로 묶어 반환한다.
+     * 증강 데이터·레시피·업로드 데이터셋 검수를 모두 담고, 검수 상태별로 묶어 반환한다.
+     * - PENDING(검수 전): 전문가 풀. 아직 아무도 시작하지 않은 신청 (본인 신청 제외, 오래된 순)
+     * - IN_PROGRESS·COMPLETED: 본인이 시작한 task (updatedAt 최신순)
      * 대상 이름은 종류별로 한 번씩 일괄 조회한다 (InspectionTargetDisplayResolver).
      */
     @Override
@@ -210,8 +215,9 @@ public class ExpertServiceImpl implements ExpertService {
         }
 
         List<ExpertTask> tasks = expertTaskRepository.findMyReviewTasks(user);
-        TargetDisplays displays = inspectionTargetDisplayResolver.resolve(
-                tasks.stream().map(ExpertTask::getInspectionRequest).toList());
+        List<InspectionRequest> pool = inspectionRequestRepository.findPool(user, InspectionRequestStatus.PENDING);
+        TargetDisplays displays = inspectionTargetDisplayResolver.resolve(Stream.concat(
+                tasks.stream().map(ExpertTask::getInspectionRequest), pool.stream()).toList());
 
         Map<String, List<ExpertTaskSummaryResponse>> grouped = tasks.stream()
                 .map(t -> {
@@ -221,9 +227,17 @@ public class ExpertServiceImpl implements ExpertService {
                             display != null ? display.imageUrl() : null);
                 })
                 .collect(Collectors.groupingBy(ExpertTaskSummaryResponse::status));
+        List<ExpertTaskSummaryResponse> pending = pool.stream()
+                .map(request -> {
+                    TargetDisplay display = displays.get(request);
+                    return ExpertTaskSummaryResponse.ofPending(request,
+                            display != null ? display.name() : null,
+                            display != null ? display.imageUrl() : null);
+                })
+                .toList();
 
         return new ExpertTaskGroupedResponse(
-                grouped.getOrDefault(STATUS_PENDING, List.of()),
+                pending,
                 grouped.getOrDefault(STATUS_IN_PROGRESS, List.of()),
                 grouped.getOrDefault(STATUS_COMPLETED, List.of())
         );

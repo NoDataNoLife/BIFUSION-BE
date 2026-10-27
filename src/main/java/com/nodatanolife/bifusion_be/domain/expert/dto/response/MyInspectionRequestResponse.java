@@ -14,7 +14,7 @@ import java.time.LocalDateTime;
  * "내가 요청한 검수" 목록 항목 (신청자용).
  */
 public record MyInspectionRequestResponse(
-        @Schema(description = "검수 신청 ID. 상세·취소 API에 사용. 전문가용 /inspections/{inspectionId}의 ID(배정 ID)와 다르다", example = "45")
+        @Schema(description = "검수 신청 ID. 상세·취소 API에 사용. 전문가용 /inspections/{inspectionId}의 ID(검수 시작 응답의 taskId)와 다르다", example = "45")
         Long inspectionRequestId,
         Target target,
         @Schema(description = "진행 상태 (PENDING/IN_PROGRESS/APPROVED/REJECTED)")
@@ -23,7 +23,7 @@ public record MyInspectionRequestResponse(
         LocalDateTime requestedAt,
         @Schema(description = "승인·반려 시각. 확정 전이면 null")
         LocalDateTime completedAt,
-        @Schema(description = "담당 전문가. 배정 전이면 null")
+        @Schema(description = "담당 전문가. 전문가가 시작하기 전이면 null")
         Expert expert,
         @Schema(description = "전문가 최종 의견(승인) 또는 반려 사유. 확정 전이면 null")
         Result result
@@ -66,7 +66,7 @@ public record MyInspectionRequestResponse(
     }
 
     /**
-     * @param latestTask 현재 회차 task. 배정되지 않았으면 null
+     * @param latestTask 현재 회차 task. 아직 아무도 시작하지 않았으면 null
      */
     public static MyInspectionRequestResponse of(InspectionRequest inspectionRequest, ExpertTask latestTask, Target target) {
         InspectionProgressStatus status = InspectionProgressStatus.of(

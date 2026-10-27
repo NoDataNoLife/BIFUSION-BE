@@ -175,12 +175,13 @@ public enum ErrorCode {
     INSPECTION_IMAGE_NOT_FOUND(HttpStatus.NOT_FOUND, "IS005", "검수 대상 이미지를 찾을 수 없습니다."),
     INSPECTION_ALREADY_PROCESSED(HttpStatus.BAD_REQUEST, "IS006", "이미 승인 또는 거절 처리된 검수 요청입니다."),
     INSPECTION_TARGET_TYPE_NOT_SUPPORTED(HttpStatus.BAD_REQUEST, "IS007", "현재 지원하지 않는 검수 대상 종류입니다."),
-    INSPECTION_NO_AVAILABLE_EXPERT(HttpStatus.CONFLICT, "IS008", "배정할 수 있는 전문가가 없습니다. 잠시 후 다시 신청해 주세요."),
     INSPECTION_NOT_FOUND(HttpStatus.NOT_FOUND, "IS009", "검수 신청을 찾을 수 없습니다."),
     INSPECTION_CANNOT_CANCEL(HttpStatus.CONFLICT, "IS010", "전문가가 검수를 시작했거나 이미 처리된 신청은 취소할 수 없습니다."),
     INSPECTION_FORKED_RECIPE_NOT_ALLOWED(HttpStatus.BAD_REQUEST, "IS011", "그대로 복제한 레시피는 전문가 검수를 신청할 수 없습니다."),
     INSPECTION_IN_PROGRESS_TARGET_DELETE(HttpStatus.CONFLICT, "IS012", "전문가 검수가 진행 중인 대상은 삭제할 수 없습니다."),
     INSPECTION_REWARD_OUT_OF_RANGE(HttpStatus.BAD_REQUEST, "IS013", "검수 리워드가 허용 범위를 벗어났습니다."),
+    INSPECTION_OWN_REQUEST(HttpStatus.FORBIDDEN, "IS014", "본인이 신청한 검수는 맡을 수 없습니다."),
+    INSPECTION_ALREADY_TAKEN(HttpStatus.CONFLICT, "IS015", "다른 전문가가 이미 시작한 검수 요청입니다."),
 
     /* ================================
      * Notification
