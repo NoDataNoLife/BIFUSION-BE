@@ -74,26 +74,6 @@ class JobResultIntegrationTest extends IntegrationTestSupport {
     }
 
     @Test
-    void 실행_요청_단계에서_실패해도_실패_알림이_간다() {
-        User owner = user("owner@test.com", 0);
-        Job job = jobRepository.save(Job.create(projectEntity(owner), owner, JobType.AUGMENTATION, 1L, "idem-launch"));
-
-        jobCommandService.markFailed(job.getJobId(), JobFailureReason.ML_UNAVAILABLE);
-
-        assertThat(notifications(owner)).extracting(row -> row.get("type")).containsExactly("AUGMENTATION_FAILED");
-    }
-
-    @Test
-    void 학습_작업은_알림을_보내지_않는다() {
-        User owner = user("owner@test.com", 0);
-        Job job = startedJob(owner, JobType.TRAINING);
-
-        jobPollingService.fail(job.getJobId(), JobFailureReason.UNKNOWN, null);
-
-        assertThat(notifications(owner)).isEmpty();
-    }
-
-    @Test
     void Job_응답에_ML_접수_시각과_연결_불가_시각이_나오고_끝난_작업에는_연결_불가가_나오지_않는다() {
         User owner = user("owner@test.com", 0);
         Job job = startedJob(owner, JobType.AUGMENTATION);

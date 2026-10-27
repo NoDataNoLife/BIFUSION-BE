@@ -114,6 +114,7 @@ public class JobLaunchFacade {
     /**
      * 실패 사유를 Job에 기록하고 FE 응답을 결정한다. 입력 파일은 Job에 연결된 채로 보존된다.
      * ML 요청 형식 오류(422)만 실패 상태의 Job을 정상 응답하고, 나머지는 원래 ErrorCode로 응답한다.
+     * 에러 응답으로 실패를 바로 알 수 있으므로 알림은 422일 때만 보낸다.
      */
     private void handleSubmitFailure(Long jobId, BusinessException e) {
         ErrorCode errorCode = e.getErrorCode();
@@ -124,7 +125,8 @@ public class JobLaunchFacade {
             }
             case ML_REQUEST_INVALID -> {
                 log.error("[Job] ML 실행 요청 형식 오류(422) - BE 요청 DTO 확인 필요, jobId: {}", jobId);
-                jobCommandService.markFailed(jobId, JobFailureReason.UNKNOWN);
+                // 에러 응답 없이 FAILED Job이 정상 응답으로 나가므로 이 경우만 실패 알림을 보낸다.
+                jobCommandService.markFailedAndNotify(jobId, JobFailureReason.UNKNOWN);
             }
             case ML_CONNECTION_FAILED -> {
                 jobCommandService.markFailed(jobId, JobFailureReason.ML_UNAVAILABLE);
