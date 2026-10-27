@@ -4,16 +4,24 @@ import com.nodatanolife.bifusion_be.domain.recruitment.entity.Recruit;
 import com.nodatanolife.bifusion_be.domain.user.entity.User;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 public interface RecruitRepository extends JpaRepository<Recruit, Long> {
 
     List<Recruit> findAllByUser(User user);
+
+    // 지원 상태 변경은 모집글 단위로 한 번에 하나씩 처리한다 (같은 지원서 중복 처리, 동시 수락으로 정원 초과 방지)
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT r FROM Recruit r WHERE r.recruitId = :recruitId")
+    Optional<Recruit> findByIdForUpdate(@Param("recruitId") Long recruitId);
 
     @Query("SELECT r FROM Recruit r WHERE r.isPublic = true AND r.deletedAt IS NULL")
     Page<Recruit> findAllByIsPublicTrue(Pageable pageable);

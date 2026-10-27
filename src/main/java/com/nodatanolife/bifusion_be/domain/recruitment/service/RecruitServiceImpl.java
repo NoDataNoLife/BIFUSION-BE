@@ -131,10 +131,16 @@ public class RecruitServiceImpl implements RecruitService {
             RecruitApplicationStatusRequest request,
             Long userId
     ) {
+        // 모집글을 잠가 같은 모집글의 상태 변경을 한 번에 하나씩 처리한다.
+        // 같은 지원서가 두 번 처리되거나, 동시에 수락해 정원을 넘기지 않게 한다.
+        Recruit recruit = recruitRepository.findByIdForUpdate(recruitmentId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.RECRUITMENT_NOT_FOUND));
+
         RecruitApplication application = recruitApplicationRepository.findById(applicationId)
+                .filter(found -> found.getRecruit().getRecruitId().equals(recruit.getRecruitId()))
                 .orElseThrow(() -> new BusinessException(ErrorCode.APPLICATION_NOT_FOUND));
 
-        if (!application.getRecruit().getUser().getUserId().equals(userId)) {
+        if (!recruit.getUser().getUserId().equals(userId)) {
             throw new BusinessException(ErrorCode.APPLICATION_ACCESS_DENIED);
         }
 
@@ -142,9 +148,13 @@ public class RecruitServiceImpl implements RecruitService {
             throw new BusinessException(ErrorCode.INVALID_APPLICATION_STATUS);
         }
 
+        // 수락·거절은 대기 중인 지원서에 한 번만 한다 (결과 알림이 중복되거나 뒤집히지 않게)
+        if (application.getStatus() != RecruitApplicationStatus.PENDING) {
+            throw new BusinessException(ErrorCode.APPLICATION_ALREADY_PROCESSED);
+        }
+
         // 정원 체크: ACCEPTED로 변경하는 경우에만
         if (request.getStatus() == RecruitApplicationStatus.ACCEPTED) {
-            Recruit recruit = application.getRecruit();
             Integer teamSize = recruit.getTeamSize();
 
             if (teamSize != null) {
