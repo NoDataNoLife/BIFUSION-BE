@@ -44,7 +44,7 @@ class FileDownloadPermissionIntegrationTest extends IntegrationTestSupport {
     }
 
     @Test
-    void 비공개_데이터셋_파일은_작성자와_검수를_배정받은_전문가만_받을_수_있다() {
+    void 비공개_데이터셋_파일은_작성자와_검수를_맡은_전문가만_받을_수_있다() {
         User owner = user("owner@test.com", 1000);
         User other = user("other@test.com", 0);
         User expert = expert("expert@test.com", 0);
@@ -55,8 +55,10 @@ class FileDownloadPermissionIntegrationTest extends IntegrationTestSupport {
         assertNotFound(expert, file);
         assertThat(fileService.getDownloadUrl(owner.getUserId(), file.getFileId()).presignedUrl()).isEqualTo(SIGNED_URL);
 
-        inspectionService.createInspection(owner, request(InspectionCreateRequest.class, Map.of(
-                "targetType", InspectionTargetType.UPLOADED_DATA, "targetId", datasetId, "reason", "검수", "rewardPoints", 500)));
+        Long requestId = inspectionService.createInspection(owner, request(InspectionCreateRequest.class, Map.of(
+                "targetType", InspectionTargetType.UPLOADED_DATA, "targetId", datasetId, "reason", "검수", "rewardPoints", 500)))
+                .inspectionRequestId();
+        inspectionService.startInspection(expert, requestId);
 
         assertThat(fileService.getDownloadUrl(expert.getUserId(), file.getFileId()).presignedUrl()).isEqualTo(SIGNED_URL);
         assertNotFound(other, file);

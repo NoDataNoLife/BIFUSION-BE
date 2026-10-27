@@ -8,7 +8,7 @@ import java.time.LocalDateTime;
 /**
  * 검수 신청·취소 응답 (신청자용).
  *
- * @param inspectionRequestId 검수 신청 ID. 취소 API에 사용한다. 전문가용 /inspections/{inspectionId}의 ID(배정 task ID)와 다르다.
+ * @param inspectionRequestId 검수 신청 ID. 취소·검수 시작 API에 사용한다. 전문가용 /inspections/{inspectionId}의 ID(검수 시작 응답의 taskId)와 다르다.
  */
 public record InspectionResponse(
         Long inspectionRequestId,

@@ -7,15 +7,12 @@ import com.nodatanolife.bifusion_be.domain.expert.dto.response.InspectionRespons
 import com.nodatanolife.bifusion_be.domain.expert.dto.response.InspectionTargetResponse;
 import com.nodatanolife.bifusion_be.domain.expert.dto.response.MyInspectionRequestDetailResponse;
 import com.nodatanolife.bifusion_be.domain.expert.dto.response.MyInspectionRequestResponse;
-import com.nodatanolife.bifusion_be.domain.expert.entity.ExpertTask;
 import com.nodatanolife.bifusion_be.domain.expert.entity.InspectionProgressStatus;
-import com.nodatanolife.bifusion_be.domain.expert.entity.InspectionRequest;
 import com.nodatanolife.bifusion_be.domain.expert.entity.InspectionRequestStatus;
 import com.nodatanolife.bifusion_be.domain.expert.entity.InspectionTargetType;
 import com.nodatanolife.bifusion_be.domain.expert.repository.ExpertTaskRepository;
 import com.nodatanolife.bifusion_be.domain.expert.repository.InspectionRequestRepository;
 import com.nodatanolife.bifusion_be.domain.expert.service.ExpertService;
-import com.nodatanolife.bifusion_be.domain.expert.service.ExpertTaskService;
 import com.nodatanolife.bifusion_be.domain.expert.service.InspectionResultService;
 import com.nodatanolife.bifusion_be.domain.expert.service.InspectionService;
 import com.nodatanolife.bifusion_be.domain.file.entity.File;
@@ -47,7 +44,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
  * 레시피·업로드 데이터셋 검수, 복제 사본 차단, 스토리지 크기 기준 리워드 범위, 대상 삭제 시 처리,
- * 전문가 목록·상세의 대상 정보, 배정 없이 남은 신청 정리.
+ * 전문가 목록·상세의 대상 정보.
  */
 class InspectionIntegrationTest extends IntegrationTestSupport {
 
@@ -59,8 +56,6 @@ class InspectionIntegrationTest extends IntegrationTestSupport {
     InspectionResultService inspectionResultService;
     @Autowired
     ExpertService expertService;
-    @Autowired
-    ExpertTaskService expertTaskService;
     @Autowired
     ExpertTaskRepository expertTaskRepository;
     @Autowired
@@ -75,7 +70,7 @@ class InspectionIntegrationTest extends IntegrationTestSupport {
     // ---------- 신청 ----------
 
     @Test
-    void 레시피_검수를_신청하면_전문가에게_배정되고_포인트가_차감_기록된다() {
+    void 레시피_검수를_신청하면_풀에_올라가고_포인트가_차감_기록된다() {
         User owner = user("owner@test.com", 1000);
         expert("expert@test.com", 0);
         Long recipeId = recipe(owner, null, true);
@@ -83,7 +78,7 @@ class InspectionIntegrationTest extends IntegrationTestSupport {
         InspectionResponse response = inspectionService.createInspection(owner, create(InspectionTargetType.RECIPE, recipeId, 500));
 
         assertThat(response.inspectionRequestId()).isNotNull();
-        assertThat(expertTaskRepository.findAll()).hasSize(1);
+        assertThat(expertTaskRepository.findAll()).isEmpty();
         assertThat(pointsOf(owner)).isEqualTo(500);
         assertThat(rewardHistoryAmount(owner, RewardHistory.TYPE_INSPECTION_REQUEST)).isEqualTo(-500);
     }
@@ -94,9 +89,10 @@ class InspectionIntegrationTest extends IntegrationTestSupport {
         expert("expert@test.com", 0);
         Long datasetId = dataset(owner, true, tempFile(owner, "application/zip", 5 * MB));
 
-        inspectionService.createInspection(owner, create(InspectionTargetType.UPLOADED_DATA, datasetId, 500));
+        Long requestId = inspectionService.createInspection(owner, create(InspectionTargetType.UPLOADED_DATA, datasetId, 500))
+                .inspectionRequestId();
 
-        assertThat(expertTaskRepository.findAll()).hasSize(1);
+        assertThat(inspectionRequestRepository.findById(requestId).orElseThrow().getStatus()).isEqualTo(InspectionRequestStatus.PENDING);
     }
 
     @Test
@@ -217,10 +213,9 @@ class InspectionIntegrationTest extends IntegrationTestSupport {
         User owner = user("owner@test.com", 1000);
         User expert = expert("expert@test.com", 0);
         Long recipeId = recipe(owner, null, true);
-        inspectionService.createInspection(owner, create(InspectionTargetType.RECIPE, recipeId, 500));
-        Long taskId = onlyTask().getExpertTaskId();
+        Long taskId = start(expert, inspectionService.createInspection(owner, create(InspectionTargetType.RECIPE, recipeId, 500)));
 
-        ExpertTaskSummaryResponse summary = expertService.getMyTasks(expert).pending().get(0);
+        ExpertTaskSummaryResponse summary = expertService.getMyTasks(expert).inProgress().get(0);
         assertThat(summary.targetType()).isEqualTo(InspectionTargetType.RECIPE);
         assertThat(summary.targetTitle()).isEqualTo("레시피");
         assertThat(summary.projectName()).isNull();
@@ -240,12 +235,12 @@ class InspectionIntegrationTest extends IntegrationTestSupport {
         User expert = expert("expert@test.com", 0);
         File image = tempFile(owner, "image/png", MB);
         Long datasetId = dataset(owner, false, image);
-        inspectionService.createInspection(owner, create(InspectionTargetType.UPLOADED_DATA, datasetId, 500));
+        Long taskId = start(expert, inspectionService.createInspection(owner, create(InspectionTargetType.UPLOADED_DATA, datasetId, 500)));
 
-        ExpertTaskSummaryResponse summary = expertService.getMyTasks(expert).pending().get(0);
+        ExpertTaskSummaryResponse summary = expertService.getMyTasks(expert).inProgress().get(0);
         assertThat(summary.targetImageUrl()).isEqualTo(image.getS3Key());
 
-        InspectionDetailResponse.DatasetTarget dataset = inspectionService.getInspectionDetail(expert, onlyTask().getExpertTaskId()).dataset();
+        InspectionDetailResponse.DatasetTarget dataset = inspectionService.getInspectionDetail(expert, taskId).dataset();
         assertThat(dataset.datasetId()).isEqualTo(datasetId);
         assertThat(dataset.fileId()).isEqualTo(image.getFileId());
         assertThat(dataset.bannerImageUrl()).isEqualTo(image.getS3Key());
@@ -256,9 +251,9 @@ class InspectionIntegrationTest extends IntegrationTestSupport {
         User owner = user("owner@test.com", 1000);
         User expert = expert("expert@test.com", 0);
         Long recipeId = recipe(owner, null, true);
-        inspectionService.createInspection(owner, create(InspectionTargetType.RECIPE, recipeId, 1000));
+        Long taskId = start(expert, inspectionService.createInspection(owner, create(InspectionTargetType.RECIPE, recipeId, 1000)));
 
-        inspectionService.approveInspection(expert, onlyTask().getExpertTaskId(), "좋습니다");
+        inspectionService.approveInspection(expert, taskId, "좋습니다");
 
         assertThat(pointsOf(expert)).isEqualTo(900);
         assertThat(rewardHistoryAmount(expert, RewardHistory.TYPE_EXPERT_TASK_REWARD)).isEqualTo(900);
@@ -271,9 +266,9 @@ class InspectionIntegrationTest extends IntegrationTestSupport {
         User owner = user("owner@test.com", 1000);
         User expert = expert("expert@test.com", 0);
         Long datasetId = dataset(owner, true, tempFile(owner, "application/zip", MB));
-        inspectionService.createInspection(owner, create(InspectionTargetType.UPLOADED_DATA, datasetId, 500));
+        Long taskId = start(expert, inspectionService.createInspection(owner, create(InspectionTargetType.UPLOADED_DATA, datasetId, 500)));
 
-        inspectionService.rejectInspection(expert, onlyTask().getExpertTaskId(), "라벨이 틀렸습니다");
+        inspectionService.rejectInspection(expert, taskId, "라벨이 틀렸습니다");
 
         assertThat(notificationTypes(owner)).contains(NotificationType.DATASET_VERIFY_REJECTED.name());
     }
@@ -283,9 +278,9 @@ class InspectionIntegrationTest extends IntegrationTestSupport {
         User owner = user("owner@test.com", 1000);
         User expert = expert("expert@test.com", 0);
         Long recipeId = recipe(owner, null, true);
-        inspectionService.createInspection(owner, create(InspectionTargetType.RECIPE, recipeId, 500));
+        Long taskId = start(expert, inspectionService.createInspection(owner, create(InspectionTargetType.RECIPE, recipeId, 500)));
 
-        assertError(() -> inspectionService.saveImageComment(expert, onlyTask().getExpertTaskId(), 1L, "코멘트"),
+        assertError(() -> inspectionService.saveImageComment(expert, taskId, 1L, "코멘트"),
                 ErrorCode.INSPECTION_IMAGE_NOT_FOUND);
     }
 
@@ -299,10 +294,10 @@ class InspectionIntegrationTest extends IntegrationTestSupport {
         Long datasetId = dataset(owner, true, tempFile(owner, "application/zip", MB));
         Long configId = augmentedConfig(owner, project(owner), 50 * MB);
         Long recipeRequestId = inspectionService.createInspection(owner, create(InspectionTargetType.RECIPE, recipeId, 500)).inspectionRequestId();
-        inspectionService.createInspection(owner, create(InspectionTargetType.UPLOADED_DATA, datasetId, 500));
+        InspectionResponse datasetRequest = inspectionService.createInspection(owner, create(InspectionTargetType.UPLOADED_DATA, datasetId, 500));
         inspectionService.createInspection(owner, create(InspectionTargetType.AUGMENTED_DATA, configId, 500));
-        inspectionService.approveInspection(expert, taskOf(InspectionTargetType.RECIPE).getExpertTaskId(), "좋습니다");
-        expertTaskService.startTask(expert, taskOf(InspectionTargetType.UPLOADED_DATA).getExpertTaskId());
+        inspectionService.approveInspection(expert, inspectionService.startInspection(expert, recipeRequestId).taskId(), "좋습니다");
+        start(expert, datasetRequest);
 
         Page<MyInspectionRequestResponse> all = inspectionService.getMyRequests(owner, null, null, null, 0, 10);
 
@@ -320,7 +315,7 @@ class InspectionIntegrationTest extends IntegrationTestSupport {
         assertThat(augmented.target().jobId()).isNotNull();
         assertThat(augmented.target().name()).isEqualTo("프로젝트");
         assertThat(augmented.target().imageUrl()).isEqualTo("ml-results/preview.png");
-        assertThat(augmented.expert().nickname()).isEqualTo(reload(expert).getNickname());
+        assertThat(augmented.expert()).isNull();
         assertThat(augmented.result()).isNull();
         assertThat(augmented.completedAt()).isNull();
 
@@ -357,7 +352,7 @@ class InspectionIntegrationTest extends IntegrationTestSupport {
         Long cancelledId = inspectionService.createInspection(owner, create(InspectionTargetType.RECIPE, cancelledRecipe, 500)).inspectionRequestId();
         inspectionService.cancelInspection(owner, cancelledId);
         Long rejectedId = inspectionService.createInspection(owner, create(InspectionTargetType.RECIPE, rejectedRecipe, 500)).inspectionRequestId();
-        inspectionService.rejectInspection(expert, onlyTask().getExpertTaskId(), "설명이 부족합니다");
+        inspectionService.rejectInspection(expert, inspectionService.startInspection(expert, rejectedId).taskId(), "설명이 부족합니다");
         recipeService.deleteRecipe(rejectedRecipe, owner.getUserId());
         inspectionService.createInspection(other, create(InspectionTargetType.RECIPE, recipe(other, null, true), 500));
 
@@ -386,15 +381,15 @@ class InspectionIntegrationTest extends IntegrationTestSupport {
         Long cancelledRecipe = recipe(owner, null, true);
         // 반려 → 재신청 → 승인
         Long approvedId = inspectionService.createInspection(owner, create(InspectionTargetType.RECIPE, approvedRecipe, 500)).inspectionRequestId();
-        inspectionService.rejectInspection(expert, latestTaskId(approvedId), "보완 필요");
-        Long firstRound = latestTaskId(approvedId);
+        Long firstRound = inspectionService.startInspection(expert, approvedId).taskId();
+        inspectionService.rejectInspection(expert, firstRound, "보완 필요");
         inspectionService.createInspection(owner, create(InspectionTargetType.RECIPE, approvedRecipe, 500));
-        Long approvedRound = latestTaskId(approvedId);
+        Long approvedRound = inspectionService.startInspection(expert, approvedId).taskId();
         inspectionService.approveInspection(expert, approvedRound, "좋습니다");
-        // 반려 → 재신청 → 취소 (재신청 회차 task는 지워진다)
+        // 반려 → 재신청 → 취소 (재신청 회차는 아무도 시작하지 않아 task가 없다)
         Long cancelledId = inspectionService.createInspection(owner, create(InspectionTargetType.RECIPE, cancelledRecipe, 500)).inspectionRequestId();
-        inspectionService.rejectInspection(expert, latestTaskId(cancelledId), "설명 부족");
-        Long rejectedRound = latestTaskId(cancelledId);
+        Long rejectedRound = inspectionService.startInspection(expert, cancelledId).taskId();
+        inspectionService.rejectInspection(expert, rejectedRound, "설명 부족");
         inspectionService.createInspection(owner, create(InspectionTargetType.RECIPE, cancelledRecipe, 500));
         inspectionService.cancelInspection(owner, cancelledId);
 
@@ -414,12 +409,12 @@ class InspectionIntegrationTest extends IntegrationTestSupport {
         User expert = expert("expert@test.com", 0);
         Long recipeId = recipe(owner, null, true);
         Long requestId = inspectionService.createInspection(owner, create(InspectionTargetType.RECIPE, recipeId, 500)).inspectionRequestId();
-        inspectionService.rejectInspection(expert, latestTaskId(requestId), "보완 필요");
-        Long rejectedRound = latestTaskId(requestId);
+        Long rejectedRound = inspectionService.startInspection(expert, requestId).taskId();
+        inspectionService.rejectInspection(expert, rejectedRound, "보완 필요");
         inspectionService.createInspection(owner, create(InspectionTargetType.RECIPE, recipeId, 500));
         inspectionService.cancelInspection(owner, requestId);
         Long otherId = inspectionService.createInspection(owner, create(InspectionTargetType.RECIPE, recipe(owner, null, true), 500)).inspectionRequestId();
-        Long approvedRound = latestTaskId(otherId);
+        Long approvedRound = inspectionService.startInspection(expert, otherId).taskId();
         inspectionService.approveInspection(expert, approvedRound, "좋습니다");
         jdbc.update("UPDATE expert_task SET result = NULL");
 
@@ -461,33 +456,11 @@ class InspectionIntegrationTest extends IntegrationTestSupport {
         User expert = expert("expert@test.com", 0);
         Long recipeId = recipe(owner, null, true);
         Long datasetId = dataset(owner, true, tempFile(owner, "application/zip", MB));
-        inspectionService.createInspection(owner, create(InspectionTargetType.RECIPE, recipeId, 500));
-        inspectionService.createInspection(owner, create(InspectionTargetType.UPLOADED_DATA, datasetId, 500));
-        expertTaskRepository.findAll().forEach(task -> expertTaskService.startTask(expert, task.getExpertTaskId()));
+        start(expert, inspectionService.createInspection(owner, create(InspectionTargetType.RECIPE, recipeId, 500)));
+        start(expert, inspectionService.createInspection(owner, create(InspectionTargetType.UPLOADED_DATA, datasetId, 500)));
 
         assertError(() -> recipeService.deleteRecipe(recipeId, owner.getUserId()), ErrorCode.INSPECTION_IN_PROGRESS_TARGET_DELETE);
         assertError(() -> datasetService.deleteDataset(owner.getUserId(), datasetId), ErrorCode.INSPECTION_IN_PROGRESS_TARGET_DELETE);
-    }
-
-    // ---------- 배정 없이 남은 신청 정리 ----------
-
-    @Test
-    void 배정_없이_대기_중인_신청은_취소_환불하고_배정된_신청은_건드리지_않는다() {
-        User owner = user("owner@test.com", 1000);
-        expert("expert@test.com", 0);
-        Long assignedRecipe = recipe(owner, null, true);
-        inspectionService.createInspection(owner, create(InspectionTargetType.RECIPE, assignedRecipe, 500));
-        InspectionRequest orphan = inspectionRequestRepository.save(
-                InspectionRequest.create(owner, InspectionTargetType.RECIPE, recipe(owner, null, true), "예전 신청", 300));
-
-        List<Long> ids = inspectionRequestRepository.findIdsWithoutTaskByStatus(InspectionRequestStatus.PENDING);
-        assertThat(ids).containsExactly(orphan.getInspectionRequestId());
-        assertThat(inspectionService.cancelUnassigned(orphan.getInspectionRequestId())).isTrue();
-
-        assertThat(inspectionRequestRepository.findById(orphan.getInspectionRequestId()).orElseThrow().getStatus())
-                .isEqualTo(InspectionRequestStatus.CANCELLED);
-        assertThat(pointsOf(owner)).isEqualTo(500 + 300);
-        assertThat(inspectionService.cancelUnassigned(orphan.getInspectionRequestId())).isFalse();
     }
 
     // ---------- helpers ----------
@@ -497,9 +470,9 @@ class InspectionIntegrationTest extends IntegrationTestSupport {
                 "targetType", targetType, "targetId", targetId, "reason", "검수 부탁드립니다", "rewardPoints", rewardPoints));
     }
 
-    private Long latestTaskId(Long inspectionRequestId) {
-        return jdbc.queryForObject("SELECT MAX(expert_task_id) FROM expert_task WHERE inspection_request_id = ?",
-                Long.class, inspectionRequestId);
+    // 전문가가 풀에서 신청을 시작해 맡는다. 맡은 task ID를 돌려준다
+    private Long start(User expert, InspectionResponse request) {
+        return inspectionService.startInspection(expert, request.inspectionRequestId()).taskId();
     }
 
     private String reviewCode(Long taskId) {
@@ -508,18 +481,6 @@ class InspectionIntegrationTest extends IntegrationTestSupport {
 
     private String resultOf(Long taskId) {
         return jdbc.queryForObject("SELECT result FROM expert_task WHERE expert_task_id = ?", String.class, taskId);
-    }
-
-    private ExpertTask onlyTask() {
-        List<ExpertTask> tasks = expertTaskRepository.findAll();
-        assertThat(tasks).hasSize(1);
-        return tasks.get(0);
-    }
-
-    private ExpertTask taskOf(InspectionTargetType targetType) {
-        return transactionTemplate.execute(status -> expertTaskRepository.findAll().stream()
-                .filter(t -> t.getInspectionRequest().getTargetType() == targetType)
-                .findFirst().orElseThrow());
     }
 
     private void assertRange(User owner, long fileSize, int min, int max) {

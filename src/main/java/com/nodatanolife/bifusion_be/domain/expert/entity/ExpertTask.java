@@ -71,15 +71,18 @@ public class ExpertTask extends BaseEntity {
     }
 
     /**
-     * 검수 신청을 전문가에게 배정한다. 보상은 신청 포인트와 같으며, 승인·반려 시 수수료를 뗀 금액이 지급된다.
+     * 풀에 올라온 검수 신청을 전문가가 시작해 맡는다. 맡는 즉시 검수 중(IN_PROGRESS)이 된다.
+     * 보상은 신청 포인트와 같으며, 승인·반려 시 수수료를 뗀 금액이 지급된다.
      * reviewCode는 ID가 필요해 저장 후 assignReviewCode()로 채운다.
      */
-    public static ExpertTask assign(User expert, InspectionRequest inspectionRequest) {
-        return ExpertTask.builder()
+    public static ExpertTask claim(User expert, InspectionRequest inspectionRequest) {
+        ExpertTask task = ExpertTask.builder()
                 .expert(expert)
                 .inspectionRequest(inspectionRequest)
                 .reward(inspectionRequest.getRewardPoints())
                 .build();
+        task.start();
+        return task;
     }
 
     /**
@@ -89,8 +92,8 @@ public class ExpertTask extends BaseEntity {
         this.reviewCode = "REV-%03d".formatted(expertTaskId);
     }
 
-    public boolean isPending() {
-        return STATUS_PENDING.equals(status);
+    public boolean isCompleted() {
+        return STATUS_COMPLETED.equals(status);
     }
 
     /**
@@ -118,7 +121,7 @@ public class ExpertTask extends BaseEntity {
         this.expert = deletedUser;
     }
 
-    public void start() {
+    private void start() {
         this.status = STATUS_IN_PROGRESS;
         this.startedAt = LocalDateTime.now();
     }

@@ -9,5 +9,7 @@ public enum TargetType {
     DATASET,
     QNA,
     RECRUITMENT,
-    EXPERT
+    EXPERT,
+    // 새 검수 요청 알림(전문가 검수 목록의 검수 전 항목). targetId는 InspectionRequest ID
+    INSPECTION_REQUEST
 }
