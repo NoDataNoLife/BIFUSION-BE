@@ -30,6 +30,15 @@ public interface JobCommandService {
     /** 트랜잭션 2: ML 접수 성공 */
     void markStarted(Long jobId, String mlJobId);
 
-    /** 트랜잭션 2: ML 실행 전·접수 단계 실패. 입력 파일은 Job에 연결된 채로 보존한다(재시도 기능 대비). */
+    /**
+     * 트랜잭션 2: ML 실행 전·접수 단계 실패. 입력 파일은 Job에 연결된 채로 보존한다(재시도 기능 대비).
+     * 실패가 실행 요청의 에러 응답으로 바로 전달되므로 알림은 보내지 않는다.
+     */
     void markFailed(Long jobId, JobFailureReason reason);
+
+    /**
+     * markFailed와 같지만 실패 알림을 함께 보낸다.
+     * 에러 응답 없이 FAILED 상태의 Job이 정상 응답으로 나가는 경우(ML 요청 형식 오류 422)에만 쓴다.
+     */
+    void markFailedAndNotify(Long jobId, JobFailureReason reason);
 }

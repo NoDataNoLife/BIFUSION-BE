@@ -147,11 +147,20 @@ public class JobCommandServiceImpl implements JobCommandService {
 
     @Override
     public void markFailed(Long jobId, JobFailureReason reason) {
-        // 입력 파일은 되돌리지 않고 Job에 연결된 채로 보존한다 (스케줄러의 실패·취소 처리와 동일, 재시도 API 대비).
+        fail(jobId, reason);
+    }
+
+    @Override
+    public void markFailedAndNotify(Long jobId, JobFailureReason reason) {
+        jobResultNotifier.notifyFailed(fail(jobId, reason));
+    }
+
+    // 입력 파일은 되돌리지 않고 Job에 연결된 채로 보존한다 (스케줄러의 실패·취소 처리와 동일, 재시도 API 대비).
+    private Job fail(Long jobId, JobFailureReason reason) {
         Job job = getJob(jobId);
         job.fail(reason, null);
         jobPointService.refund(job);
-        jobResultNotifier.notifyFailed(job);
+        return job;
     }
 
     private JobLaunchPlan createAugmentation(Project project, User user, AugmentationJobCreateRequest request,

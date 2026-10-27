@@ -131,6 +131,7 @@ public class JobPollingServiceImpl implements JobPollingService {
                 .orElseThrow(() -> new BusinessException(ErrorCode.JOB_NOT_FOUND));
 
         job.succeed();
+        jobResultNotifier.notifySucceeded(job);
         MlTrainingResult.Metrics metrics = result.metrics();
         if (metrics != null) {
             config.recordMetrics(metrics.accuracy(), metrics.f1Score(), metrics.auroc(), metrics.loss());
@@ -162,6 +163,7 @@ public class JobPollingServiceImpl implements JobPollingService {
         }
 
         job.succeed();
+        jobResultNotifier.notifySucceeded(job);
         // sample_index는 ML 요청에 보낸 이미지 순서(= inputFileIds 순서)다.
         List<InferenceResult> results = result.predictions().stream()
                 .map(prediction -> InferenceResult.create(

@@ -3,6 +3,10 @@ package com.nodatanolife.bifusion_be.domain.notification.entity;
 public enum NotificationType {
     AUGMENTATION_SUCCESS,
     AUGMENTATION_FAILED,
+    TRAINING_SUCCESS,
+    TRAINING_FAILED,
+    INFERENCE_SUCCESS,
+    INFERENCE_FAILED,
     PROJECT_INVITATION,
     INVITATION_ACCEPTED,
     INVITATION_REJECTED,

@@ -60,20 +60,41 @@ public class RecipeReviewServiceImpl implements RecipeReviewService {
 
         RecipeReview saved = recipeReviewRepository.save(review);
 
-        if (!recipe.getUser().getUserId().equals(userId)) {
-            notificationService.create(
-                    recipe.getUser(),
-                    NotificationType.RECIPE_REVIEW,
-                    "새로운 리뷰/댓글이 등록되었습니다",
-                    user.getNickname() + "님이 \"" + recipe.getTitle() + "\"에 새로운 리뷰를 남겼습니다.",
-                    TargetType.RECIPE,
-                    recipe.getRecipeId()
-            );
-        }
+        notifyReview(recipe, user, parent);
 
         return RecipeReviewResponse.from(saved);
+    }
 
+    /**
+     * 리뷰는 레시피 작성자에게, 답글은 원래 리뷰 작성자와 레시피 작성자에게 알린다.
+     * 작성자 본인에게는 보내지 않고, 레시피 작성자가 원래 리뷰 작성자이면 "내 리뷰에 답글" 알림 하나만 보낸다.
+     */
+    private void notifyReview(Recipe recipe, User writer, RecipeReview parent) {
+        Long writerId = writer.getUserId();
+        User recipeOwner = recipe.getUser();
 
+        if (parent == null) {
+            if (!recipeOwner.getUserId().equals(writerId)) {
+                notifyRecipeReview(recipeOwner, recipe, "새로운 리뷰가 등록되었습니다",
+                        writer.getDisplayName() + "님이 \"" + recipe.getTitle() + "\"에 새로운 리뷰를 남겼습니다.");
+            }
+            return;
+        }
+
+        User reviewAuthor = parent.getUser();
+        if (!reviewAuthor.getUserId().equals(writerId)) {
+            notifyRecipeReview(reviewAuthor, recipe, "내 리뷰에 답글이 달렸습니다",
+                    writer.getDisplayName() + "님이 \"" + recipe.getTitle() + "\"에 남긴 내 리뷰에 답글을 남겼습니다.");
+        }
+        if (!recipeOwner.getUserId().equals(writerId) && !recipeOwner.getUserId().equals(reviewAuthor.getUserId())) {
+            notifyRecipeReview(recipeOwner, recipe, "새로운 답글이 등록되었습니다",
+                    writer.getDisplayName() + "님이 \"" + recipe.getTitle() + "\"의 리뷰에 답글을 남겼습니다.");
+        }
+    }
+
+    private void notifyRecipeReview(User receiver, Recipe recipe, String title, String content) {
+        notificationService.create(receiver, NotificationType.RECIPE_REVIEW, title, content,
+                TargetType.RECIPE, recipe.getRecipeId());
     }
 
     /**
