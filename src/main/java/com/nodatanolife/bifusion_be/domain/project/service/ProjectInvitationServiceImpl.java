@@ -171,7 +171,7 @@ public class ProjectInvitationServiceImpl implements ProjectInvitationService {
                         invitation.getInviter(),
                         NotificationType.INVITATION_ACCEPTED,
                         "초대 수락 알림",
-                        invitation.getInvitee().getName() + "님이 \"" + invitation.getProject().getTitle() + "\" 초대를 수락했습니다.",
+                        invitation.getInvitee().getDisplayName() + "님이 \"" + invitation.getProject().getTitle() + "\" 초대를 수락했습니다.",
                         TargetType.PROJECT,
                         invitation.getProject().getProjectId()
                 );
@@ -184,7 +184,7 @@ public class ProjectInvitationServiceImpl implements ProjectInvitationService {
                     invitation.getInviter(),
                     NotificationType.INVITATION_REJECTED,
                     "초대 거절 알림",
-                    invitation.getInvitee().getName() + "님이 \"" + invitation.getProject().getTitle() + "\" 초대를 거절했습니다.",
+                    invitation.getInvitee().getDisplayName() + "님이 \"" + invitation.getProject().getTitle() + "\" 초대를 거절했습니다.",
                     TargetType.PROJECT,
                     invitation.getProject().getProjectId()
             );
@@ -218,7 +218,7 @@ public class ProjectInvitationServiceImpl implements ProjectInvitationService {
                 invitee,
                 NotificationType.PROJECT_INVITATION,
                 "새로운 팀 프로젝트 초대",
-                invitation.getInviter().getName() + "님이 \"" + invitation.getProject().getTitle() + "\" 프로젝트로 초대했습니다.",
+                invitation.getInviter().getDisplayName() + "님이 \"" + invitation.getProject().getTitle() + "\" 프로젝트로 초대했습니다.",
                 TargetType.INVITATION,
                 invitation.getProjectInvitationId()
         );

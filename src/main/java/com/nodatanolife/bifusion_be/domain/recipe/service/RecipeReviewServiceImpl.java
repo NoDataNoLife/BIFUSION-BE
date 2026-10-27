@@ -76,7 +76,7 @@ public class RecipeReviewServiceImpl implements RecipeReviewService {
         if (parent == null) {
             if (!recipeOwner.getUserId().equals(writerId)) {
                 notifyRecipeReview(recipeOwner, recipe, "새로운 리뷰가 등록되었습니다",
-                        writer.getNickname() + "님이 \"" + recipe.getTitle() + "\"에 새로운 리뷰를 남겼습니다.");
+                        writer.getDisplayName() + "님이 \"" + recipe.getTitle() + "\"에 새로운 리뷰를 남겼습니다.");
             }
             return;
         }
@@ -84,11 +84,11 @@ public class RecipeReviewServiceImpl implements RecipeReviewService {
         User reviewAuthor = parent.getUser();
         if (!reviewAuthor.getUserId().equals(writerId)) {
             notifyRecipeReview(reviewAuthor, recipe, "내 리뷰에 답글이 달렸습니다",
-                    writer.getNickname() + "님이 \"" + recipe.getTitle() + "\"에 남긴 내 리뷰에 답글을 남겼습니다.");
+                    writer.getDisplayName() + "님이 \"" + recipe.getTitle() + "\"에 남긴 내 리뷰에 답글을 남겼습니다.");
         }
         if (!recipeOwner.getUserId().equals(writerId) && !recipeOwner.getUserId().equals(reviewAuthor.getUserId())) {
             notifyRecipeReview(recipeOwner, recipe, "새로운 답글이 등록되었습니다",
-                    writer.getNickname() + "님이 \"" + recipe.getTitle() + "\"의 리뷰에 답글을 남겼습니다.");
+                    writer.getDisplayName() + "님이 \"" + recipe.getTitle() + "\"의 리뷰에 답글을 남겼습니다.");
         }
     }
 

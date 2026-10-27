@@ -116,7 +116,7 @@ public class RecruitServiceImpl implements RecruitService {
                 recruit.getUser(),
                 NotificationType.RECRUITMENT_APPLY,
                 "새로운 지원서가 도착했습니다",
-                user.getNickname() + "님이 \"" + recruit.getJobTitle() + "\" 공고에 지원했습니다.",
+                user.getDisplayName() + "님이 \"" + recruit.getJobTitle() + "\" 공고에 지원했습니다.",
                 TargetType.RECRUITMENT,
                 recruit.getRecruitId()
         );

@@ -83,6 +83,13 @@ public class User extends BaseEntity {
     }
 
     /**
+     * 알림 등 화면 표시용 이름. 닉네임이 있으면 닉네임, 온보딩 전이라 닉네임이 없으면 실명.
+     */
+    public String getDisplayName() {
+        return nickname != null && !nickname.isBlank() ? nickname : name;
+    }
+
+    /**
      * 탈퇴한 사용자 익명화용 더미 계정
      * 앱 시작 시 DataInitializer가 한 번만 생성
      * 탈퇴 유저의 콘텐츠는 이 계정으로 FK 교체
