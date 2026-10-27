@@ -37,10 +37,15 @@ public class NotificationServiceImpl implements NotificationService {
 
     /**
      * 알림 생성
+     * 받는 사람이 공용 탈퇴 계정(role = DELETED)이면 만들지 않는다. 탈퇴한 사용자의 콘텐츠는 이 계정으로 넘어가므로,
+     * 그 콘텐츠에 달린 리뷰·답변·지원 등의 알림이 아무도 보지 않는 계정에 쌓이지 않게 한다.
      */
     @Override
     public void create(User user, NotificationType type, String title, String content,
                        TargetType targetType, Long targetId) {
+        if ("DELETED".equals(user.getRole())) {
+            return;
+        }
         Notification notification = Notification.create(user, type, title, content, targetType, targetId);
         notificationRepository.save(notification);
     }
