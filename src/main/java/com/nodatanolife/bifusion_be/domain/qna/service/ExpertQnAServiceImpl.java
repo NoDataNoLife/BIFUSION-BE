@@ -76,8 +76,9 @@ public class ExpertQnAServiceImpl implements ExpertQnAService {
         ExpertQnA qna = expertQnARepository.findActiveForUpdate(qnaId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.BOARD_NOT_FOUND));
 
+        boolean ownQuestion = qna.getUser().getUserId().equals(userId);
         // 같은 질문에 이미 답변한 전문가, 본인 질문에 답변한 경우는 보상하지 않는다 (짧은 답변 반복으로 포인트를 모으지 못하게)
-        boolean rewardable = !qna.getUser().getUserId().equals(userId)
+        boolean rewardable = !ownQuestion
                 && !expertQnAAnswerRepository.existsByExpertQnAAndUser(qna, user);
 
         ExpertQnAAnswer answer = ExpertQnAAnswer.create(qna, user, request.getContent());
@@ -90,14 +91,17 @@ public class ExpertQnAServiceImpl implements ExpertQnAService {
 
         qna.addExpertReply();
 
-        notificationService.create(
-                qna.getUser(),
-                NotificationType.QNA_ANSWERED,
-                "질문에 답변이 등록되었습니다",
-                "\"" + qna.getTitle() + "\" 질문에 전문가 답변이 등록되었습니다.",
-                TargetType.QNA,
-                qna.getExpertQnAId()
-        );
+        // 본인 질문에 단 답변은 알리지 않는다
+        if (!ownQuestion) {
+            notificationService.create(
+                    qna.getUser(),
+                    NotificationType.QNA_ANSWERED,
+                    "질문에 답변이 등록되었습니다",
+                    "\"" + qna.getTitle() + "\" 질문에 전문가 답변이 등록되었습니다.",
+                    TargetType.QNA,
+                    qna.getExpertQnAId()
+            );
+        }
 
         return ExpertQnAAnswerResponse.from(answer, isExpert);
     }
