@@ -1,5 +1,6 @@
 package com.nodatanolife.bifusion_be.domain.notification.entity;
 
+import com.nodatanolife.bifusion_be.domain.notification.entity.converter.NotificationTypeConverter;
 import com.nodatanolife.bifusion_be.domain.notification.entity.converter.TargetTypeConverter;
 import com.nodatanolife.bifusion_be.domain.user.entity.User;
 import com.nodatanolife.bifusion_be.global.entity.BaseCreatedEntity;
@@ -21,7 +22,9 @@ public class Notification extends BaseCreatedEntity {
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
-    @Enumerated(EnumType.STRING)
+    // 컨버터로 매핑: @Enumerated는 enum 값 목록 CHECK 제약을 만들고 ddl-auto: update로는 갱신되지 않아 새 타입 저장이 막힌다.
+    // 기존 DB의 notification_type_check 제약은 직접 삭제해야 한다.
+    @Convert(converter = NotificationTypeConverter.class)
     @Column(name = "type", nullable = false, length = 50)
     private NotificationType type;
 
