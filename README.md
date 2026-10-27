@@ -79,6 +79,7 @@ FE는 ML 서버를 직접 호출하지 않고 BE API만 사용합니다.
 
 - 학습된 모델·유효 데이터·유효 입력이 없으면 가짜 결과를 내지 않고 **명시적으로 실패(fail-loud)**
 - S3 객체 접근을 **Presigned URL**로 전환해 버킷을 private으로 유지
+<img width="2720" height="2120" alt="image" src="https://github.com/user-attachments/assets/f7e96b65-8c18-4280-9a99-4723d21225d9" />
 
 <br/>
 
