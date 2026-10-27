@@ -1,5 +1,6 @@
 package com.nodatanolife.bifusion_be.domain.expert.service;
 
+import com.nodatanolife.bifusion_be.domain.expert.dto.response.AdminExpertApplicationResponse;
 import com.nodatanolife.bifusion_be.domain.expert.dto.response.ExpertApplicationResponse;
 import com.nodatanolife.bifusion_be.domain.expert.dto.response.ExpertPerformanceResponse;
 import com.nodatanolife.bifusion_be.domain.expert.dto.response.ExpertTaskGroupedResponse;
@@ -15,6 +16,9 @@ import com.nodatanolife.bifusion_be.domain.expert.repository.InspectionRequestRe
 import com.nodatanolife.bifusion_be.domain.expert.service.InspectionTargetDisplayResolver.TargetDisplay;
 import com.nodatanolife.bifusion_be.domain.expert.service.InspectionTargetDisplayResolver.TargetDisplays;
 import com.nodatanolife.bifusion_be.domain.file.service.S3Service;
+import com.nodatanolife.bifusion_be.domain.notification.entity.NotificationType;
+import com.nodatanolife.bifusion_be.domain.notification.entity.TargetType;
+import com.nodatanolife.bifusion_be.domain.notification.service.NotificationService;
 import com.nodatanolife.bifusion_be.domain.user.entity.RewardHistory;
 import com.nodatanolife.bifusion_be.domain.user.entity.User;
 import com.nodatanolife.bifusion_be.domain.user.repository.RewardHistoryRepository;
@@ -22,6 +26,8 @@ import com.nodatanolife.bifusion_be.domain.user.repository.UserRepository;
 import com.nodatanolife.bifusion_be.global.exception.ErrorCode;
 import com.nodatanolife.bifusion_be.global.exception.business.BusinessException;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -55,6 +61,7 @@ public class ExpertServiceImpl implements ExpertService {
     private final RewardHistoryRepository rewardHistoryRepository;
     private final UserRepository userRepository;
     private final S3Service s3Service;
+    private final NotificationService notificationService;
 
     /**
      * 회원 탈퇴 시 전문가 신청 내역 삭제
@@ -261,5 +268,57 @@ public class ExpertServiceImpl implements ExpertService {
         }
     }
 
-    // TODO: EXPERT_APPROVED / EXPERT_REJECTED 알림 연동 필요
+    /**
+     * 관리자 심사 목록 조회
+     * status가 없으면 전체 상태를 조회한다. 정렬은 호출 측 Pageable을 따른다.
+     */
+    @Override
+    @Transactional(readOnly = true)
+    public Page<AdminExpertApplicationResponse> getApplications(ExpertApplicationStatus status, Pageable pageable) {
+        Page<ExpertApplication> applications = status == null
+                ? expertApplicationRepository.findAllBy(pageable)
+                : expertApplicationRepository.findAllByStatus(status, pageable);
+        return applications.map(AdminExpertApplicationResponse::from);
+    }
+
+    /**
+     * 전문가 인증 승인
+     * PENDING 신청만 승인할 수 있고, 승인되면 신청자에게 EXPERT_APPROVED 알림을 보낸다.
+     */
+    @Override
+    public void approve(Long adminId, Long applicationId) {
+        ExpertApplication application = getApplication(applicationId);
+        application.approve(adminId);
+        notificationService.create(
+                application.getUser(),
+                NotificationType.EXPERT_APPROVED,
+                "전문가 인증 승인",
+                "전문가 인증이 승인되었습니다. 이제 검수 요청을 받을 수 있습니다.",
+                TargetType.EXPERT,
+                application.getExpertApplicationId()
+        );
+    }
+
+    /**
+     * 전문가 인증 반려
+     * PENDING 신청만 반려할 수 있고, 반려 사유를 담아 신청자에게 EXPERT_REJECTED 알림을 보낸다.
+     */
+    @Override
+    public void reject(Long adminId, Long applicationId, String reason) {
+        ExpertApplication application = getApplication(applicationId);
+        application.reject(adminId, reason);
+        notificationService.create(
+                application.getUser(),
+                NotificationType.EXPERT_REJECTED,
+                "전문가 인증 반려",
+                "전문가 인증이 반려되었습니다. 사유: " + reason,
+                TargetType.EXPERT,
+                application.getExpertApplicationId()
+        );
+    }
+
+    private ExpertApplication getApplication(Long applicationId) {
+        return expertApplicationRepository.findById(applicationId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.EXPERT_APPLICATION_NOT_FOUND));
+    }
 }

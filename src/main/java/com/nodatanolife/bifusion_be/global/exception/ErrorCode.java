@@ -148,6 +148,8 @@ public enum ErrorCode {
     EXPERT_NOT_CERTIFIED(HttpStatus.FORBIDDEN, "EX004", "전문가 인증을 받은 사용자만 조회할 수 있습니다."),
     EXPERT_TASK_NOT_FOUND(HttpStatus.NOT_FOUND, "EX005", "해당 검수 요청을 찾을 수 없습니다."),
     EXPERT_TASK_ALREADY_STARTED_OR_COMPLETED(HttpStatus.CONFLICT, "EX006", "이미 검수 중이거나 완료된 요청입니다."),
+    EXPERT_APPLICATION_NOT_PENDING(HttpStatus.CONFLICT, "EX007", "이미 심사가 끝난 전문가 인증 신청입니다."),
+    EXPERT_APPLICATION_NOT_FOUND(HttpStatus.NOT_FOUND, "EX008", "해당 전문가 인증 신청을 찾을 수 없습니다."),
 
     /* ================================
      * Plan
