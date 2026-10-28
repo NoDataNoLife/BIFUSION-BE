@@ -26,4 +26,8 @@ public interface ExpertQnAService {
     void deleteQna(Long userId, Long qnaId);
 
     List<ExpertQnA> getPublicQnasByUser(Long userId);
+
+    ExpertQnAAnswerResponse updateAnswer(Long userId, Long qnaId, Long answerId, ExpertQnAAnswerRequest request);
+
+    void deleteAnswer(Long userId, Long qnaId, Long answerId);
 }

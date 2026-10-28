@@ -181,7 +181,7 @@ public class ExpertQnAServiceImpl implements ExpertQnAService {
                 .toList();
 
         List<ExpertQnAAnswer> answers = expertQnAAnswerRepository
-                .findAllByExpertQnAOrderByCreatedAtAsc(qna);
+                .findAllByExpertQnAAndDeletedAtIsNullOrderByCreatedAtAsc(qna);
 
         return ExpertQnADetailResponse.from(qna, tags, answers);
     }
@@ -204,4 +204,42 @@ public class ExpertQnAServiceImpl implements ExpertQnAService {
     public List<ExpertQnA> getPublicQnasByUser(Long userId) {
         return expertQnARepository.findPublicByUserId(userId);
     }
+
+    @Override
+    public ExpertQnAAnswerResponse updateAnswer(Long userId, Long qnaId, Long answerId, ExpertQnAAnswerRequest request) {
+        ExpertQnAAnswer answer = getActiveAnswer(qnaId, answerId);
+        validateAnswerOwner(answer, userId);
+
+        answer.update(request.getContent());
+
+        boolean isExpert = expertService.resolveStatus(answer.getUser()) == ExpertApplicationStatus.APPROVED;
+        return ExpertQnAAnswerResponse.from(answer, isExpert);
+    }
+
+    @Override
+    public void deleteAnswer(Long userId, Long qnaId, Long answerId) {
+        // 등록과 같은 락을 써서 answerCount가 꼬이지 않게 함
+        ExpertQnA qna = expertQnARepository.findActiveForUpdate(qnaId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.BOARD_NOT_FOUND));
+
+        ExpertQnAAnswer answer = getActiveAnswer(qnaId, answerId);
+        validateAnswerOwner(answer, userId);
+
+        answer.delete();
+        qna.removeExpertReply();
+    }
+
+    private ExpertQnAAnswer getActiveAnswer(Long qnaId, Long answerId) {
+        return expertQnAAnswerRepository.findById(answerId)
+                .filter(a -> !a.isDeleted())
+                .filter(a -> a.getExpertQnA().getExpertQnAId().equals(qnaId))
+                .orElseThrow(() -> new BusinessException(ErrorCode.COMMENT_NOT_FOUND));
+    }
+
+    private void validateAnswerOwner(ExpertQnAAnswer answer, Long userId) {
+        if (!answer.getUser().getUserId().equals(userId)) {
+            throw new BusinessException(ErrorCode.COMMENT_ACCESS_DENIED);
+        }
+    }
+
 }

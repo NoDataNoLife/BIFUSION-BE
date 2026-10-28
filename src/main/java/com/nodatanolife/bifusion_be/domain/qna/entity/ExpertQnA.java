@@ -80,4 +80,11 @@ public class ExpertQnA extends BaseEntity {
     public void delete() {
         markDeleted();
     }
+
+    public void removeExpertReply() {
+        if (this.answerCount > 0) {
+            this.answerCount -= 1;
+        }
+        this.hasExpertReply = this.answerCount > 0;
+    }
 }
