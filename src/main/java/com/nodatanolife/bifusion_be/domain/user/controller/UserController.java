@@ -103,7 +103,7 @@ public class UserController {
     @PutMapping("/profile/nickname")
     public CommonResponse<NicknameUpdateResponse> updateNickname(
             @AuthenticationPrincipal CustomOAuth2User principal,
-            @RequestBody NicknameUpdateRequest request) {
+            @RequestBody @Valid NicknameUpdateRequest request) {
 
         NicknameUpdateResponse response = userService.updateNickname(
                 principal.getUser().getUserId(), request.getNickname());
@@ -114,7 +114,7 @@ public class UserController {
     @PutMapping("/profile/introduction")
     public CommonResponse<BioUpdateResponse> updateBio(
             @AuthenticationPrincipal CustomOAuth2User principal,
-            @RequestBody BioUpdateRequest request) {
+            @RequestBody @Valid BioUpdateRequest request) {
         BioUpdateResponse response = userService.updateBio(
                 principal.getUser().getUserId(), request.getBio());
         return CommonResponse.success(response, "소개글 수정 성공!");
@@ -127,7 +127,7 @@ public class UserController {
     @PutMapping("/profile/location")
     public CommonResponse<LocationUpdateResponse> updateLocation(
             @AuthenticationPrincipal CustomOAuth2User principal,
-            @RequestBody LocationUpdateRequest request) {
+            @RequestBody @Valid LocationUpdateRequest request) {
         LocationUpdateResponse response = userService.updateLocation(
                 principal.getUser().getUserId(), request.getLocation());
         return CommonResponse.success(response, "위치 수정 완료!");
@@ -140,7 +140,7 @@ public class UserController {
     @PutMapping("/profile/website")
     public CommonResponse<WebsiteUpdateResponse> updateWebsiteUrl(
             @AuthenticationPrincipal CustomOAuth2User principal,
-            @RequestBody WebsiteUpdateRequest request) {
+            @RequestBody @Valid WebsiteUpdateRequest request) {
         WebsiteUpdateResponse response = userService.updateWebsiteUrl(
                 principal.getUser().getUserId(), request.getWebsiteUrl());
         return CommonResponse.success(response, "웹사이트 수정 성공!");
@@ -163,7 +163,7 @@ public class UserController {
     @PostMapping("/onboarding")
     public CommonResponse<UserResponse> onboarding(
             @AuthenticationPrincipal CustomOAuth2User principal,
-            @RequestBody OnboardingRequest request) {
+            @RequestBody @Valid OnboardingRequest request) {
 
         UserResponse response = userService.onboard(
                 principal.getUser().getUserId(), request);

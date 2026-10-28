@@ -48,7 +48,7 @@ public class InspectionRequest extends BaseEntity {
     @Column(name = "status", length = 20)
     private InspectionRequestStatus status;
 
-    @Column(name = "reason")
+    @Column(name = "reason", columnDefinition = "TEXT")
     private String reason;
 
     @Column(name = "reward_points")
@@ -57,7 +57,7 @@ public class InspectionRequest extends BaseEntity {
     @Column(name = "score")
     private Integer score;
 
-    @Column(name = "comment")
+    @Column(name = "comment", columnDefinition = "TEXT")
     private String comment;
 
     @Column(name = "applied_at")
