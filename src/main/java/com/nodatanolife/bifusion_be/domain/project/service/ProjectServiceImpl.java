@@ -15,6 +15,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import com.nodatanolife.bifusion_be.domain.expert.service.InspectionService;
+import com.nodatanolife.bifusion_be.domain.file.service.S3ObjectCleaner;
 import com.nodatanolife.bifusion_be.domain.file.service.S3Service;
 import com.nodatanolife.bifusion_be.domain.job.entity.JobStatus;
 import com.nodatanolife.bifusion_be.domain.job.repository.JobRepository;
@@ -26,6 +27,7 @@ import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.Base64;
+import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -40,6 +42,7 @@ public class  ProjectServiceImpl implements ProjectService {
     private final ProjectMemberRepository projectMemberRepository;
     private final ProjectInvitationRepository projectInvitationRepository;
     private final S3Service s3Service;
+    private final S3ObjectCleaner s3ObjectCleaner;
     private final JobRepository jobRepository;
     private final InspectionService inspectionService;
 
@@ -322,6 +325,12 @@ public class  ProjectServiceImpl implements ProjectService {
     }
 
 
+    /**
+     * 프로젝트 배너 등록/변경/삭제 (file이 없으면 삭제)
+     * 새 이미지 업로드 → DB 반영 → 기존 파일 삭제 순서로 처리해, 중간에 실패해도 기존 배너가 남는다.
+     * - 기존 파일은 커밋 뒤에 지운다. 삭제 실패는 로그만 남긴다 (새 배너는 이미 저장됨)
+     * - 업로드 뒤 롤백되면 방금 올린 파일을 지운다
+     */
     @Override
     public ProjectBannerUpdateResponse updateBannerImage(Long projectId, MultipartFile file, String email) {
         Project project = projectRepository.findByProjectIdAndDeletedAtIsNull(projectId)
@@ -338,18 +347,21 @@ public class  ProjectServiceImpl implements ProjectService {
             throw new BusinessException(ErrorCode.PROJECT_ACCESS_DENIED);
         }
 
-        // 기존 이미지 S3 삭제
-        if (project.getBannerImageUrl() != null) {
-            s3Service.deleteFileByUrl(project.getBannerImageUrl());
-        }
+        String oldUrl = project.getBannerImageUrl();
 
         // 새 이미지 업로드 or null 처리
         String newUrl = null;
         if (file != null && !file.isEmpty()) {
             newUrl = s3Service.uploadFile(file, "projects/banners");
+            s3ObjectCleaner.deleteAfterRollback(Collections.singletonList(S3Service.extractKeyFromUrl(newUrl)));
         }
 
         project.updateBannerImage(newUrl);
+        projectRepository.saveAndFlush(project);
+
+        if (oldUrl != null) {
+            s3ObjectCleaner.deleteAfterCommit(Collections.singletonList(S3Service.extractKeyFromUrl(oldUrl)));
+        }
         return ProjectBannerUpdateResponse.of(project);
     }
 

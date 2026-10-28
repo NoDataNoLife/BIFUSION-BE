@@ -41,6 +41,27 @@ public class S3ObjectCleaner {
         });
     }
 
+    /**
+     * 방금 올린 객체를 트랜잭션이 롤백되면 지운다 (DB에 연결되지 못한 객체가 남지 않게). 커밋되면 그대로 둔다.
+     * 트랜잭션 밖에서 호출하면 아무것도 하지 않는다.
+     *
+     * @param s3Keys 지울 객체 key. null·중복은 건너뛴다.
+     */
+    public void deleteAfterRollback(Collection<String> s3Keys) {
+        List<String> keys = s3Keys.stream().filter(Objects::nonNull).distinct().toList();
+        if (keys.isEmpty() || !TransactionSynchronizationManager.isSynchronizationActive()) {
+            return;
+        }
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCompletion(int status) {
+                if (status == STATUS_ROLLED_BACK) {
+                    delete(keys);
+                }
+            }
+        });
+    }
+
     private void delete(List<String> keys) {
         for (String key : keys) {
             try {
