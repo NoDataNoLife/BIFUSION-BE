@@ -103,6 +103,19 @@ public class Recruit extends BaseEntity {
         this.isMyPageVisible = visible;
     }
 
+    public void update(String jobTitle, String organization, String description,
+                       List<String> requirements, List<String> responsibilities, List<String> benefits,
+                       Integer teamSize, LocalDate deadline) {
+        this.jobTitle = jobTitle;
+        this.organization = organization;
+        this.description = description;
+        this.requirements = requirements != null ? requirements : new ArrayList<>();
+        this.responsibilities = responsibilities != null ? responsibilities : new ArrayList<>();
+        this.benefits = benefits != null ? benefits : new ArrayList<>();
+        this.teamSize = teamSize;
+        this.deadline = deadline;
+    }
+
     public void delete() {
         markDeleted();
     }

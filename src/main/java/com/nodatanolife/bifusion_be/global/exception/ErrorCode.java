@@ -64,7 +64,7 @@ public enum ErrorCode {
     FORBIDDEN_RECRUITMENT_ACCESS(HttpStatus.FORBIDDEN, "CM022", "본인의 모집글이 아닙니다."),
     RECIPE_THUMBNAIL_NOT_IMAGE(HttpStatus.BAD_REQUEST, "CM023", "레시피 대표 이미지는 이미지 파일만 올릴 수 있습니다."),
     APPLICATION_ALREADY_PROCESSED(HttpStatus.CONFLICT, "CM024", "이미 수락 또는 거절된 지원서입니다."),
-
+    RECRUITMENT_TEAM_SIZE_TOO_SMALL(HttpStatus.CONFLICT, "CM025", "이미 수락된 지원자 수보다 모집 정원을 줄일 수 없습니다."),
     /* ================================
      * Dataset
      * ================================ */
