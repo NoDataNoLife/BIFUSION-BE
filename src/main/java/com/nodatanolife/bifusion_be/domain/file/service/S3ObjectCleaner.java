@@ -63,12 +63,14 @@ public class S3ObjectCleaner {
     }
 
     private void delete(List<String> keys) {
-        for (String key : keys) {
-            try {
-                s3Service.deleteFile(key);
-            } catch (RuntimeException e) {
-                log.warn("S3 객체 삭제 실패, 객체가 남음: key={}, err={}", key, e.getClass().getSimpleName());
-            }
+        List<String> failed;
+        try {
+            failed = s3Service.deleteFiles(keys);
+        } catch (RuntimeException e) {
+            failed = keys;
+        }
+        for (String key : failed) {
+            log.warn("S3 객체 삭제 실패, 객체가 남음: key={}", key);
         }
     }
 }

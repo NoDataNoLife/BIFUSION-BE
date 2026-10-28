@@ -13,6 +13,8 @@ public interface AugmentationConfigRepository extends JpaRepository<Augmentation
 
     Optional<AugmentationConfig> findByJobJobId(Long jobId);
 
+    List<AugmentationConfig> findAllByJobProjectProjectId(Long projectId);
+
     /**
      * 프로젝트의 특정 상태 증강 결과 (Job fetch join). 완료 시각 최신순.
      */

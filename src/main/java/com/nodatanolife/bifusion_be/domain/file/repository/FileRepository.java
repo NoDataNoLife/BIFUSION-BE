@@ -5,6 +5,7 @@ import com.nodatanolife.bifusion_be.domain.user.entity.User;
 import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -27,6 +28,31 @@ public interface FileRepository extends JpaRepository<File, Long> {
 
     // Job 입력·결과 파일 (targetType = JOB / JOB_RESULT)
     List<File> findAllByTargetTypeAndTargetId(String targetType, Long targetId);
+
+    /**
+     * 프로젝트 삭제 시 정리할 Job 입력·결과 파일의 S3 key. 데이터셋에 첨부된 파일은 데이터셋이 계속 쓰므로 뺀다.
+     * deleteJobFilesByProjectId와 같은 조건이다.
+     */
+    @Query("""
+            select f.s3Key from File f
+            where f.targetType in ('JOB', 'JOB_RESULT')
+              and f.targetId in (select j.jobId from Job j where j.project.projectId = :projectId)
+              and not exists (select 1 from Dataset d where d.file = f)
+            """)
+    List<String> findJobFileKeysByProjectId(@Param("projectId") Long projectId);
+
+    /**
+     * 프로젝트 삭제 시 Job 입력·결과 파일 row를 한 번에 지운다 (저장 용량 집계에서 빠진다).
+     * 이 파일을 참조하는 추론 결과(InferenceResult·Top3Support)는 먼저 지워야 한다.
+     */
+    @Modifying
+    @Query("""
+            delete from File f
+            where f.targetType in ('JOB', 'JOB_RESULT')
+              and f.targetId in (select j.jobId from Job j where j.project.projectId = :projectId)
+              and not exists (select 1 from Dataset d where d.file = f)
+            """)
+    int deleteJobFilesByProjectId(@Param("projectId") Long projectId);
 
     // 증강 결과 파일 크기 조회용 (AugmentationConfig.datasetKey → File)
     List<File> findAllByS3KeyIn(Collection<String> s3Keys);

@@ -11,17 +11,23 @@ import software.amazon.awssdk.core.ResponseBytes;
 import software.amazon.awssdk.core.exception.SdkException;
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.services.s3.model.Delete;
 import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
+import software.amazon.awssdk.services.s3.model.DeleteObjectsRequest;
+import software.amazon.awssdk.services.s3.model.DeleteObjectsResponse;
 import software.amazon.awssdk.services.s3.model.GetObjectRequest;
 import software.amazon.awssdk.services.s3.model.HeadObjectRequest;
 import software.amazon.awssdk.services.s3.model.HeadObjectResponse;
 import software.amazon.awssdk.services.s3.model.NoSuchKeyException;
+import software.amazon.awssdk.services.s3.model.ObjectIdentifier;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 import software.amazon.awssdk.services.s3.model.S3Exception;
 import software.amazon.awssdk.services.s3.presigner.S3Presigner;
 import software.amazon.awssdk.services.s3.presigner.model.GetObjectPresignRequest;
 
 import java.time.Duration;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 
 @Slf4j
@@ -30,6 +36,8 @@ import java.util.UUID;
 public class S3Service {
 
     private static final String S3_HOST_MARKER = ".amazonaws.com/";
+    // DeleteObjects 한 번에 지울 수 있는 최대 객체 수
+    private static final int DELETE_BATCH_SIZE = 1000;
 
     private final S3Client s3Client;
     private final S3Presigner s3Presigner;
@@ -196,6 +204,32 @@ public class S3Service {
                         .key(s3Key)
                         .build()
         );
+    }
+
+    /**
+     * 여러 객체를 DeleteObjects로 묶어 지운다 (요청당 최대 1000개).
+     * 지우지 못한 key를 돌려준다. 요청 자체가 실패하면 그 묶음의 key를 모두 돌려준다.
+     */
+    public List<String> deleteFiles(List<String> s3Keys) {
+        List<String> failed = new ArrayList<>();
+        for (int from = 0; from < s3Keys.size(); from += DELETE_BATCH_SIZE) {
+            List<String> batch = s3Keys.subList(from, Math.min(from + DELETE_BATCH_SIZE, s3Keys.size()));
+            try {
+                DeleteObjectsResponse response = s3Client.deleteObjects(
+                        DeleteObjectsRequest.builder()
+                                .bucket(bucketName)
+                                .delete(Delete.builder()
+                                        .objects(batch.stream().map(key -> ObjectIdentifier.builder().key(key).build()).toList())
+                                        .quiet(true)
+                                        .build())
+                                .build()
+                );
+                response.errors().forEach(error -> failed.add(error.key()));
+            } catch (SdkException e) {
+                failed.addAll(batch);
+            }
+        }
+        return failed;
     }
 
     /**
