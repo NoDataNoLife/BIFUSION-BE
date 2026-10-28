@@ -73,9 +73,6 @@ inspection:
     max-points: 10000
     min-points-per-mb: 10
     max-points-per-mb: 100
-  # 일회성: 전문가 배정 없이 대기 중으로 남은 예전 검수 신청을 취소·환불한다. 한 번 켜고 띄운 뒤 다시 끈다.
-  unassigned-cleanup:
-    enabled: ${INSPECTION_UNASSIGNED_CLEANUP_ENABLED:false}
 
 # 일회성: 대표 이미지가 비어 있는 기존 업로드 데이터셋에 첨부 파일에서 뽑은 대표 이미지를 채운다. 한 번 켜고 띄운 뒤 다시 끈다.
 dataset:
@@ -125,6 +122,9 @@ app:
     frontend-uri: http://localhost:3000
   cookie:
     secure: false  # prod에서는 true로 변경
+  admin:
+    # 관리자(role = ADMIN)로 올릴 계정 이메일 (쉼표 구분). AdminRoleScheduler가 주기적으로 반영한다.
+    emails: ${ADMIN_EMAILS:bifusionlab@gmail.com}
 
 ml:
   # ML 서버(RunPod) 주소. 비어 있으면 ML 호출은 모두 연결 실패(ML_CONNECTION_FAILED)로 처리된다.

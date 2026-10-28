@@ -20,6 +20,14 @@ public enum NotificationCategory {
             NotificationType.AUGMENTATION_SUCCESS,
             NotificationType.AUGMENTATION_FAILED
     )),
+    TRAINING(List.of(
+            NotificationType.TRAINING_SUCCESS,
+            NotificationType.TRAINING_FAILED
+    )),
+    INFERENCE(List.of(
+            NotificationType.INFERENCE_SUCCESS,
+            NotificationType.INFERENCE_FAILED
+    )),
     PROJECT(List.of(
             NotificationType.PROJECT_INVITATION,
             NotificationType.INVITATION_ACCEPTED,

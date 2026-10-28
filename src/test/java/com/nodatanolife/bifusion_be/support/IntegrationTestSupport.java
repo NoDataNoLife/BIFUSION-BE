@@ -21,7 +21,10 @@ import com.nodatanolife.bifusion_be.domain.user.entity.User;
 import com.nodatanolife.bifusion_be.domain.user.repository.UserRepository;
 import com.nodatanolife.bifusion_be.global.mail.MailService;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
+import org.junit.jupiter.api.extension.ConditionEvaluationResult;
+import org.junit.jupiter.api.extension.ExecutionCondition;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.extension.ExtensionContext;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -46,8 +49,23 @@ import static org.mockito.Mockito.when;
  * S3·메일·ML 호출은 가짜로 바꾸고, ML 폴링 스케줄러는 테스트 중 끼어들지 않게 주기를 늘린다.
  */
 @SpringBootTest
-@EnabledIfEnvironmentVariable(named = "TEST_DB_URL", matches = ".+")
+@ExtendWith(IntegrationTestSupport.RequireTestDatabase.class)
 public abstract class IntegrationTestSupport {
+
+    /**
+     * TEST_DB_URL이 없으면 하위 테스트 클래스를 건너뛴다 (Spring 컨텍스트를 띄우기 전에 판단).
+     * {@code @EnabledIfEnvironmentVariable}은 상속되지 않아 하위 클래스에서 동작하지 않으므로, 상속되는 {@code @ExtendWith}로 건다.
+     * 이 조건이 빠지면 개발 DB에 붙어 매 테스트마다 TRUNCATE될 수 있다.
+     */
+    static class RequireTestDatabase implements ExecutionCondition {
+        @Override
+        public ConditionEvaluationResult evaluateExecutionCondition(ExtensionContext context) {
+            String url = System.getenv("TEST_DB_URL");
+            return url == null || url.isBlank()
+                    ? ConditionEvaluationResult.disabled("TEST_DB_URL(테스트 전용 DB)이 없어 통합 테스트를 건너뜀")
+                    : ConditionEvaluationResult.enabled("TEST_DB_URL=" + url);
+        }
+    }
 
     protected static final String SIGNED_URL = "https://signed.example/file";
 

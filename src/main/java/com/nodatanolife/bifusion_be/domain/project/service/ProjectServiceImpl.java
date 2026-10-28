@@ -14,7 +14,16 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.nodatanolife.bifusion_be.domain.expert.service.InspectionService;
+import com.nodatanolife.bifusion_be.domain.file.service.S3ObjectCleaner;
 import com.nodatanolife.bifusion_be.domain.file.service.S3Service;
+import com.nodatanolife.bifusion_be.domain.file.repository.FileRepository;
+import com.nodatanolife.bifusion_be.domain.job.entity.AugmentationConfig;
+import com.nodatanolife.bifusion_be.domain.job.entity.JobStatus;
+import com.nodatanolife.bifusion_be.domain.job.repository.AugmentationConfigRepository;
+import com.nodatanolife.bifusion_be.domain.job.repository.InferenceResultRepository;
+import com.nodatanolife.bifusion_be.domain.job.repository.JobRepository;
+import com.nodatanolife.bifusion_be.domain.job.repository.TrainedModelRepository;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.nio.charset.StandardCharsets;
@@ -23,7 +32,9 @@ import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.Base64;
+import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 @Service
@@ -37,6 +48,13 @@ public class  ProjectServiceImpl implements ProjectService {
     private final ProjectMemberRepository projectMemberRepository;
     private final ProjectInvitationRepository projectInvitationRepository;
     private final S3Service s3Service;
+    private final S3ObjectCleaner s3ObjectCleaner;
+    private final JobRepository jobRepository;
+    private final FileRepository fileRepository;
+    private final InferenceResultRepository inferenceResultRepository;
+    private final AugmentationConfigRepository augmentationConfigRepository;
+    private final TrainedModelRepository trainedModelRepository;
+    private final InspectionService inspectionService;
 
     /**
      * 프로젝트 생성
@@ -65,7 +83,7 @@ public class  ProjectServiceImpl implements ProjectService {
     @Override
     public ProjectUpdateResponse updateProject(Long projectId, ProjectUpdateRequest request, String email) {
       
-        Project project = projectRepository.findById(projectId)
+        Project project = projectRepository.findByProjectIdAndDeletedAtIsNull(projectId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.PROJECT_NOT_FOUND));
 
         User user = userRepository.findByEmail(email)
@@ -91,7 +109,7 @@ public class  ProjectServiceImpl implements ProjectService {
     @Override
     @Transactional(readOnly = true)
     public ProjectInfoResponse getProjectInfo(Long projectId, String email) {
-        Project project = projectRepository.findById(projectId)
+        Project project = projectRepository.findByProjectIdAndDeletedAtIsNull(projectId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.PROJECT_NOT_FOUND));
 
         User user = userRepository.findByEmail(email)
@@ -317,9 +335,15 @@ public class  ProjectServiceImpl implements ProjectService {
     }
 
 
+    /**
+     * 프로젝트 배너 등록/변경/삭제 (file이 없으면 삭제)
+     * 새 이미지 업로드 → DB 반영 → 기존 파일 삭제 순서로 처리해, 중간에 실패해도 기존 배너가 남는다.
+     * - 기존 파일은 커밋 뒤에 지운다. 삭제 실패는 로그만 남긴다 (새 배너는 이미 저장됨)
+     * - 업로드 뒤 롤백되면 방금 올린 파일을 지운다
+     */
     @Override
     public ProjectBannerUpdateResponse updateBannerImage(Long projectId, MultipartFile file, String email) {
-        Project project = projectRepository.findById(projectId)
+        Project project = projectRepository.findByProjectIdAndDeletedAtIsNull(projectId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.PROJECT_NOT_FOUND));
 
         User user = userRepository.findByEmail(email)
@@ -333,19 +357,99 @@ public class  ProjectServiceImpl implements ProjectService {
             throw new BusinessException(ErrorCode.PROJECT_ACCESS_DENIED);
         }
 
-        // 기존 이미지 S3 삭제
-        if (project.getBannerImageUrl() != null) {
-            s3Service.deleteFileByUrl(project.getBannerImageUrl());
-        }
+        String oldUrl = project.getBannerImageUrl();
 
         // 새 이미지 업로드 or null 처리
         String newUrl = null;
         if (file != null && !file.isEmpty()) {
             newUrl = s3Service.uploadFile(file, "projects/banners");
+            s3ObjectCleaner.deleteAfterRollback(Collections.singletonList(S3Service.extractKeyFromUrl(newUrl)));
         }
 
         project.updateBannerImage(newUrl);
+        projectRepository.saveAndFlush(project);
+
+        if (oldUrl != null) {
+            s3ObjectCleaner.deleteAfterCommit(Collections.singletonList(S3Service.extractKeyFromUrl(oldUrl)));
+        }
         return ProjectBannerUpdateResponse.of(project);
+    }
+
+
+    /**
+     * 프로젝트 삭제 (MANAGER만 가능, soft delete)
+     * - 진행 중(PENDING/RUNNING)인 작업이 있으면 409로 막는다
+     * - 증강 데이터 검수 신청은 시작 전이면 취소·환불하고, 전문가가 시작했으면 409로 막는다
+     * - 멤버·즐겨찾기·초대는 지운다. 목록·권한 확인이 멤버십 기준이라 삭제된 프로젝트는 더 이상 보이지 않는다
+     * - 배너·Job 입력/결과 파일·증강 결과·학습 모델의 S3 객체는 커밋 뒤에 지운다 (releaseProjectFiles)
+     * - Job·학습 모델·활동 로그 row는 그대로 둔다 (활동 로그 등이 프로젝트를 참조)
+     */
+    @Override
+    public void deleteProject(Long projectId, Long userId) {
+        Project project = projectRepository.findByProjectIdAndDeletedAtIsNull(projectId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.PROJECT_NOT_FOUND));
+
+        ProjectMember member = projectMemberRepository
+                .findByProjectProjectIdAndUserUserId(projectId, userId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.PROJECT_ACCESS_DENIED));
+
+        if (member.getRole() != ProjectRole.MANAGER) {
+            throw new BusinessException(ErrorCode.PROJECT_ACCESS_DENIED);
+        }
+
+        if (jobRepository.existsByProjectProjectIdAndStatusIn(projectId, List.of(JobStatus.PENDING, JobStatus.RUNNING))) {
+            throw new BusinessException(ErrorCode.PROJECT_HAS_ACTIVE_JOB);
+        }
+
+        inspectionService.cancelForProjectDeletion(projectId);
+
+        List<String> s3Keys = releaseProjectFiles(project);
+
+        projectFavoriteRepository.deleteByProject(project);
+        projectInvitationRepository.deleteByProject(project);
+        project.getProjectMembers().clear();
+        project.markDeleted();
+
+        s3ObjectCleaner.deleteAfterCommit(s3Keys);
+    }
+
+    /**
+     * 삭제할 프로젝트의 파일을 DB에서 정리하고, 커밋 뒤 지울 S3 key를 돌려준다.
+     * - Job 입력·결과 파일 row를 지운다 (저장 용량 집계에서 빠진다). 이를 참조하는 추론 결과를 먼저 지운다.
+     *   데이터셋에 첨부된 파일은 데이터셋이 계속 쓰므로 남긴다.
+     * - 증강 결과는 삭제 처리한다 (검수 이력에는 삭제된 대상으로 보인다)
+     * - 학습 모델 row는 남기고 모델 파일만 지운다
+     * - 데이터셋에 첨부된 파일의 객체는 지우지 않는다
+     */
+    private List<String> releaseProjectFiles(Project project) {
+        Long projectId = project.getProjectId();
+        List<String> keys = new ArrayList<>();
+        keys.add(S3Service.extractKeyFromUrl(project.getBannerImageUrl()));
+        project.updateBannerImage(null);
+
+        keys.addAll(fileRepository.findJobFileKeysByProjectId(projectId));
+        inferenceResultRepository.deleteTop3SupportsByProjectId(projectId);
+        inferenceResultRepository.deleteAllByProjectId(projectId);
+        fileRepository.deleteJobFilesByProjectId(projectId);
+
+        for (AugmentationConfig config : augmentationConfigRepository.findAllByJobProjectProjectId(projectId)) {
+            if (config.isDeleted()) {
+                continue;
+            }
+            keys.add(config.getDatasetKey());
+            keys.add(config.getPreviewKey());
+            config.deleteResult();
+        }
+
+        trainedModelRepository.findAllWithTrainingJobByProjectId(projectId)
+                .forEach(model -> keys.add(model.getModelKey()));
+
+        // 증강 결과 key가 데이터셋에 첨부된 파일과 같을 수 있다 (파일 row는 위 bulk delete에서 이미 제외)
+        keys.removeIf(Objects::isNull);
+        if (!keys.isEmpty()) {
+            keys.removeAll(fileRepository.findDatasetAttachedKeys(keys));
+        }
+        return keys;
     }
 
 }

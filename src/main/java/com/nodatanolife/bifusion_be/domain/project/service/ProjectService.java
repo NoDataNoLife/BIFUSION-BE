@@ -38,6 +38,8 @@ public interface ProjectService {
 
     ProjectBannerUpdateResponse updateBannerImage(Long projectId, MultipartFile file, String email);
 
+    void deleteProject(Long projectId, Long userId);
+
 
 }
 

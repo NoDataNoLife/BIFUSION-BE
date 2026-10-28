@@ -4,6 +4,7 @@ import com.nodatanolife.bifusion_be.domain.dataset.entity.Dataset;
 import com.nodatanolife.bifusion_be.domain.dataset.entity.DatasetType;
 import com.nodatanolife.bifusion_be.domain.dataset.repository.DatasetRepository;
 import com.nodatanolife.bifusion_be.domain.expert.dto.request.InspectionCreateRequest;
+import com.nodatanolife.bifusion_be.domain.expert.dto.response.ExpertTaskStartResponse;
 import com.nodatanolife.bifusion_be.domain.expert.dto.response.InspectionDecisionResponse;
 import com.nodatanolife.bifusion_be.domain.expert.dto.response.InspectionDetailResponse;
 import com.nodatanolife.bifusion_be.domain.expert.dto.response.InspectionDraftResponse;
@@ -46,7 +47,6 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.Comparator;
 import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
@@ -87,10 +87,10 @@ public class InspectionServiceImpl implements InspectionService {
      *   이전 거절 이력은 보존하지 않는다.
      * - existsBy 체크만으로는 동시 요청을 완전히 막을 수 없어, 신규 생성 시의 DB unique constraint 위반도
      *   같은 409 예외로 변환해 이중으로 방어한다.
-     * - REJECTED·CANCELLED로 끝난 신청은 재신청할 수 있다. 기존 row는 잠가서 읽어, 동시 재신청으로 task가 두 개 배정되지 않게 한다.
-     * - 배정할 전문가가 없으면 409로 막는다(포인트 차감 전). 신청이 아무에게도 배정되지 않은 채 남지 않게 한다.
+     * - REJECTED·CANCELLED로 끝난 신청은 재신청할 수 있다. 기존 row는 잠가서 읽어, 동시 재신청이 두 번 처리되지 않게 한다.
      * - 보유 포인트가 리워드 포인트보다 부족하면 400으로 막는다.
-     * - 포인트 차감 → 검증 신청 생성 → 전문가 배정(ExpertTask 생성)을 한 트랜잭션(클래스 레벨 @Transactional)으로 처리한다.
+     * - 신청은 전문가 풀(전문가 검수 목록의 검수 전 그룹)에 올라가고, 먼저 시작한 전문가가 맡는다(startInspection). 신청 시점에는 전문가를 정하지 않는다.
+     * - 포인트 차감 → 검증 신청 생성 → 전문가 알림을 한 트랜잭션(클래스 레벨 @Transactional)으로 처리한다.
      * - 파라미터로 받은 user(인증 필터에서 조회한 엔티티)는 이 트랜잭션 밖에서 로드된 상태라 그대로 변경 메서드를
      *   호출해도 영속화가 보장되지 않는다. userId로 다시 조회한 관리 대상 엔티티에 포인트를 차감한다.
      */
@@ -109,8 +109,6 @@ public class InspectionServiceImpl implements InspectionService {
         if (existing.isPresent() && !isReapplicable(existing.get().getStatus())) {
             throw new BusinessException(ErrorCode.INSPECTION_ALREADY_EXISTS);
         }
-
-        User expert = pickExpert(user.getUserId());
 
         User managedUser = userRepository.getReferenceById(user.getUserId());
 
@@ -133,28 +131,27 @@ public class InspectionServiceImpl implements InspectionService {
         pointService.spend(user.getUserId(), rewardPoints, RewardHistory.TYPE_INSPECTION_REQUEST,
                 RewardHistory.TARGET_INSPECTION_REQUEST, saved.getInspectionRequestId());
 
-        ExpertTask task = expertTaskRepository.save(ExpertTask.assign(expert, saved));
-        task.assignReviewCode();
+        notifyExpertsOfNewRequest(saved);
         return InspectionResponse.from(saved);
     }
 
     /**
-     * 신청자 취소. 전문가가 검수를 시작하기 전(task PENDING)에만 가능하며, 차감했던 포인트를 돌려준다.
+     * 신청자 취소. 전문가가 검수를 시작하기 전(풀에 있을 때)에만 가능하며, 차감했던 포인트를 돌려준다.
      * - 본인 신청이 아니거나 없으면 404 (다른 사람 신청의 존재를 드러내지 않는다)
-     * - 현재 회차 task를 잠가서 읽어, 전문가의 검수 시작·승인·반려와 동시에 처리되지 않게 한다.
-     * - 아직 시작되지 않은 task는 기록할 것이 없어 삭제한다 (전문가 목록에서 사라진다).
+     * - 신청 row를 잠가서 읽어, 전문가의 검수 시작과 동시에 처리되지 않게 한다.
      * - 취소 후 같은 대상에 다시 신청할 수 있다 (InspectionRequest.reapply).
      */
     @Override
     public InspectionResponse cancelInspection(User user, Long inspectionRequestId) {
-        InspectionRequest inspectionRequest = getOwnedRequest(user, inspectionRequestId);
+        InspectionRequest inspectionRequest = inspectionRequestRepository.findByIdForUpdate(inspectionRequestId)
+                .filter(found -> found.getUser().getUserId().equals(user.getUserId()))
+                .orElseThrow(() -> new BusinessException(ErrorCode.INSPECTION_NOT_FOUND));
 
-        Optional<ExpertTask> task = expertTaskRepository.findFirstByInspectionRequestOrderByExpertTaskIdDesc(inspectionRequest);
-        if (task.isPresent() && !task.get().isPending()) {
+        if (isTaken(inspectionRequest)) {
             throw new BusinessException(ErrorCode.INSPECTION_CANNOT_CANCEL);
         }
 
-        cancelAndRefund(inspectionRequest, task);
+        cancelAndRefund(inspectionRequest);
         return InspectionResponse.from(inspectionRequest);
     }
 
@@ -173,32 +170,108 @@ public class InspectionServiceImpl implements InspectionService {
             return;
         }
 
-        Optional<ExpertTask> task = expertTaskRepository.findFirstByInspectionRequestOrderByExpertTaskIdDesc(pending.get());
-        if (task.isPresent() && !task.get().isPending()) {
+        if (isTaken(pending.get())) {
             throw new BusinessException(ErrorCode.INSPECTION_IN_PROGRESS_TARGET_DELETE);
         }
 
-        cancelAndRefund(pending.get(), task);
-    }
-
-    @Override
-    public boolean cancelUnassigned(Long inspectionRequestId) {
-        Optional<InspectionRequest> request = inspectionRequestRepository.findById(inspectionRequestId)
-                .filter(found -> found.getStatus() == InspectionRequestStatus.PENDING);
-        if (request.isEmpty()
-                || expertTaskRepository.findFirstByInspectionRequestOrderByExpertTaskIdDesc(request.get()).isPresent()) {
-            return false;
-        }
-        cancelAndRefund(request.get(), Optional.empty());
-        return true;
+        cancelAndRefund(pending.get());
     }
 
     /**
-     * 신청을 취소하고, 아직 시작되지 않은 task는 기록할 것이 없어 삭제한 뒤 차감했던 포인트를 돌려준다.
+     * 프로젝트 삭제 직전에 호출한다. 프로젝트의 증강 데이터 검수 신청에 cancelForTargetDeletion과 같은 규칙을 적용한다.
+     * - 대기 중(PENDING) 신청을 모두 잠근 뒤, 하나라도 전문가가 시작했으면 아무것도 취소하지 않고 409로 막는다.
+     * - 모두 시작 전이면 전부 취소·포인트 환불한다.
      */
-    private void cancelAndRefund(InspectionRequest inspectionRequest, Optional<ExpertTask> task) {
+    @Override
+    public void cancelForProjectDeletion(Long projectId) {
+        List<InspectionRequest> pendings = inspectionRequestRepository.findAugmentedByProjectForUpdate(
+                projectId, InspectionRequestStatus.PENDING);
+        if (pendings.stream().anyMatch(this::isTaken)) {
+            throw new BusinessException(ErrorCode.INSPECTION_IN_PROGRESS_TARGET_DELETE);
+        }
+        pendings.forEach(this::cancelAndRefund);
+    }
+
+    /**
+     * 풀의 검수 신청을 시작해 맡는다 (task 생성 + 바로 검수 중).
+     * - 전문가 인증(APPROVED)을 받지 않았으면 403, 본인 신청이면 403(INSPECTION_OWN_REQUEST)
+     * - 신청이 없거나 취소됐으면 404, 이미 승인·반려됐으면 400(INSPECTION_ALREADY_PROCESSED)
+     * - 신청 row를 잠그고 진행 중인 task가 있는지 다시 확인한다. 여러 전문가가 동시에 시작해도 먼저 잠근 한 명만 맡고,
+     *   나머지는 409(INSPECTION_ALREADY_TAKEN). 신청자 취소도 같은 row를 잠가 둘 중 하나만 반영된다.
+     * - 신청자에게 검수 시작 알림을 보낸다.
+     */
+    @Override
+    public ExpertTaskStartResponse startInspection(User expert, Long inspectionRequestId) {
+        validateCertifiedExpert(expert);
+
+        InspectionRequest inspectionRequest = inspectionRequestRepository.findByIdForUpdate(inspectionRequestId)
+                .filter(found -> found.getStatus() != InspectionRequestStatus.CANCELLED)
+                .orElseThrow(() -> new BusinessException(ErrorCode.INSPECTION_NOT_FOUND));
+        if (inspectionRequest.getUser().getUserId().equals(expert.getUserId())) {
+            throw new BusinessException(ErrorCode.INSPECTION_OWN_REQUEST);
+        }
+        inspectionRequest.validateNotProcessed();
+        if (isTaken(inspectionRequest)) {
+            throw new BusinessException(ErrorCode.INSPECTION_ALREADY_TAKEN);
+        }
+
+        ExpertTask task = expertTaskRepository.save(
+                ExpertTask.claim(userRepository.getReferenceById(expert.getUserId()), inspectionRequest));
+        task.assignReviewCode();
+
+        TargetNotice notice = resolveNotice(inspectionRequest);
+        notificationService.create(
+                inspectionRequest.getUser(),
+                NotificationType.RECIPE_REVIEW_ACCEPTED,
+                "검수 시작 안내",
+                notice.subject() + " 검수를 전문가가 시작했습니다.",
+                notice.targetType(),
+                notice.targetId()
+        );
+
+        return ExpertTaskStartResponse.from(task);
+    }
+
+    /**
+     * 새 검수 요청을 전문가 전원(전문가 인증을 받고 탈퇴하지 않은 사용자)에게 알린다. 신청자 본인은 뺀다.
+     */
+    private void notifyExpertsOfNewRequest(InspectionRequest inspectionRequest) {
+        Long requesterId = inspectionRequest.getUser().getUserId();
+        String content = resolveNotice(inspectionRequest).subject() + " 검수 요청이 올라왔습니다. (보상 "
+                + inspectionRequest.getRewardPoints() + " 앤트)";
+        expertApplicationRepository.findActiveUserIdsByStatus(ExpertApplicationStatus.APPROVED).stream()
+                .filter(expertId -> !expertId.equals(requesterId))
+                .forEach(expertId -> notificationService.create(
+                        userRepository.getReferenceById(expertId),
+                        NotificationType.RECIPE_REVIEW_REQUESTED,
+                        "새 검수 요청",
+                        content,
+                        TargetType.INSPECTION_REQUEST,
+                        inspectionRequest.getInspectionRequestId()
+                ));
+    }
+
+    /**
+     * 가장 최근 회차 task가 진행 중이면 이미 전문가가 맡은 신청이다. 반려 후 재신청한 신청은 지난 회차 task가
+     * COMPLETED로만 남아 있어 맡지 않은 것으로 본다. task row를 잠가 읽는다.
+     */
+    private boolean isTaken(InspectionRequest inspectionRequest) {
+        return expertTaskRepository.findFirstByInspectionRequestOrderByExpertTaskIdDesc(inspectionRequest)
+                .filter(task -> !task.isCompleted())
+                .isPresent();
+    }
+
+    private void validateCertifiedExpert(User expert) {
+        if (!expertApplicationRepository.existsByUserAndStatus(expert, ExpertApplicationStatus.APPROVED)) {
+            throw new BusinessException(ErrorCode.EXPERT_NOT_CERTIFIED);
+        }
+    }
+
+    /**
+     * 신청을 취소하고 차감했던 포인트를 돌려준다.
+     */
+    private void cancelAndRefund(InspectionRequest inspectionRequest) {
         inspectionRequest.cancel();
-        task.ifPresent(expertTaskRepository::delete);
 
         Integer rewardPoints = inspectionRequest.getRewardPoints();
         if (rewardPoints != null) {
@@ -209,34 +282,6 @@ public class InspectionServiceImpl implements InspectionService {
 
     private static boolean isReapplicable(InspectionRequestStatus status) {
         return status == InspectionRequestStatus.REJECTED || status == InspectionRequestStatus.CANCELLED;
-    }
-
-    /**
-     * 자동 배정할 전문가를 고른다. 전문가 인증(APPROVED)을 받고 탈퇴하지 않은 사용자 중 신청자 본인을 빼고,
-     * 진행 중인(완료되지 않은) task가 가장 적은 전문가 → 가장 오래 배정받지 않은 전문가(이력 없음 우선) → userId 순으로 고른다.
-     * 후보가 없으면 409(INSPECTION_NO_AVAILABLE_EXPERT).
-     */
-    private User pickExpert(Long requesterId) {
-        List<Long> candidateIds = expertApplicationRepository
-                .findActiveUserIdsByStatus(ExpertApplicationStatus.APPROVED).stream()
-                .filter(id -> !id.equals(requesterId))
-                .toList();
-        if (candidateIds.isEmpty()) {
-            throw new BusinessException(ErrorCode.INSPECTION_NO_AVAILABLE_EXPERT);
-        }
-
-        Map<Long, ExpertTaskRepository.ExpertWorkload> workloads = expertTaskRepository.findWorkloads(candidateIds).stream()
-                .collect(Collectors.toMap(ExpertTaskRepository.ExpertWorkload::getUserId, Function.identity()));
-
-        Comparator<Long> byActiveCount = Comparator.comparingLong(id ->
-                workloads.containsKey(id) ? workloads.get(id).getActiveCount() : 0L);
-        Comparator<Long> byLastAssignedAt = Comparator.comparing(
-                id -> workloads.containsKey(id) ? workloads.get(id).getLastAssignedAt() : null,
-                Comparator.nullsFirst(Comparator.naturalOrder()));
-        Long expertId = candidateIds.stream()
-                .min(byActiveCount.thenComparing(byLastAssignedAt).thenComparing(Comparator.naturalOrder()))
-                .orElseThrow();
-        return userRepository.getReferenceById(expertId);
     }
 
     /**
@@ -299,12 +344,14 @@ public class InspectionServiceImpl implements InspectionService {
         return counts;
     }
 
-    // 신청 ID → 현재 회차 task. 배정되지 않은 신청은 없다
+    // 신청 ID → 현재 회차 task. 아직 아무도 시작하지 않은 신청은 없다.
+    // 반려 후 재신청해 대기 중인 신청의 지난 회차 task(COMPLETED)는 현재 회차가 아니므로 뺀다.
     private Map<Long, ExpertTask> latestTasksOf(List<InspectionRequest> requests) {
         if (requests.isEmpty()) {
             return Map.of();
         }
         return expertTaskRepository.findLatestByInspectionRequestIn(requests).stream()
+                .filter(t -> !(t.isCompleted() && t.getInspectionRequest().getStatus() == InspectionRequestStatus.PENDING))
                 .collect(Collectors.toMap(t -> t.getInspectionRequest().getInspectionRequestId(), Function.identity()));
     }
 
@@ -317,9 +364,9 @@ public class InspectionServiceImpl implements InspectionService {
 
     /**
      * 검수 중인 job(전문가 검수 요청) 상세 조회
-     * inspectionId는 ExpertTask.expertTaskId를 가리킨다 (검수 시작 API와 동일한 리소스 기준).
+     * inspectionId는 ExpertTask.expertTaskId를 가리킨다 (검수 시작 API 응답의 taskId, reviewCode REV-023의 숫자).
      * - 전문가 인증(APPROVED)을 받지 않은 사용자는 조회할 수 없다. (403)
-     * - 본인에게 배정되지 않았거나 존재하지 않는 task는 startTask와 동일하게 404로 처리한다.
+     * - 본인이 맡지 않았거나 존재하지 않는 task는 404로 처리한다.
      * - 대상 종류에 따라 증강 파라미터·샘플 이미지 / 레시피 / 데이터셋 정보를 채운다.
      */
     @Override
@@ -397,7 +444,7 @@ public class InspectionServiceImpl implements InspectionService {
         ExpertTask task = getOwnedTaskForUpdate(expert, inspectionId);
         task.validateNotCompleted();
         InspectionRequest inspectionRequest = task.getInspectionRequest();
-        DecisionNotice notice = resolveDecisionNotice(task);
+        TargetNotice notice = resolveNotice(inspectionRequest);
 
         inspectionRequest.approve(expert, expertComment);
         task.complete(InspectionRequestStatus.APPROVED, expertComment);
@@ -427,7 +474,7 @@ public class InspectionServiceImpl implements InspectionService {
         ExpertTask task = getOwnedTaskForUpdate(expert, inspectionId);
         task.validateNotCompleted();
         InspectionRequest inspectionRequest = task.getInspectionRequest();
-        DecisionNotice notice = resolveDecisionNotice(task);
+        TargetNotice notice = resolveNotice(inspectionRequest);
 
         inspectionRequest.reject(expert, expertComment);
         task.complete(InspectionRequestStatus.REJECTED, expertComment);
@@ -446,19 +493,18 @@ public class InspectionServiceImpl implements InspectionService {
     }
 
     /**
-     * 승인·거절 알림의 대상 종류별 문구와 이동 대상.
+     * 신청자·전문가 알림의 대상 종류별 문구와 이동 대상.
      * 증강 데이터는 Job 화면, 레시피·데이터셋은 각 상세 화면으로 이동한다.
      */
-    private record DecisionNotice(String subject, NotificationType approvedType, NotificationType rejectedType,
-                                  TargetType targetType, Long targetId) {
+    private record TargetNotice(String subject, NotificationType approvedType, NotificationType rejectedType,
+                                TargetType targetType, Long targetId) {
     }
 
-    private DecisionNotice resolveDecisionNotice(ExpertTask task) {
-        InspectionRequest inspectionRequest = task.getInspectionRequest();
+    private TargetNotice resolveNotice(InspectionRequest inspectionRequest) {
         return switch (inspectionRequest.getTargetType()) {
             case AUGMENTED_DATA -> {
-                AugmentationConfig config = getAugmentationConfig(task);
-                yield new DecisionNotice(
+                AugmentationConfig config = getAugmentationConfig(inspectionRequest);
+                yield new TargetNotice(
                         "\"" + config.getJob().getProject().getTitle() + "\" 증강 데이터",
                         NotificationType.AUGMENTATION_INSPECTION_APPROVED,
                         NotificationType.AUGMENTATION_INSPECTION_REJECTED,
@@ -467,7 +513,7 @@ public class InspectionServiceImpl implements InspectionService {
             }
             case RECIPE -> {
                 Recipe recipe = getRecipe(inspectionRequest);
-                yield new DecisionNotice(
+                yield new TargetNotice(
                         "\"" + recipe.getTitle() + "\" 레시피",
                         NotificationType.RECIPE_APPROVED,
                         NotificationType.RECIPE_REJECTED,
@@ -476,7 +522,7 @@ public class InspectionServiceImpl implements InspectionService {
             }
             case UPLOADED_DATA -> {
                 Dataset dataset = getDataset(inspectionRequest);
-                yield new DecisionNotice(
+                yield new TargetNotice(
                         "\"" + dataset.getTitle() + "\" 데이터셋",
                         NotificationType.DATASET_VERIFIED,
                         NotificationType.DATASET_VERIFY_REJECTED,
@@ -488,7 +534,7 @@ public class InspectionServiceImpl implements InspectionService {
 
     /**
      * ExpertTask.reward에서 플랫폼 수수료 10%를 뗀 나머지(90%)를 전문가에게 지급하고 RewardHistory에 기록한다.
-     * reward가 설정되지 않은 task(파이프라인상 아직 배정되지 않은 값 등)는 지급 없이 건너뛴다.
+     * reward가 설정되지 않은 task는 지급 없이 건너뛴다.
      */
     private void payExpertReward(User expert, ExpertTask task) {
         Integer reward = task.getReward();
@@ -501,9 +547,9 @@ public class InspectionServiceImpl implements InspectionService {
     }
 
     /**
-     * inspectionId(ExpertTask.expertTaskId)로 "본인에게 배정된 검수 건"을 조회한다.
+     * inspectionId(ExpertTask.expertTaskId)로 "본인이 맡은 검수 건"을 조회한다.
      * - 전문가 인증(APPROVED)을 받지 않은 사용자는 403.
-     * - 존재하지 않거나 본인에게 배정되지 않은 task는 startTask와 동일하게 404(EXPERT_TASK_NOT_FOUND)로 처리한다.
+     * - 존재하지 않거나 본인이 맡지 않은 task는 404(EXPERT_TASK_NOT_FOUND)로 처리한다.
      */
     private ExpertTask getOwnedTask(User expert, Long inspectionId) {
         return getOwnedTask(expert, inspectionId, false);
@@ -517,9 +563,7 @@ public class InspectionServiceImpl implements InspectionService {
     }
 
     private ExpertTask getOwnedTask(User expert, Long inspectionId, boolean forUpdate) {
-        if (!expertApplicationRepository.existsByUserAndStatus(expert, ExpertApplicationStatus.APPROVED)) {
-            throw new BusinessException(ErrorCode.EXPERT_NOT_CERTIFIED);
-        }
+        validateCertifiedExpert(expert);
 
         return (forUpdate
                 ? expertTaskRepository.findForUpdate(inspectionId, expert)
@@ -528,7 +572,11 @@ public class InspectionServiceImpl implements InspectionService {
     }
 
     private AugmentationConfig getAugmentationConfig(ExpertTask task) {
-        return augmentationConfigRepository.findById(task.getInspectionRequest().getTargetId())
+        return getAugmentationConfig(task.getInspectionRequest());
+    }
+
+    private AugmentationConfig getAugmentationConfig(InspectionRequest inspectionRequest) {
+        return augmentationConfigRepository.findById(inspectionRequest.getTargetId())
                 .orElseThrow(() -> new BusinessException(ErrorCode.INSPECTION_TARGET_NOT_FOUND));
     }
 

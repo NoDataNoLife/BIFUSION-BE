@@ -23,7 +23,7 @@ public interface InspectionRequestRepository extends JpaRepository<InspectionReq
 
     Optional<InspectionRequest> findByUserAndTargetTypeAndTargetId(User user, InspectionTargetType targetType, Long targetId);
 
-    // 재신청(기존 row 재사용)이 동시에 들어와 task가 두 개 배정되지 않도록 기존 신청 row를 잠근다.
+    // 재신청(기존 row 재사용)이 동시에 들어와 같은 신청이 두 번 처리되지 않도록 기존 신청 row를 잠근다.
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT r FROM InspectionRequest r WHERE r.user = :user AND r.targetType = :targetType AND r.targetId = :targetId")
     Optional<InspectionRequest> findForUpdate(@Param("user") User user,
@@ -94,11 +94,36 @@ public interface InspectionRequestRepository extends JpaRepository<InspectionReq
         Long getCount();
     }
 
-    // 전문가 자동 배정 도입 전에 만들어져 배정(ExpertTask) 없이 대기 중으로 남은 신청 (일회성 정리용)
+    /**
+     * 프로젝트 삭제 시 함께 정리할 증강 데이터 검수 신청. 대기 중(PENDING)인 신청만 잠가서 조회한다.
+     * 증강 데이터 신청의 targetId는 AugmentationConfig ID다.
+     */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("""
-            SELECT r.inspectionRequestId FROM InspectionRequest r
-            WHERE r.status = :status
-              AND NOT EXISTS (SELECT 1 FROM ExpertTask t WHERE t.inspectionRequest = r)
+            SELECT r FROM InspectionRequest r
+            WHERE r.targetType = com.nodatanolife.bifusion_be.domain.expert.entity.InspectionTargetType.AUGMENTED_DATA
+              AND r.status = :pending
+              AND r.targetId IN (SELECT ac.augmentationConfigId FROM AugmentationConfig ac WHERE ac.job.project.projectId = :projectId)
             """)
-    List<Long> findIdsWithoutTaskByStatus(@Param("status") InspectionRequestStatus status);
+    List<InspectionRequest> findAugmentedByProjectForUpdate(@Param("projectId") Long projectId,
+                                                            @Param("pending") InspectionRequestStatus pending);
+
+    // 전문가의 검수 시작과 신청자 취소가 동시에 들어와도 한쪽만 반영되도록 신청 row를 잠근다.
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT r FROM InspectionRequest r WHERE r.inspectionRequestId = :inspectionRequestId")
+    Optional<InspectionRequest> findByIdForUpdate(@Param("inspectionRequestId") Long inspectionRequestId);
+
+    /**
+     * 전문가 풀(전문가 검수 목록의 검수 전 그룹). 대기 중(PENDING)이고 진행 중인 task가 없는 신청을 오래된 순으로 조회한다.
+     * 반려 후 재신청한 신청은 지난 회차 task가 COMPLETED로만 남아 있어 풀에 다시 올라온다. 조회하는 전문가 본인의 신청은 뺀다.
+     */
+    @Query("""
+            SELECT r FROM InspectionRequest r
+            JOIN FETCH r.user
+            WHERE r.status = :pending
+              AND r.user <> :expert
+              AND NOT EXISTS (SELECT 1 FROM ExpertTask t WHERE t.inspectionRequest = r AND t.status <> 'COMPLETED')
+            ORDER BY r.appliedAt ASC, r.inspectionRequestId ASC
+            """)
+    List<InspectionRequest> findPool(@Param("expert") User expert, @Param("pending") InspectionRequestStatus pending);
 }

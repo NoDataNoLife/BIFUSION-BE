@@ -1,6 +1,7 @@
 package com.nodatanolife.bifusion_be.domain.expert.service;
 
 import com.nodatanolife.bifusion_be.domain.expert.dto.request.InspectionCreateRequest;
+import com.nodatanolife.bifusion_be.domain.expert.dto.response.ExpertTaskStartResponse;
 import com.nodatanolife.bifusion_be.domain.expert.dto.response.InspectionDecisionResponse;
 import com.nodatanolife.bifusion_be.domain.expert.dto.response.InspectionDetailResponse;
 import com.nodatanolife.bifusion_be.domain.expert.dto.response.InspectionDraftResponse;
@@ -30,11 +31,14 @@ public interface InspectionService {
     void cancelForTargetDeletion(Long userId, InspectionTargetType targetType, Long targetId);
 
     /**
-     * 배정 없이 대기 중으로 남은 신청을 취소·환불한다 (일회성 정리용). 그새 상태가 바뀌었으면 건너뛴다.
-     *
-     * @return 취소했으면 true
+     * 프로젝트 삭제 전 정리. 프로젝트의 증강 데이터 검수 신청 중 시작 전인 것은 취소·환불하고, 전문가가 검수를 시작했으면 삭제를 막는다(409).
      */
-    boolean cancelUnassigned(Long inspectionRequestId);
+    void cancelForProjectDeletion(Long projectId);
+
+    /**
+     * 풀(전문가 검수 목록의 검수 전 항목)의 신청을 시작해 맡는다. 먼저 시작한 전문가 한 명만 성공하고, 늦으면 409(INSPECTION_ALREADY_TAKEN).
+     */
+    ExpertTaskStartResponse startInspection(User expert, Long inspectionRequestId);
 
     /**
      * 신청자의 "내가 요청한 검수" 목록. 취소된 신청은 제외한다.

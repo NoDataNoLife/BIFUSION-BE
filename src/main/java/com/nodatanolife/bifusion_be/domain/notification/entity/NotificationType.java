@@ -3,12 +3,19 @@ package com.nodatanolife.bifusion_be.domain.notification.entity;
 public enum NotificationType {
     AUGMENTATION_SUCCESS,
     AUGMENTATION_FAILED,
+    TRAINING_SUCCESS,
+    TRAINING_FAILED,
+    INFERENCE_SUCCESS,
+    INFERENCE_FAILED,
     PROJECT_INVITATION,
     INVITATION_ACCEPTED,
     INVITATION_REJECTED,
     EXPERT_APPROVED,
     EXPERT_REJECTED,
+    // 이름은 레시피지만 검수 대상 전체(증강 데이터·레시피·데이터셋)에 쓴다. FE가 이 이름으로 처리하고 있어 유지한다.
+    // 새 검수 요청 → 전문가 전원
     RECIPE_REVIEW_REQUESTED,
+    // 전문가가 검수 시작 → 신청자
     RECIPE_REVIEW_ACCEPTED,
     RECIPE_APPROVED,
     RECIPE_REJECTED,

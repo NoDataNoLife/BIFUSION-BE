@@ -29,7 +29,7 @@ public class AugmentationSampleImage extends BaseEntity {
     @Column(name = "label", length = 20)
     private SampleImageLabel label;
 
-    @Column(name = "comment")
+    @Column(name = "comment", columnDefinition = "TEXT")
     private String comment;
 
     public void saveComment(String comment) {

@@ -66,6 +66,10 @@ public class FileServiceImpl implements FileService {
         File file = fileRepository.findById(fileId)
                 .filter(found -> canDownload(userId, found))
                 .orElseThrow(() -> new BusinessException(ErrorCode.FILE_NOT_FOUND));
+        // 이전 버킷에 올라간 파일은 현재 버킷에 객체가 없다 (s3Key만으로는 버킷을 알 수 없어 fileUrl로 판단)
+        if (s3Service.isOtherBucketUrl(file.getFileUrl())) {
+            throw new BusinessException(ErrorCode.FILE_NOT_FOUND);
+        }
 
         String presignedUrl = s3Service.toPresignedUrl(
                 file.getS3Key(), Duration.ofSeconds(DOWNLOAD_URL_EXPIRE_SECONDS));
@@ -79,7 +83,7 @@ public class FileServiceImpl implements FileService {
     /**
      * 파일 종류별 다운로드 권한.
      * - Job 입력·결과 파일: 그 Job이 속한 프로젝트의 멤버
-     * - 데이터셋 첨부 파일: 공개 데이터셋이면 누구나, 비공개면 작성자와 그 데이터셋 검수를 배정받은 전문가.
+     * - 데이터셋 첨부 파일: 공개 데이터셋이면 누구나, 비공개면 작성자와 그 데이터셋 검수를 맡은 전문가.
      *   삭제된 데이터셋은 S3 객체를 지우므로 누구도 받을 수 없다 (그 파일을 쓰는 데이터셋이 모두 삭제됐으면 404).
      * - 그 외(임시 업로드 등): 업로드한 본인
      */

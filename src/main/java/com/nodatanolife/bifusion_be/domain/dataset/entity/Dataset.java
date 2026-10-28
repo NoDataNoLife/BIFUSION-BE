@@ -39,7 +39,7 @@ public class Dataset extends BaseEntity {
     private String title;
 
     // 데이터셋 설명
-    @Column(name = "description")
+    @Column(name = "description", columnDefinition = "TEXT")
     private String description;
 
     // 분류 카테고리 (예: 이미지, 텍스트 등)
@@ -67,11 +67,11 @@ public class Dataset extends BaseEntity {
     private String resolution;
 
     // 데이터셋에 포함된 클래스(라벨) 목록 설명
-    @Column(name = "classes")
+    @Column(name = "classes", columnDefinition = "TEXT")
     private String classes;
 
     // 사용 예시 설명
-    @Column(name = "usage_example")
+    @Column(name = "usage_example", columnDefinition = "TEXT")
     private String usageExample;
 
     // 첨부 파일의 URL 캐시 (file 연관관계의 fileUrl을 그대로 복사해 둔 값)

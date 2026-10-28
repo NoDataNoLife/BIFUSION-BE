@@ -40,7 +40,7 @@ public class RecipeReview extends BaseEntity {
     private Short rating;
 
     // 댓글 내용
-    @Column(name = "content")
+    @Column(name = "content", columnDefinition = "TEXT")
     private String content;
 
     @Builder

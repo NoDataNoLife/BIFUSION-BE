@@ -73,14 +73,16 @@ public class ExpertController {
     @Operation(
             summary = "전문가 검수 요청 목록 조회",
             description = """
-                    로그인한 전문가에게 배정된 검수 요청 목록을 검수 상태별로 묶어 반환합니다. (증강 데이터 검수 대상)
+                    전문가 검수 목록을 검수 상태별로 묶어 반환합니다.
+                    검수 요청은 전문가 전원이 보는 풀에 올라오고, 먼저 시작한 전문가가 맡습니다.
                     전문가 인증(APPROVED)을 받지 않은 사용자가 호출하면 403이 반환됩니다.
 
-                    - PENDING: 검수 전 목록
-                    - IN_PROGRESS: 검수 중 목록
-                    - COMPLETED: 검수 후 목록
-                    - 각 그룹 내 정렬 기준: updatedAt 최신순
-                    - 각 항목의 reviewCode: 검수 요청 코드 (예: REV-001)
+                    - PENDING: 검수 전 목록 = 전문가 풀. 아직 아무도 시작하지 않은 요청 (본인이 신청한 검수 제외, 신청일 오래된 순)
+                      reviewCode는 REQ-{inspectionRequestId}이며, 그 숫자로 시작 API(PATCH /api/v1/experts/me/tasks/{id}/start)를 호출하면 맡게 됩니다.
+                      다른 전문가가 먼저 시작했으면 409(IS015)
+                    - IN_PROGRESS: 내가 시작한 검수 중 목록 (updatedAt 최신순)
+                    - COMPLETED: 내가 끝낸 검수 후 목록 (updatedAt 최신순)
+                    - 각 항목의 reviewCode: 검수 코드. 검수 중·검수 후는 REV-{taskId}(예: REV-001), 검수 전은 REQ-{inspectionRequestId}(예: REQ-045)
                     - 각 항목의 reviewResult: 검수 완료 건의 판정 결과 (APPROVED / REJECTED), 미완료 건은 null
                     - 각 항목의 requester: 검수를 신청한 사용자 (userId, nickname, email)
                     - 각 항목의 targetType: 검수 대상 종류 (AUGMENTED_DATA / RECIPE / UPLOADED_DATA)

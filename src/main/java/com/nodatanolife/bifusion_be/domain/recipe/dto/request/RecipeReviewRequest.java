@@ -3,6 +3,7 @@ package com.nodatanolife.bifusion_be.domain.recipe.dto.request;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
 
 /**
  * 레시피 댓글/대댓글 작성 요청 DTO.
@@ -14,6 +15,7 @@ public record RecipeReviewRequest(
 
         // 댓글 내용 (필수)
         @NotBlank
+        @Size(max = 2000, message = "댓글은 2000자 이하로 입력해 주세요.")
         String content,
 
         // null이면 최상위 리뷰, 값이 있으면 해당 리뷰의 대댓글

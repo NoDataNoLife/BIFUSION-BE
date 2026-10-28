@@ -37,10 +37,10 @@ public class User extends BaseEntity {
     @Column(name = "profile_image_url")
     private String profileImageUrl;
 
-    @Column(name = "bio")
+    @Column(name = "bio", columnDefinition = "TEXT")
     private String bio;
 
-    // 기본값 USER. 탈퇴 익명화 계정만 DELETED (createDeletedUser).
+    // 기본값 USER. 탈퇴 익명화 계정만 DELETED (createDeletedUser), 관리자는 ADMIN (AdminRoleScheduler).
     // @ColumnDefault는 테이블을 새로 만들 때만 적용되므로, 기존 DB는 ALTER로 기본값을 따로 넣어야 한다.
     @ColumnDefault("'USER'")
     @Column(name = "role", length = 20)
@@ -80,6 +80,13 @@ public class User extends BaseEntity {
         this.organization = organization;
         this.contact = contact;
         this.isOnboarded = true;
+    }
+
+    /**
+     * 알림 등 화면 표시용 이름. 닉네임이 있으면 닉네임, 온보딩 전이라 닉네임이 없으면 실명.
+     */
+    public String getDisplayName() {
+        return nickname != null && !nickname.isBlank() ? nickname : name;
     }
 
     /**

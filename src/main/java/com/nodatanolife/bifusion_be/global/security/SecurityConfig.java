@@ -23,6 +23,7 @@ public class SecurityConfig {
     private final OAuth2AuthenticationSuccessHandler successHandler;
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
     private final RestAuthenticationEntryPoint restAuthenticationEntryPoint;
+    private final RestAccessDeniedHandler restAccessDeniedHandler;
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
@@ -40,10 +41,12 @@ public class SecurityConfig {
                                 "/swagger-ui/**",
                                 "/api-docs/**"
                         ).permitAll()
+                        .requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
                         .anyRequest().authenticated()
                 )
                 .exceptionHandling(e -> e
-                        .authenticationEntryPoint(restAuthenticationEntryPoint))
+                        .authenticationEntryPoint(restAuthenticationEntryPoint)
+                        .accessDeniedHandler(restAccessDeniedHandler))
                 .oauth2Login(oauth2 -> oauth2
                         .userInfoEndpoint(u -> u.userService(customOAuth2UserService))
                         .successHandler(successHandler)

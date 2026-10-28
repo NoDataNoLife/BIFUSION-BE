@@ -11,6 +11,8 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 /**
+ * @param reviewCode 검수 코드. 시작한 검수는 REV-{taskId}(예: REV-023), 아직 아무도 시작하지 않은 검수 전(PENDING) 항목은
+ *                   REQ-{inspectionRequestId}(예: REQ-045). FE는 숫자만 뽑아 검수 전 항목은 시작 API, 나머지는 상세·승인·반려 API의 ID로 쓴다
  * @param targetTitle 검수 대상 이름. 증강 데이터는 프로젝트명, 레시피·데이터셋은 각 제목
  * @param targetImageUrl 검수 대상 대표 이미지. 증강 데이터는 ML 미리보기 이미지(AugmentationConfig.previewKey), 레시피는 썸네일, 데이터셋은 배너 (없으면 null)
  * @param projectName 증강 데이터 검수에만 채운다 (레시피·데이터셋은 null). targetTitle과 같은 값
@@ -32,30 +34,47 @@ public record ExpertTaskSummaryResponse(
      * @param targetImageUrl 대상이 없거나 이미지가 없으면 null
      */
     public static ExpertTaskSummaryResponse of(ExpertTask task, String targetTitle, String targetImageUrl) {
-        InspectionRequest inspectionRequest = task.getInspectionRequest();
+        return of(task.getInspectionRequest(), task.getReviewCode(), task.getStatus(), task.reviewResult(),
+                targetTitle, targetImageUrl, task.getUpdatedAt());
+    }
+
+    /**
+     * 풀에 있는(아직 아무도 시작하지 않은) 검수 신청. 검수 전(PENDING) 그룹에 들어간다.
+     */
+    public static ExpertTaskSummaryResponse ofPending(InspectionRequest inspectionRequest, String targetTitle, String targetImageUrl) {
+        return of(inspectionRequest, "REQ-%03d".formatted(inspectionRequest.getInspectionRequestId()), ExpertTask.STATUS_PENDING, null,
+                targetTitle, targetImageUrl, inspectionRequest.getUpdatedAt());
+    }
+
+    private static ExpertTaskSummaryResponse of(InspectionRequest inspectionRequest, String reviewCode, String status,
+                                                InspectionRequestStatus reviewResult, String targetTitle, String targetImageUrl,
+                                                LocalDateTime updatedAt) {
         InspectionTargetType targetType = inspectionRequest.getTargetType();
         boolean augmented = targetType == InspectionTargetType.AUGMENTED_DATA;
         String title = targetTitle != null ? targetTitle : (augmented ? "알 수 없는 프로젝트" : "알 수 없는 대상");
         return new ExpertTaskSummaryResponse(
-                task.getReviewCode(),
-                task.getStatus(),
-                task.reviewResult(),
+                reviewCode,
+                status,
+                reviewResult,
                 RequesterResponse.from(inspectionRequest.getUser()),
                 targetType,
                 title,
                 targetImageUrl,
                 augmented ? title : null,
                 inspectionRequest.getAppliedAt() != null ? inspectionRequest.getAppliedAt().toLocalDate() : null,
-                task.getUpdatedAt()
+                updatedAt
         );
     }
 
-    public record RequesterResponse(Long userId, String nickname, String email) {
+    /**
+     * @param profileImageUrl 신청자 프로필 이미지. 상세 응답과 같이 직렬화 시점에 presign된다 (없으면 null)
+     */
+    public record RequesterResponse(Long userId, String nickname, String email, @PresignedUrl String profileImageUrl) {
         public static RequesterResponse from(User user) {
             if (user == null) {
-                return new RequesterResponse(null, "알 수 없는 사용자", null);
+                return new RequesterResponse(null, "알 수 없는 사용자", null, null);
             }
-            return new RequesterResponse(user.getUserId(), user.getNickname(), user.getEmail());
+            return new RequesterResponse(user.getUserId(), user.getNickname(), user.getEmail(), user.getProfileImageUrl());
         }
     }
 }

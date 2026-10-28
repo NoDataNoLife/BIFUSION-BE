@@ -63,6 +63,7 @@ public enum ErrorCode {
     INVALID_RECIPE_LIST_TYPE(HttpStatus.BAD_REQUEST, "CM021", "유효하지 않은 레시피 목록 조회 타입입니다."),
     FORBIDDEN_RECRUITMENT_ACCESS(HttpStatus.FORBIDDEN, "CM022", "본인의 모집글이 아닙니다."),
     RECIPE_THUMBNAIL_NOT_IMAGE(HttpStatus.BAD_REQUEST, "CM023", "레시피 대표 이미지는 이미지 파일만 올릴 수 있습니다."),
+    APPLICATION_ALREADY_PROCESSED(HttpStatus.CONFLICT, "CM024", "이미 수락 또는 거절된 지원서입니다."),
 
     /* ================================
      * Dataset
@@ -83,6 +84,7 @@ public enum ErrorCode {
     PROJECT_LAST_MANAGER(HttpStatus.BAD_REQUEST, "P008", "관리자가 본인만 남은 경우 자기자신은 삭제 불가합니다."),
     PROJECT_SAME_ROLE(HttpStatus.BAD_REQUEST, "P009", "이미 동일한 역할입니다."),
     PROJECT_LAST_MANAGER_DEMOTE(HttpStatus.BAD_REQUEST, "P010", "관리자가 한 명뿐인 경우 관리자 권한을 해제할 수 없습니다."),
+    PROJECT_HAS_ACTIVE_JOB(HttpStatus.CONFLICT, "P011", "진행 중인 작업이 있는 프로젝트는 삭제할 수 없습니다. 작업이 끝나거나 취소한 뒤 다시 시도해 주세요."),
 
     /* ================================
      * Invitation
@@ -148,6 +150,8 @@ public enum ErrorCode {
     EXPERT_NOT_CERTIFIED(HttpStatus.FORBIDDEN, "EX004", "전문가 인증을 받은 사용자만 조회할 수 있습니다."),
     EXPERT_TASK_NOT_FOUND(HttpStatus.NOT_FOUND, "EX005", "해당 검수 요청을 찾을 수 없습니다."),
     EXPERT_TASK_ALREADY_STARTED_OR_COMPLETED(HttpStatus.CONFLICT, "EX006", "이미 검수 중이거나 완료된 요청입니다."),
+    EXPERT_APPLICATION_NOT_PENDING(HttpStatus.CONFLICT, "EX007", "이미 심사가 끝난 전문가 인증 신청입니다."),
+    EXPERT_APPLICATION_NOT_FOUND(HttpStatus.NOT_FOUND, "EX008", "해당 전문가 인증 신청을 찾을 수 없습니다."),
 
     /* ================================
      * Plan
@@ -175,12 +179,13 @@ public enum ErrorCode {
     INSPECTION_IMAGE_NOT_FOUND(HttpStatus.NOT_FOUND, "IS005", "검수 대상 이미지를 찾을 수 없습니다."),
     INSPECTION_ALREADY_PROCESSED(HttpStatus.BAD_REQUEST, "IS006", "이미 승인 또는 거절 처리된 검수 요청입니다."),
     INSPECTION_TARGET_TYPE_NOT_SUPPORTED(HttpStatus.BAD_REQUEST, "IS007", "현재 지원하지 않는 검수 대상 종류입니다."),
-    INSPECTION_NO_AVAILABLE_EXPERT(HttpStatus.CONFLICT, "IS008", "배정할 수 있는 전문가가 없습니다. 잠시 후 다시 신청해 주세요."),
     INSPECTION_NOT_FOUND(HttpStatus.NOT_FOUND, "IS009", "검수 신청을 찾을 수 없습니다."),
     INSPECTION_CANNOT_CANCEL(HttpStatus.CONFLICT, "IS010", "전문가가 검수를 시작했거나 이미 처리된 신청은 취소할 수 없습니다."),
     INSPECTION_FORKED_RECIPE_NOT_ALLOWED(HttpStatus.BAD_REQUEST, "IS011", "그대로 복제한 레시피는 전문가 검수를 신청할 수 없습니다."),
     INSPECTION_IN_PROGRESS_TARGET_DELETE(HttpStatus.CONFLICT, "IS012", "전문가 검수가 진행 중인 대상은 삭제할 수 없습니다."),
     INSPECTION_REWARD_OUT_OF_RANGE(HttpStatus.BAD_REQUEST, "IS013", "검수 리워드가 허용 범위를 벗어났습니다."),
+    INSPECTION_OWN_REQUEST(HttpStatus.FORBIDDEN, "IS014", "본인이 신청한 검수는 맡을 수 없습니다."),
+    INSPECTION_ALREADY_TAKEN(HttpStatus.CONFLICT, "IS015", "다른 전문가가 이미 시작한 검수 요청입니다."),
 
     /* ================================
      * Notification

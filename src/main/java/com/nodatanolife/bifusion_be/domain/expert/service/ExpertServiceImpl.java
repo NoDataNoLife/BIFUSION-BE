@@ -1,5 +1,6 @@
 package com.nodatanolife.bifusion_be.domain.expert.service;
 
+import com.nodatanolife.bifusion_be.domain.expert.dto.response.AdminExpertApplicationResponse;
 import com.nodatanolife.bifusion_be.domain.expert.dto.response.ExpertApplicationResponse;
 import com.nodatanolife.bifusion_be.domain.expert.dto.response.ExpertPerformanceResponse;
 import com.nodatanolife.bifusion_be.domain.expert.dto.response.ExpertTaskGroupedResponse;
@@ -7,12 +8,17 @@ import com.nodatanolife.bifusion_be.domain.expert.dto.response.ExpertTaskSummary
 import com.nodatanolife.bifusion_be.domain.expert.entity.ExpertApplication;
 import com.nodatanolife.bifusion_be.domain.expert.entity.ExpertApplicationStatus;
 import com.nodatanolife.bifusion_be.domain.expert.entity.ExpertTask;
+import com.nodatanolife.bifusion_be.domain.expert.entity.InspectionRequest;
+import com.nodatanolife.bifusion_be.domain.expert.entity.InspectionRequestStatus;
 import com.nodatanolife.bifusion_be.domain.expert.repository.ExpertApplicationRepository;
 import com.nodatanolife.bifusion_be.domain.expert.repository.ExpertTaskRepository;
 import com.nodatanolife.bifusion_be.domain.expert.repository.InspectionRequestRepository;
 import com.nodatanolife.bifusion_be.domain.expert.service.InspectionTargetDisplayResolver.TargetDisplay;
 import com.nodatanolife.bifusion_be.domain.expert.service.InspectionTargetDisplayResolver.TargetDisplays;
 import com.nodatanolife.bifusion_be.domain.file.service.S3Service;
+import com.nodatanolife.bifusion_be.domain.notification.entity.NotificationType;
+import com.nodatanolife.bifusion_be.domain.notification.entity.TargetType;
+import com.nodatanolife.bifusion_be.domain.notification.service.NotificationService;
 import com.nodatanolife.bifusion_be.domain.user.entity.RewardHistory;
 import com.nodatanolife.bifusion_be.domain.user.entity.User;
 import com.nodatanolife.bifusion_be.domain.user.repository.RewardHistoryRepository;
@@ -20,6 +26,8 @@ import com.nodatanolife.bifusion_be.domain.user.repository.UserRepository;
 import com.nodatanolife.bifusion_be.global.exception.ErrorCode;
 import com.nodatanolife.bifusion_be.global.exception.business.BusinessException;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -32,6 +40,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 @Service
 @RequiredArgsConstructor
@@ -52,6 +61,7 @@ public class ExpertServiceImpl implements ExpertService {
     private final RewardHistoryRepository rewardHistoryRepository;
     private final UserRepository userRepository;
     private final S3Service s3Service;
+    private final NotificationService notificationService;
 
     /**
      * 회원 탈퇴 시 전문가 신청 내역 삭제
@@ -113,7 +123,7 @@ public class ExpertServiceImpl implements ExpertService {
 
     /**
      * 전문가 심사 진행 상태 판정
-     * 승인 기록이 하나라도 있으면 APPROVED (검수 배정·전문가 목록의 existsByUserAndStatus(APPROVED)와 같은 기준).
+     * 승인 기록이 하나라도 있으면 APPROVED (검수 요청 알림·전문가 목록의 existsByUserAndStatus(APPROVED)와 같은 기준).
      * 승인 후 재신청은 apply에서 막지만, 관리자가 DB에서 상태를 바꿔 승인 뒤에 다른 기록이 생겨도 판정이 어긋나지 않게 한다.
      * 승인 기록이 없으면 가장 최근 신청의 상태, 신청 내역이 없으면 NONE.
      */
@@ -199,7 +209,9 @@ public class ExpertServiceImpl implements ExpertService {
     /**
      * 전문가 검수 요청 목록 조회
      * 전문가 인증(APPROVED)을 받지 않은 사용자는 조회할 수 없다.
-     * 증강 데이터·레시피·업로드 데이터셋 검수를 모두 담고, 검수 상태(PENDING/IN_PROGRESS/COMPLETED)별로 묶어 반환한다.
+     * 증강 데이터·레시피·업로드 데이터셋 검수를 모두 담고, 검수 상태별로 묶어 반환한다.
+     * - PENDING(검수 전): 전문가 풀. 아직 아무도 시작하지 않은 신청 (본인 신청 제외, 오래된 순)
+     * - IN_PROGRESS·COMPLETED: 본인이 시작한 task (updatedAt 최신순)
      * 대상 이름은 종류별로 한 번씩 일괄 조회한다 (InspectionTargetDisplayResolver).
      */
     @Override
@@ -210,8 +222,9 @@ public class ExpertServiceImpl implements ExpertService {
         }
 
         List<ExpertTask> tasks = expertTaskRepository.findMyReviewTasks(user);
-        TargetDisplays displays = inspectionTargetDisplayResolver.resolve(
-                tasks.stream().map(ExpertTask::getInspectionRequest).toList());
+        List<InspectionRequest> pool = inspectionRequestRepository.findPool(user, InspectionRequestStatus.PENDING);
+        TargetDisplays displays = inspectionTargetDisplayResolver.resolve(Stream.concat(
+                tasks.stream().map(ExpertTask::getInspectionRequest), pool.stream()).toList());
 
         Map<String, List<ExpertTaskSummaryResponse>> grouped = tasks.stream()
                 .map(t -> {
@@ -221,9 +234,17 @@ public class ExpertServiceImpl implements ExpertService {
                             display != null ? display.imageUrl() : null);
                 })
                 .collect(Collectors.groupingBy(ExpertTaskSummaryResponse::status));
+        List<ExpertTaskSummaryResponse> pending = pool.stream()
+                .map(request -> {
+                    TargetDisplay display = displays.get(request);
+                    return ExpertTaskSummaryResponse.ofPending(request,
+                            display != null ? display.name() : null,
+                            display != null ? display.imageUrl() : null);
+                })
+                .toList();
 
         return new ExpertTaskGroupedResponse(
-                grouped.getOrDefault(STATUS_PENDING, List.of()),
+                pending,
                 grouped.getOrDefault(STATUS_IN_PROGRESS, List.of()),
                 grouped.getOrDefault(STATUS_COMPLETED, List.of())
         );
@@ -247,5 +268,57 @@ public class ExpertServiceImpl implements ExpertService {
         }
     }
 
-    // TODO: EXPERT_APPROVED / EXPERT_REJECTED 알림 연동 필요
+    /**
+     * 관리자 심사 목록 조회
+     * status가 없으면 전체 상태를 조회한다. 정렬은 호출 측 Pageable을 따른다.
+     */
+    @Override
+    @Transactional(readOnly = true)
+    public Page<AdminExpertApplicationResponse> getApplications(ExpertApplicationStatus status, Pageable pageable) {
+        Page<ExpertApplication> applications = status == null
+                ? expertApplicationRepository.findAllBy(pageable)
+                : expertApplicationRepository.findAllByStatus(status, pageable);
+        return applications.map(AdminExpertApplicationResponse::from);
+    }
+
+    /**
+     * 전문가 인증 승인
+     * PENDING 신청만 승인할 수 있고, 승인되면 신청자에게 EXPERT_APPROVED 알림을 보낸다.
+     */
+    @Override
+    public void approve(Long adminId, Long applicationId) {
+        ExpertApplication application = getApplication(applicationId);
+        application.approve(adminId);
+        notificationService.create(
+                application.getUser(),
+                NotificationType.EXPERT_APPROVED,
+                "전문가 인증 승인",
+                "전문가 인증이 승인되었습니다. 이제 검수 요청을 받을 수 있습니다.",
+                TargetType.EXPERT,
+                application.getExpertApplicationId()
+        );
+    }
+
+    /**
+     * 전문가 인증 반려
+     * PENDING 신청만 반려할 수 있고, 반려 사유를 담아 신청자에게 EXPERT_REJECTED 알림을 보낸다.
+     */
+    @Override
+    public void reject(Long adminId, Long applicationId, String reason) {
+        ExpertApplication application = getApplication(applicationId);
+        application.reject(adminId, reason);
+        notificationService.create(
+                application.getUser(),
+                NotificationType.EXPERT_REJECTED,
+                "전문가 인증 반려",
+                "전문가 인증이 반려되었습니다. 사유: " + reason,
+                TargetType.EXPERT,
+                application.getExpertApplicationId()
+        );
+    }
+
+    private ExpertApplication getApplication(Long applicationId) {
+        return expertApplicationRepository.findById(applicationId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.EXPERT_APPLICATION_NOT_FOUND));
+    }
 }

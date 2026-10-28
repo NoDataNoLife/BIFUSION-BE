@@ -4,6 +4,7 @@ import com.nodatanolife.bifusion_be.domain.expert.entity.InspectionTargetType;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
+import jakarta.validation.constraints.Size;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
@@ -19,6 +20,7 @@ public class InspectionCreateRequest {
     private Long targetId;
 
     @NotBlank(message = "검증 요청 메모는 필수입니다.")
+    @Size(max = 2000, message = "검증 요청 메모는 2000자 이하로 입력해 주세요.")
     private String reason;
 
     @NotNull(message = "리워드 포인트는 필수입니다.")

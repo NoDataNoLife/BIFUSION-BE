@@ -46,11 +46,11 @@ public class Recipe extends BaseEntity {
     private String title;
 
     // 목록에 노출되는 짧은 설명
-    @Column(name = "short_description")
+    @Column(name = "short_description", columnDefinition = "TEXT")
     private String shortDescription;
 
     // 상세 페이지에 노출되는 본문 설명
-    @Column(name = "overview")
+    @Column(name = "overview", columnDefinition = "TEXT")
     private String overview;
 
     // 썸네일/배너 이미지 URL
@@ -59,12 +59,12 @@ public class Recipe extends BaseEntity {
 
     // 핵심 특징 목록 (콤마 구분 문자열로 변환되어 저장됨)
     @Convert(converter = StringListConverter.class)
-    @Column(name = "key_features")
+    @Column(name = "key_features", columnDefinition = "TEXT")
     private List<String> keyFeatures;
 
     // 사용 사례/추천 용도 목록 (콤마 구분 문자열로 변환되어 저장됨)
     @Convert(converter = StringListConverter.class)
-    @Column(name = "use_cases")
+    @Column(name = "use_cases", columnDefinition = "TEXT")
     private List<String> useCases;
 
     // 전문가 검증 완료 여부

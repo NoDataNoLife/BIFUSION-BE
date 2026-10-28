@@ -29,7 +29,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
 
-@Tag(name = "Inspection", description = "전문가 검수 신청/처리 API. 전문가용 조회·처리 API는 전문가 인증(APPROVED) 아니면 403, 존재하지 않거나 본인에게 배정되지 않은 검수 요청이면 404. /me/requests는 신청자용.")
+@Tag(name = "Inspection", description = "전문가 검수 신청/처리 API. 전문가용 조회·처리 API는 전문가 인증(APPROVED) 아니면 403, 존재하지 않거나 본인이 맡지 않은 검수 요청이면 404. /me/requests는 신청자용.")
 @RestController
 @RequestMapping("/api/v1/inspections")
 @RequiredArgsConstructor
@@ -53,10 +53,10 @@ public class InspectionController {
                       - 최소: max(100, MB × 10), 최대: min(10,000, max(1,000, MB × 100))
                       - 레시피와 크기를 알 수 없는 대상: 100 ~ 1,000
                     - 대상이 없거나 삭제됐으면 404, 본인 소유 대상만 신청 가능(아니면 403), 중복 신청 409, 포인트 부족 400
-                    - 신청과 동시에 전문가 1명에게 자동 배정됩니다 (진행 중인 검수가 가장 적은 전문가, 신청자 본인 제외).
-                      배정할 전문가가 없으면 409(IS008)이며 포인트는 차감되지 않습니다.
+                    - 신청은 전문가 풀(GET /api/v1/experts/me/tasks의 PENDING 그룹)에 올라가고, 먼저 시작한(PATCH /api/v1/experts/me/tasks/{id}/start) 전문가가 맡습니다.
+                      신청과 동시에 전문가 전원(신청자 본인 제외)에게 RECIPE_REVIEW_REQUESTED 알림이 갑니다.
                     - 반려·취소된 대상은 다시 신청할 수 있습니다.
-                    - 응답의 inspectionRequestId는 검수 신청 ID로, 취소 API에 사용합니다. 전문가용 /inspections/{inspectionId} API의 inspectionId(배정 ID)와 다릅니다.
+                    - 응답의 inspectionRequestId는 검수 신청 ID로, 취소 API에 사용합니다. 전문가용 /inspections/{inspectionId} API의 inspectionId(검수 시작 응답의 taskId)와 다릅니다.
                     """
     )
     @PostMapping
@@ -73,7 +73,7 @@ public class InspectionController {
     @Operation(
             summary = "전문가 검수 신청 취소",
             description = """
-                    내 검수 신청을 취소하고 차감된 포인트를 돌려받습니다. 전문가가 검수를 시작하기 전에만 취소할 수 있습니다.
+                    내 검수 신청을 취소하고 차감된 포인트를 돌려받습니다. 전문가가 검수를 시작하기 전(풀에 있을 때)에만 취소할 수 있습니다.
 
                     - inspectionRequestId: 검수 신청 API 응답의 inspectionRequestId, 또는 증강 데이터셋 목록의 inspectionTarget.inspectionRequestId
                     - 취소 후 같은 대상에 다시 신청할 수 있습니다.
@@ -101,7 +101,7 @@ public class InspectionController {
                     - 상단 요약 카드의 상태별 건수는 GET /api/v1/inspections/me/requests/counts
                     - target.id는 검수 신청 API의 targetId (증강 데이터는 AugmentationConfig ID). 증강 데이터는 target.jobId도 내려줍니다.
                     - 삭제된 대상도 이력으로 나오며 target.deleted=true. 대상을 찾을 수 없으면 name은 "알 수 없는 대상", imageUrl은 null
-                    - expert: 배정 전이면 null. completedAt·result: 승인·반려 전이면 null
+                    - expert: 전문가가 시작하기 전이면 null. completedAt·result: 승인·반려 전이면 null
                     - 반려·취소 후 같은 대상에 다시 신청하면 기존 신청이 갱신되므로, 대상마다 최신 신청 1건만 나옵니다.
                     """
     )
@@ -155,7 +155,8 @@ public class InspectionController {
     @Operation(
             summary = "검수 중인 job 상세 조회",
             description = """
-                    검수 대기/진행 중인 요청 하나를 상세 조회합니다. inspectionId는 검수 시작 API(PATCH /api/v1/experts/me/tasks/{taskId}/start)와 동일한 리소스입니다.
+                    내가 맡은 검수 하나를 상세 조회합니다. inspectionId는 검수 시작 API(PATCH /api/v1/experts/me/tasks/{id}/start) 응답의 taskId이며,
+                    전문가 검수 목록의 검수 중·검수 후 항목 reviewCode(REV-023)의 숫자와 같습니다.
 
                     - targetType에 해당하는 영역만 채워지고 나머지는 null입니다.
                       - AUGMENTED_DATA: jobTitle, previewUrl(증강 결과 미리보기), augmentationParams, sampleImages

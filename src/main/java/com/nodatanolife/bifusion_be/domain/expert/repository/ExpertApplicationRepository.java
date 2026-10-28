@@ -3,6 +3,9 @@ package com.nodatanolife.bifusion_be.domain.expert.repository;
 import com.nodatanolife.bifusion_be.domain.expert.entity.ExpertApplication;
 import com.nodatanolife.bifusion_be.domain.expert.entity.ExpertApplicationStatus;
 import com.nodatanolife.bifusion_be.domain.user.entity.User;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -22,7 +25,14 @@ public interface ExpertApplicationRepository extends JpaRepository<ExpertApplica
 
     List<ExpertApplication> findAllByStatus(ExpertApplicationStatus status);
 
-    // 자동 배정 후보: 전문가 인증(APPROVED)을 받았고 탈퇴하지 않은 사용자
+    // 관리자 심사 목록
+    @EntityGraph(attributePaths = "user")
+    Page<ExpertApplication> findAllByStatus(ExpertApplicationStatus status, Pageable pageable);
+
+    @EntityGraph(attributePaths = "user")
+    Page<ExpertApplication> findAllBy(Pageable pageable);
+
+    // 새 검수 요청 알림 대상: 전문가 인증(APPROVED)을 받았고 탈퇴하지 않은 사용자
     @Query("SELECT DISTINCT a.user.userId FROM ExpertApplication a WHERE a.status = :status AND a.user.role <> 'DELETED'")
     List<Long> findActiveUserIdsByStatus(@Param("status") ExpertApplicationStatus status);
 }

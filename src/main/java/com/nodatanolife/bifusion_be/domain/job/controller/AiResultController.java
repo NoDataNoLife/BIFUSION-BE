@@ -37,7 +37,7 @@ public class AiResultController {
                     - 페이지 없이 전체를 반환하며, 결과가 없으면 빈 배열입니다.
                     - inspectionTarget: 검수 신청(POST /api/v1/inspections)에 쓸 targetType·targetId와 신청 가능 여부(canRequest),
                       가장 최근 신청 상태(status)·결과(result). targetId는 AugmentationConfig ID라 datasetId와 다릅니다.
-                      전문가 배정은 아직 구현되지 않아, 신청 건이 전문가 화면에 바로 나타나지는 않습니다.
+                      신청 건은 전문가 풀에 올라가고 먼저 시작한 전문가가 맡습니다.
 
                     주요 오류
                     - 403 P002 프로젝트 멤버 아님"""
