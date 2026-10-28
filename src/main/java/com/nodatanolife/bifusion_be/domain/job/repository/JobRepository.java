@@ -95,4 +95,7 @@ public interface JobRepository extends JpaRepository<Job, Long> {
                              @Param("excludedStatuses") Collection<JobStatus> excludedStatuses,
                              @Param("from") LocalDateTime from,
                              @Param("to") LocalDateTime to);
+
+    // 프로젝트 삭제 전, 아직 끝나지 않은 작업이 있는지 확인한다
+    boolean existsByProjectProjectIdAndStatusIn(Long projectId, Collection<JobStatus> statuses);
 }

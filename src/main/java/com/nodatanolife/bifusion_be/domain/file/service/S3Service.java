@@ -11,17 +11,23 @@ import software.amazon.awssdk.core.ResponseBytes;
 import software.amazon.awssdk.core.exception.SdkException;
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.services.s3.model.Delete;
 import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
+import software.amazon.awssdk.services.s3.model.DeleteObjectsRequest;
+import software.amazon.awssdk.services.s3.model.DeleteObjectsResponse;
 import software.amazon.awssdk.services.s3.model.GetObjectRequest;
 import software.amazon.awssdk.services.s3.model.HeadObjectRequest;
 import software.amazon.awssdk.services.s3.model.HeadObjectResponse;
 import software.amazon.awssdk.services.s3.model.NoSuchKeyException;
+import software.amazon.awssdk.services.s3.model.ObjectIdentifier;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 import software.amazon.awssdk.services.s3.model.S3Exception;
 import software.amazon.awssdk.services.s3.presigner.S3Presigner;
 import software.amazon.awssdk.services.s3.presigner.model.GetObjectPresignRequest;
 
 import java.time.Duration;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 
 @Slf4j
@@ -30,6 +36,8 @@ import java.util.UUID;
 public class S3Service {
 
     private static final String S3_HOST_MARKER = ".amazonaws.com/";
+    // DeleteObjects 한 번에 지울 수 있는 최대 객체 수
+    private static final int DELETE_BATCH_SIZE = 1000;
 
     private final S3Client s3Client;
     private final S3Presigner s3Presigner;
@@ -61,10 +69,24 @@ public class S3Service {
     }
 
     /**
+     * 우리 S3 URL(https://{bucket}.s3.{region}.amazonaws.com/{key})이 현재 버킷이 아닌 다른 버킷을 가리키는지.
+     * 이전 버킷(접근이 막혀 파일을 옮기지 못함)에 올라간 파일의 URL이 DB에 남아 있다. S3 URL이 아니면 false.
+     */
+    public boolean isOtherBucketUrl(String url) {
+        if (url == null || !url.contains(S3_HOST_MARKER)) {
+            return false;
+        }
+        String host = url.replaceFirst("^https?://", "");
+        int idx = host.indexOf(".s3.");
+        return idx < 0 || !host.substring(0, idx).equals(bucketName);
+    }
+
+    /**
      * DB에 저장된 값(S3 공개 URL 또는 raw key)을 만료 시간이 있는 presigned GET URL로 변환한다.
      * 버킷은 private 상태이므로 응답 시점에 이 메서드로 접근 가능한 URL을 발급한다.
      * 입력이 비어있으면 그대로, S3가 아닌 외부 URL은 원본을 반환한다.
      * 우리 S3 값인데 key를 추출할 수 없거나 presign에 실패하면 null을 반환한다 (저장된 key·URL을 응답에 노출하지 않는다).
+     * 다른 버킷의 URL도 현재 버킷에는 객체가 없어 깨진 링크가 되므로 null을 반환한다.
      */
     public String toPresignedUrl(String storedUrlOrKey) {
         return toPresignedUrl(storedUrlOrKey, Duration.ofMinutes(presignDurationMinutes));
@@ -81,6 +103,9 @@ public class S3Service {
 
         String key;
         if (storedUrlOrKey.contains(S3_HOST_MARKER)) {
+            if (isOtherBucketUrl(storedUrlOrKey)) {
+                return null;
+            }
             // 우리 S3 공개 URL → key 추출 후 presign
             key = extractKeyFromUrl(storedUrlOrKey);
         } else if (storedUrlOrKey.startsWith("http://") || storedUrlOrKey.startsWith("https://")) {
@@ -196,6 +221,32 @@ public class S3Service {
                         .key(s3Key)
                         .build()
         );
+    }
+
+    /**
+     * 여러 객체를 DeleteObjects로 묶어 지운다 (요청당 최대 1000개).
+     * 지우지 못한 key를 돌려준다. 요청 자체가 실패하면 그 묶음의 key를 모두 돌려준다.
+     */
+    public List<String> deleteFiles(List<String> s3Keys) {
+        List<String> failed = new ArrayList<>();
+        for (int from = 0; from < s3Keys.size(); from += DELETE_BATCH_SIZE) {
+            List<String> batch = s3Keys.subList(from, Math.min(from + DELETE_BATCH_SIZE, s3Keys.size()));
+            try {
+                DeleteObjectsResponse response = s3Client.deleteObjects(
+                        DeleteObjectsRequest.builder()
+                                .bucket(bucketName)
+                                .delete(Delete.builder()
+                                        .objects(batch.stream().map(key -> ObjectIdentifier.builder().key(key).build()).toList())
+                                        .quiet(true)
+                                        .build())
+                                .build()
+                );
+                response.errors().forEach(error -> failed.add(error.key()));
+            } catch (SdkException e) {
+                failed.addAll(batch);
+            }
+        }
+        return failed;
     }
 
     /**

@@ -178,6 +178,21 @@ public class InspectionServiceImpl implements InspectionService {
     }
 
     /**
+     * 프로젝트 삭제 직전에 호출한다. 프로젝트의 증강 데이터 검수 신청에 cancelForTargetDeletion과 같은 규칙을 적용한다.
+     * - 대기 중(PENDING) 신청을 모두 잠근 뒤, 하나라도 전문가가 시작했으면 아무것도 취소하지 않고 409로 막는다.
+     * - 모두 시작 전이면 전부 취소·포인트 환불한다.
+     */
+    @Override
+    public void cancelForProjectDeletion(Long projectId) {
+        List<InspectionRequest> pendings = inspectionRequestRepository.findAugmentedByProjectForUpdate(
+                projectId, InspectionRequestStatus.PENDING);
+        if (pendings.stream().anyMatch(this::isTaken)) {
+            throw new BusinessException(ErrorCode.INSPECTION_IN_PROGRESS_TARGET_DELETE);
+        }
+        pendings.forEach(this::cancelAndRefund);
+    }
+
+    /**
      * 풀의 검수 신청을 시작해 맡는다 (task 생성 + 바로 검수 중).
      * - 전문가 인증(APPROVED)을 받지 않았으면 403, 본인 신청이면 403(INSPECTION_OWN_REQUEST)
      * - 신청이 없거나 취소됐으면 404, 이미 승인·반려됐으면 400(INSPECTION_ALREADY_PROCESSED)

@@ -31,7 +31,7 @@ public class Notification extends BaseCreatedEntity {
     @Column(name = "title")
     private String title;
 
-    @Column(name = "content")
+    @Column(name = "content", columnDefinition = "TEXT")
     private String content;
 
     // 컨버터로 매핑: @Enumerated는 enum 값 목록 CHECK 제약을 만들어 INVITATION 같은 값 추가 시 저장이 막힌다.

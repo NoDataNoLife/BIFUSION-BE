@@ -33,7 +33,7 @@ public class RecruitApplication extends BaseEntity {
     @Column(name = "resume_url")
     private String resumeUrl;
 
-    @Column(name = "motivation")
+    @Column(name = "motivation", columnDefinition = "TEXT")
     private String motivation;
 
     @Enumerated(EnumType.STRING)

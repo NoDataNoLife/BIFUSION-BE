@@ -51,10 +51,10 @@ public class ExpertTask extends BaseEntity {
     @Column(name = "review_code", length = 20)
     private String reviewCode;
 
-    @Column(name = "feedback")
+    @Column(name = "feedback", columnDefinition = "TEXT")
     private String feedback;
 
-    @Column(name = "draft_feedback")
+    @Column(name = "draft_feedback", columnDefinition = "TEXT")
     private String draftFeedback;
 
     // 이 회차의 판정 (APPROVED/REJECTED). 신청(InspectionRequest)은 재신청 때 다시 쓰이므로 회차 결과는 task에 남긴다. 완료 전 null

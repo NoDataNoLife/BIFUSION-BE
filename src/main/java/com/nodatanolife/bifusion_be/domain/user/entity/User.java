@@ -37,7 +37,7 @@ public class User extends BaseEntity {
     @Column(name = "profile_image_url")
     private String profileImageUrl;
 
-    @Column(name = "bio")
+    @Column(name = "bio", columnDefinition = "TEXT")
     private String bio;
 
     // 기본값 USER. 탈퇴 익명화 계정만 DELETED (createDeletedUser), 관리자는 ADMIN (AdminRoleScheduler).
