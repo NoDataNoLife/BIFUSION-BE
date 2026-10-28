@@ -18,6 +18,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Objects;
+import java.util.Set;
 import java.util.stream.Stream;
 
 @Service
@@ -58,9 +60,12 @@ public class AiResultCommandServiceImpl implements AiResultCommandService {
         List<String> keys = Stream.concat(
                 resultFiles.stream().map(File::getS3Key),
                 Stream.of(config.getDatasetKey(), config.getPreviewKey())
-        ).toList();
+        ).filter(Objects::nonNull).toList();
+
+        // 데이터셋에 첨부된 결과 파일은 데이터셋이 계속 쓰므로 row도 S3 객체도 남긴다
+        Set<String> attachedKeys = keys.isEmpty() ? Set.of() : Set.copyOf(fileRepository.findDatasetAttachedKeys(keys));
         config.deleteResult();
-        fileRepository.deleteAll(resultFiles);
-        s3ObjectCleaner.deleteAfterCommit(keys);
+        fileRepository.deleteAll(resultFiles.stream().filter(file -> !attachedKeys.contains(file.getS3Key())).toList());
+        s3ObjectCleaner.deleteAfterCommit(keys.stream().filter(key -> !attachedKeys.contains(key)).toList());
     }
 }

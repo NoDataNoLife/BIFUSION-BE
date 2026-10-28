@@ -34,6 +34,7 @@ import java.util.ArrayList;
 import java.util.Base64;
 import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 @Service
@@ -418,6 +419,7 @@ public class  ProjectServiceImpl implements ProjectService {
      *   데이터셋에 첨부된 파일은 데이터셋이 계속 쓰므로 남긴다.
      * - 증강 결과는 삭제 처리한다 (검수 이력에는 삭제된 대상으로 보인다)
      * - 학습 모델 row는 남기고 모델 파일만 지운다
+     * - 데이터셋에 첨부된 파일의 객체는 지우지 않는다
      */
     private List<String> releaseProjectFiles(Project project) {
         Long projectId = project.getProjectId();
@@ -441,6 +443,12 @@ public class  ProjectServiceImpl implements ProjectService {
 
         trainedModelRepository.findAllWithTrainingJobByProjectId(projectId)
                 .forEach(model -> keys.add(model.getModelKey()));
+
+        // 증강 결과 key가 데이터셋에 첨부된 파일과 같을 수 있다 (파일 row는 위 bulk delete에서 이미 제외)
+        keys.removeIf(Objects::isNull);
+        if (!keys.isEmpty()) {
+            keys.removeAll(fileRepository.findDatasetAttachedKeys(keys));
+        }
         return keys;
     }
 

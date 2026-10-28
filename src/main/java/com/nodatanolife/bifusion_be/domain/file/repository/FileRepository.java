@@ -54,6 +54,13 @@ public interface FileRepository extends JpaRepository<File, Long> {
             """)
     int deleteJobFilesByProjectId(@Param("projectId") Long projectId);
 
+    /**
+     * 주어진 key 중 데이터셋에 첨부된 파일의 key. 데이터셋이 계속 참조하므로 row도 S3 객체도 지우면 안 된다.
+     * (데이터셋 생성 시 소유자만 확인해, 본인의 Job 결과 파일도 데이터셋에 첨부할 수 있다)
+     */
+    @Query("select f.s3Key from File f where f.s3Key in :s3Keys and exists (select 1 from Dataset d where d.file = f)")
+    List<String> findDatasetAttachedKeys(@Param("s3Keys") Collection<String> s3Keys);
+
     // 증강 결과 파일 크기 조회용 (AugmentationConfig.datasetKey → File)
     List<File> findAllByS3KeyIn(Collection<String> s3Keys);
 
