@@ -69,10 +69,24 @@ public class S3Service {
     }
 
     /**
+     * 우리 S3 URL(https://{bucket}.s3.{region}.amazonaws.com/{key})이 현재 버킷이 아닌 다른 버킷을 가리키는지.
+     * 이전 버킷(접근이 막혀 파일을 옮기지 못함)에 올라간 파일의 URL이 DB에 남아 있다. S3 URL이 아니면 false.
+     */
+    public boolean isOtherBucketUrl(String url) {
+        if (url == null || !url.contains(S3_HOST_MARKER)) {
+            return false;
+        }
+        String host = url.replaceFirst("^https?://", "");
+        int idx = host.indexOf(".s3.");
+        return idx < 0 || !host.substring(0, idx).equals(bucketName);
+    }
+
+    /**
      * DB에 저장된 값(S3 공개 URL 또는 raw key)을 만료 시간이 있는 presigned GET URL로 변환한다.
      * 버킷은 private 상태이므로 응답 시점에 이 메서드로 접근 가능한 URL을 발급한다.
      * 입력이 비어있으면 그대로, S3가 아닌 외부 URL은 원본을 반환한다.
      * 우리 S3 값인데 key를 추출할 수 없거나 presign에 실패하면 null을 반환한다 (저장된 key·URL을 응답에 노출하지 않는다).
+     * 다른 버킷의 URL도 현재 버킷에는 객체가 없어 깨진 링크가 되므로 null을 반환한다.
      */
     public String toPresignedUrl(String storedUrlOrKey) {
         return toPresignedUrl(storedUrlOrKey, Duration.ofMinutes(presignDurationMinutes));
@@ -89,6 +103,9 @@ public class S3Service {
 
         String key;
         if (storedUrlOrKey.contains(S3_HOST_MARKER)) {
+            if (isOtherBucketUrl(storedUrlOrKey)) {
+                return null;
+            }
             // 우리 S3 공개 URL → key 추출 후 presign
             key = extractKeyFromUrl(storedUrlOrKey);
         } else if (storedUrlOrKey.startsWith("http://") || storedUrlOrKey.startsWith("https://")) {

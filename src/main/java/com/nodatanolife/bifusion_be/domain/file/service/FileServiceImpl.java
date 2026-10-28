@@ -66,6 +66,10 @@ public class FileServiceImpl implements FileService {
         File file = fileRepository.findById(fileId)
                 .filter(found -> canDownload(userId, found))
                 .orElseThrow(() -> new BusinessException(ErrorCode.FILE_NOT_FOUND));
+        // 이전 버킷에 올라간 파일은 현재 버킷에 객체가 없다 (s3Key만으로는 버킷을 알 수 없어 fileUrl로 판단)
+        if (s3Service.isOtherBucketUrl(file.getFileUrl())) {
+            throw new BusinessException(ErrorCode.FILE_NOT_FOUND);
+        }
 
         String presignedUrl = s3Service.toPresignedUrl(
                 file.getS3Key(), Duration.ofSeconds(DOWNLOAD_URL_EXPIRE_SECONDS));
