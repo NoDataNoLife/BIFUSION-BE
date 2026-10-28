@@ -66,12 +66,15 @@ public record ExpertTaskSummaryResponse(
         );
     }
 
-    public record RequesterResponse(Long userId, String nickname, String email) {
+    /**
+     * @param profileImageUrl 신청자 프로필 이미지. 상세 응답과 같이 직렬화 시점에 presign된다 (없으면 null)
+     */
+    public record RequesterResponse(Long userId, String nickname, String email, @PresignedUrl String profileImageUrl) {
         public static RequesterResponse from(User user) {
             if (user == null) {
-                return new RequesterResponse(null, "알 수 없는 사용자", null);
+                return new RequesterResponse(null, "알 수 없는 사용자", null, null);
             }
-            return new RequesterResponse(user.getUserId(), user.getNickname(), user.getEmail());
+            return new RequesterResponse(user.getUserId(), user.getNickname(), user.getEmail(), user.getProfileImageUrl());
         }
     }
 }
