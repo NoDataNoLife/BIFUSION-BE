@@ -31,6 +31,11 @@ public interface InspectionService {
     void cancelForTargetDeletion(Long userId, InspectionTargetType targetType, Long targetId);
 
     /**
+     * 프로젝트 삭제 전 정리. 프로젝트의 증강 데이터 검수 신청 중 시작 전인 것은 취소·환불하고, 전문가가 검수를 시작했으면 삭제를 막는다(409).
+     */
+    void cancelForProjectDeletion(Long projectId);
+
+    /**
      * 풀(전문가 검수 목록의 검수 전 항목)의 신청을 시작해 맡는다. 먼저 시작한 전문가 한 명만 성공하고, 늦으면 409(INSPECTION_ALREADY_TAKEN).
      */
     ExpertTaskStartResponse startInspection(User expert, Long inspectionRequestId);

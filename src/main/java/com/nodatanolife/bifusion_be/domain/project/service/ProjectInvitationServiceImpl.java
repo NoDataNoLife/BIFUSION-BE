@@ -56,7 +56,7 @@ public class ProjectInvitationServiceImpl implements ProjectInvitationService {
         String email = rawEmail.toLowerCase();
         ProjectRole role = requestedRole != null ? requestedRole : DEFAULT_ROLE;
 
-        Project project = projectRepository.findById(projectId)
+        Project project = projectRepository.findByProjectIdAndDeletedAtIsNull(projectId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.PROJECT_NOT_FOUND));
 
         User inviter = userRepository.getReferenceById(inviterUserId);

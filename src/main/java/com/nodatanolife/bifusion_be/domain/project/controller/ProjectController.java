@@ -69,6 +69,28 @@ public class ProjectController {
         return CommonResponse.success(response, "참여한 프로젝트 목록 조회 성공!");
     }
 
+    @Operation(
+            summary = "프로젝트 삭제",
+            description = """
+                    프로젝트를 삭제합니다. 프로젝트 관리자(MANAGER)만 삭제할 수 있습니다.
+                    삭제한 프로젝트는 목록·상세에서 더 이상 조회되지 않습니다 (상세 등 프로젝트 API는 404 또는 403).
+
+                    - 멤버·즐겨찾기·초대는 함께 삭제됩니다. 받은 초대 알림은 남지만 초대 정보(invitation)는 null로 내려옵니다.
+                    - 증강 데이터 검수 신청 중 전문가가 아직 시작하지 않은 것은 취소되고 포인트가 환불됩니다.
+                    - 없거나 이미 삭제된 프로젝트면 404(P001), 관리자가 아니면 403(P002)
+                    - 진행 중(PENDING/RUNNING)인 작업이 있으면 409(P011). 작업이 끝나거나 취소한 뒤 다시 시도합니다.
+                    - 전문가가 검수 중인 증강 데이터가 있으면 409(IS012)
+                    """
+    )
+    @DeleteMapping("/{projectId}")
+    public CommonResponse<Void> deleteProject(
+            @PathVariable Long projectId,
+            @AuthenticationPrincipal CustomOAuth2User oAuth2User
+    ) {
+        projectService.deleteProject(projectId, oAuth2User.getUser().getUserId());
+        return CommonResponse.success(null, "프로젝트 삭제 성공!");
+    }
+
     @Operation(summary = "프로젝트 기본 정보 조회")
     @GetMapping("/{projectId}")
     public CommonResponse<ProjectInfoResponse> getProjectInfo(

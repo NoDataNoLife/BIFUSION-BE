@@ -94,6 +94,20 @@ public interface InspectionRequestRepository extends JpaRepository<InspectionReq
         Long getCount();
     }
 
+    /**
+     * 프로젝트 삭제 시 함께 정리할 증강 데이터 검수 신청. 대기 중(PENDING)인 신청만 잠가서 조회한다.
+     * 증강 데이터 신청의 targetId는 AugmentationConfig ID다.
+     */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("""
+            SELECT r FROM InspectionRequest r
+            WHERE r.targetType = com.nodatanolife.bifusion_be.domain.expert.entity.InspectionTargetType.AUGMENTED_DATA
+              AND r.status = :pending
+              AND r.targetId IN (SELECT ac.augmentationConfigId FROM AugmentationConfig ac WHERE ac.job.project.projectId = :projectId)
+            """)
+    List<InspectionRequest> findAugmentedByProjectForUpdate(@Param("projectId") Long projectId,
+                                                            @Param("pending") InspectionRequestStatus pending);
+
     // 전문가의 검수 시작과 신청자 취소가 동시에 들어와도 한쪽만 반영되도록 신청 row를 잠근다.
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT r FROM InspectionRequest r WHERE r.inspectionRequestId = :inspectionRequestId")

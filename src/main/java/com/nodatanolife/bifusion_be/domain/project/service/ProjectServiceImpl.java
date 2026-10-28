@@ -14,7 +14,10 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.nodatanolife.bifusion_be.domain.expert.service.InspectionService;
 import com.nodatanolife.bifusion_be.domain.file.service.S3Service;
+import com.nodatanolife.bifusion_be.domain.job.entity.JobStatus;
+import com.nodatanolife.bifusion_be.domain.job.repository.JobRepository;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.nio.charset.StandardCharsets;
@@ -37,6 +40,8 @@ public class  ProjectServiceImpl implements ProjectService {
     private final ProjectMemberRepository projectMemberRepository;
     private final ProjectInvitationRepository projectInvitationRepository;
     private final S3Service s3Service;
+    private final JobRepository jobRepository;
+    private final InspectionService inspectionService;
 
     /**
      * 프로젝트 생성
@@ -65,7 +70,7 @@ public class  ProjectServiceImpl implements ProjectService {
     @Override
     public ProjectUpdateResponse updateProject(Long projectId, ProjectUpdateRequest request, String email) {
       
-        Project project = projectRepository.findById(projectId)
+        Project project = projectRepository.findByProjectIdAndDeletedAtIsNull(projectId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.PROJECT_NOT_FOUND));
 
         User user = userRepository.findByEmail(email)
@@ -91,7 +96,7 @@ public class  ProjectServiceImpl implements ProjectService {
     @Override
     @Transactional(readOnly = true)
     public ProjectInfoResponse getProjectInfo(Long projectId, String email) {
-        Project project = projectRepository.findById(projectId)
+        Project project = projectRepository.findByProjectIdAndDeletedAtIsNull(projectId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.PROJECT_NOT_FOUND));
 
         User user = userRepository.findByEmail(email)
@@ -319,7 +324,7 @@ public class  ProjectServiceImpl implements ProjectService {
 
     @Override
     public ProjectBannerUpdateResponse updateBannerImage(Long projectId, MultipartFile file, String email) {
-        Project project = projectRepository.findById(projectId)
+        Project project = projectRepository.findByProjectIdAndDeletedAtIsNull(projectId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.PROJECT_NOT_FOUND));
 
         User user = userRepository.findByEmail(email)
@@ -346,6 +351,39 @@ public class  ProjectServiceImpl implements ProjectService {
 
         project.updateBannerImage(newUrl);
         return ProjectBannerUpdateResponse.of(project);
+    }
+
+
+    /**
+     * 프로젝트 삭제 (MANAGER만 가능, soft delete)
+     * - 진행 중(PENDING/RUNNING)인 작업이 있으면 409로 막는다
+     * - 증강 데이터 검수 신청은 시작 전이면 취소·환불하고, 전문가가 시작했으면 409로 막는다
+     * - 멤버·즐겨찾기·초대는 지운다. 목록·권한 확인이 멤버십 기준이라 삭제된 프로젝트는 더 이상 보이지 않는다
+     * - Job·학습 모델·활동 로그·S3 파일은 그대로 둔다 (활동 로그 등이 프로젝트를 참조)
+     */
+    @Override
+    public void deleteProject(Long projectId, Long userId) {
+        Project project = projectRepository.findByProjectIdAndDeletedAtIsNull(projectId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.PROJECT_NOT_FOUND));
+
+        ProjectMember member = projectMemberRepository
+                .findByProjectProjectIdAndUserUserId(projectId, userId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.PROJECT_ACCESS_DENIED));
+
+        if (member.getRole() != ProjectRole.MANAGER) {
+            throw new BusinessException(ErrorCode.PROJECT_ACCESS_DENIED);
+        }
+
+        if (jobRepository.existsByProjectProjectIdAndStatusIn(projectId, List.of(JobStatus.PENDING, JobStatus.RUNNING))) {
+            throw new BusinessException(ErrorCode.PROJECT_HAS_ACTIVE_JOB);
+        }
+
+        inspectionService.cancelForProjectDeletion(projectId);
+
+        projectFavoriteRepository.deleteByProject(project);
+        projectInvitationRepository.deleteByProject(project);
+        project.getProjectMembers().clear();
+        project.markDeleted();
     }
 
 }

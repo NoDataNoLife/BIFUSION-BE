@@ -84,6 +84,7 @@ public enum ErrorCode {
     PROJECT_LAST_MANAGER(HttpStatus.BAD_REQUEST, "P008", "관리자가 본인만 남은 경우 자기자신은 삭제 불가합니다."),
     PROJECT_SAME_ROLE(HttpStatus.BAD_REQUEST, "P009", "이미 동일한 역할입니다."),
     PROJECT_LAST_MANAGER_DEMOTE(HttpStatus.BAD_REQUEST, "P010", "관리자가 한 명뿐인 경우 관리자 권한을 해제할 수 없습니다."),
+    PROJECT_HAS_ACTIVE_JOB(HttpStatus.CONFLICT, "P011", "진행 중인 작업이 있는 프로젝트는 삭제할 수 없습니다. 작업이 끝나거나 취소한 뒤 다시 시도해 주세요."),
 
     /* ================================
      * Invitation
