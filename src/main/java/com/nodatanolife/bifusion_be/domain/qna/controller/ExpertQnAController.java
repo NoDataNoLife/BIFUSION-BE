@@ -111,4 +111,16 @@ public class ExpertQnAController {
         expertQnAService.deleteAnswer(userDetails.getUser().getUserId(), qnaId, answerId);
         return CommonResponse.success(null, "답변이 삭제되었습니다");
     }
+
+    @Operation(summary = "전문가 QnA 질문 수정", description = "본인이 작성한 질문의 제목, 내용, 태그를 수정합니다. 태그는 전체 교체됩니다.")
+    @PutMapping("/{qnaId}")
+    public CommonResponse<ExpertQnaResponse> updateQna(
+            @AuthenticationPrincipal CustomOAuth2User userDetails,
+            @PathVariable Long qnaId,
+            @RequestBody @Valid ExpertQnaRequest request
+    ) {
+        ExpertQnaResponse response = expertQnAService.updateQna(
+                userDetails.getUser().getUserId(), qnaId, request);
+        return CommonResponse.success(response, "질문이 수정되었습니다");
+    }
 }

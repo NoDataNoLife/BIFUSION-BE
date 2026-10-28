@@ -30,4 +30,6 @@ public interface ExpertQnAService {
     ExpertQnAAnswerResponse updateAnswer(Long userId, Long qnaId, Long answerId, ExpertQnAAnswerRequest request);
 
     void deleteAnswer(Long userId, Long qnaId, Long answerId);
+
+    ExpertQnaResponse updateQna(Long userId, Long qnaId, ExpertQnaRequest request);
 }

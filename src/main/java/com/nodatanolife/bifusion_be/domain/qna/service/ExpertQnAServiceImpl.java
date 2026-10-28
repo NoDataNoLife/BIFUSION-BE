@@ -117,16 +117,7 @@ public class ExpertQnAServiceImpl implements ExpertQnAService {
         pointService.spend(userId, pointProperties.qnaQuestionCost(),
                 RewardHistory.TYPE_QNA_QUESTION, RewardHistory.TARGET_QNA, qna.getExpertQnAId());
 
-        List<String> tags = request.getTags() != null ? request.getTags() : List.of();
-
-        tags.forEach(tagName -> {
-            Tag tag = tagRepository.findByName(tagName)
-                    .orElseGet(() -> tagRepository.save(Tag.create(tagName)));
-
-            tagMappingRepository.save(
-                    TagMapping.create(tag, qna.getExpertQnAId(), "EXPERT_QNA")
-            );
-        });
+        List<String> tags = saveTags(qna.getExpertQnAId(), request.getTags());
 
         return ExpertQnaResponse.from(qna, tags);
     }
@@ -188,14 +179,7 @@ public class ExpertQnAServiceImpl implements ExpertQnAService {
 
     @Override
     public void deleteQna(Long userId, Long qnaId) {
-        ExpertQnA qna = expertQnARepository.findById(qnaId)
-                .filter(q -> !q.isDeleted())
-                .orElseThrow(() -> new BusinessException(ErrorCode.BOARD_NOT_FOUND));
-
-        if (!qna.getUser().getUserId().equals(userId)) {
-            throw new BusinessException(ErrorCode.POST_ACCESS_DENIED);
-        }
-
+        ExpertQnA qna = getOwnedQna(userId, qnaId);
         qna.delete();
     }
 
@@ -231,6 +215,7 @@ public class ExpertQnAServiceImpl implements ExpertQnAService {
 
     private ExpertQnAAnswer getActiveAnswer(Long qnaId, Long answerId) {
         return expertQnAAnswerRepository.findById(answerId)
+                .filter(a -> !a.getExpertQnA().isDeleted())
                 .filter(a -> !a.isDeleted())
                 .filter(a -> a.getExpertQnA().getExpertQnAId().equals(qnaId))
                 .orElseThrow(() -> new BusinessException(ErrorCode.COMMENT_NOT_FOUND));
@@ -241,5 +226,39 @@ public class ExpertQnAServiceImpl implements ExpertQnAService {
             throw new BusinessException(ErrorCode.COMMENT_ACCESS_DENIED);
         }
     }
+    @Override
+    public ExpertQnaResponse updateQna(Long userId, Long qnaId, ExpertQnaRequest request) {
+        ExpertQnA qna = getOwnedQna(userId, qnaId);
 
+        qna.update(request.getTitle(), request.getContent());
+
+        // 태그는 전체 교체 (PUT 방식)
+        tagMappingRepository.deleteAllByTargetTypeAndTargetId("EXPERT_QNA", qnaId);
+        List<String> tags = saveTags(qnaId, request.getTags());
+
+        return ExpertQnaResponse.from(qna, tags);
+    }
+
+    private ExpertQnA getOwnedQna(Long userId, Long qnaId) {
+        ExpertQnA qna = expertQnARepository.findById(qnaId)
+                .filter(q -> !q.isDeleted())
+                .orElseThrow(() -> new BusinessException(ErrorCode.BOARD_NOT_FOUND));
+
+        if (!qna.getUser().getUserId().equals(userId)) {
+            throw new BusinessException(ErrorCode.POST_ACCESS_DENIED);
+        }
+        return qna;
+    }
+
+    private List<String> saveTags(Long qnaId, List<String> requestTags) {
+        List<String> tags = requestTags != null ? requestTags.stream().distinct().toList() : List.of();
+
+        tags.forEach(tagName -> {
+            Tag tag = tagRepository.findByName(tagName)
+                    .orElseGet(() -> tagRepository.save(Tag.create(tagName)));
+
+            tagMappingRepository.save(TagMapping.create(tag, qnaId, "EXPERT_QNA"));
+        });
+        return tags;
+    }
 }

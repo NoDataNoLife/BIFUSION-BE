@@ -72,7 +72,10 @@ public class ExpertQnA extends BaseEntity {
                 .content(content)
                 .build();
     }
-
+    public void update(String title, String content) {
+        this.title = title;
+        this.content = content;
+    }
     public void addExpertReply() {
         this.hasExpertReply = true;
         this.answerCount += 1;
