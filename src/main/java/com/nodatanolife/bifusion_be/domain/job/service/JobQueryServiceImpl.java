@@ -1,15 +1,21 @@
 package com.nodatanolife.bifusion_be.domain.job.service;
 
+import com.nodatanolife.bifusion_be.domain.file.entity.File;
+import com.nodatanolife.bifusion_be.domain.file.repository.FileRepository;
 import com.nodatanolife.bifusion_be.domain.job.dto.response.AugmentationJobResult;
 import com.nodatanolife.bifusion_be.domain.job.dto.response.InferenceJobResult;
 import com.nodatanolife.bifusion_be.domain.job.dto.response.JobResponse;
 import com.nodatanolife.bifusion_be.domain.job.dto.response.JobResult;
 import com.nodatanolife.bifusion_be.domain.job.dto.response.ProjectJobListResponse;
 import com.nodatanolife.bifusion_be.domain.job.dto.response.TrainingJobResult;
+import com.nodatanolife.bifusion_be.domain.job.entity.AugmentationConfig;
+import com.nodatanolife.bifusion_be.domain.job.entity.InferenceConfig;
 import com.nodatanolife.bifusion_be.domain.job.entity.Job;
 import com.nodatanolife.bifusion_be.domain.job.entity.JobStatus;
 import com.nodatanolife.bifusion_be.domain.job.entity.JobType;
+import com.nodatanolife.bifusion_be.domain.job.entity.TrainingConfig;
 import com.nodatanolife.bifusion_be.domain.job.repository.AugmentationConfigRepository;
+import com.nodatanolife.bifusion_be.domain.job.repository.InferenceConfigRepository;
 import com.nodatanolife.bifusion_be.domain.job.repository.InferenceResultRepository;
 import com.nodatanolife.bifusion_be.domain.job.repository.JobRepository;
 import com.nodatanolife.bifusion_be.domain.job.repository.TrainedModelRepository;
@@ -22,6 +28,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
@@ -36,9 +43,11 @@ public class JobQueryServiceImpl implements JobQueryService {
     private final JobRepository jobRepository;
     private final AugmentationConfigRepository augmentationConfigRepository;
     private final TrainingConfigRepository trainingConfigRepository;
+    private final InferenceConfigRepository inferenceConfigRepository;
     private final TrainedModelRepository trainedModelRepository;
     private final InferenceResultRepository inferenceResultRepository;
     private final ProjectMemberRepository projectMemberRepository;
+    private final FileRepository fileRepository;
     private final MlConnectionState mlConnectionState;
 
     @Override
@@ -106,26 +115,43 @@ public class JobQueryServiceImpl implements JobQueryService {
         }
     }
 
+    /**
+     * 프로젝트 접근 권한을 확인한 뒤 종류별 Config를 한 번 조회해 결과(SUCCESS일 때만)와 실행 입력값을 함께 담는다.
+     */
     private JobResponse toResponse(Long userId, Job job) {
         if (!projectMemberRepository.existsByProjectProjectIdAndUserUserId(job.getProject().getProjectId(), userId)) {
             throw new BusinessException(ErrorCode.PROJECT_ACCESS_DENIED);
         }
-        return JobResponse.from(job, job.getStatus() == JobStatus.SUCCESS ? findResult(job) : null,
-                mlConnectionState.getUnreachableSince());
+        Long jobId = job.getJobId();
+        boolean success = job.getStatus() == JobStatus.SUCCESS;
+        LocalDateTime mlUnreachableSince = mlConnectionState.getUnreachableSince();
+        return switch (job.getType()) {
+            case AUGMENTATION -> {
+                AugmentationConfig config = augmentationConfigRepository.findByJobJobId(jobId).orElse(null);
+                JobResult result = success && config != null ? AugmentationJobResult.from(config) : null;
+                yield JobResponse.from(job, result, config, mlUnreachableSince);
+            }
+            case TRAINING -> {
+                TrainingConfig config = trainingConfigRepository.findByJobJobId(jobId).orElse(null);
+                JobResult result = success && config != null
+                        ? TrainingJobResult.from(config, trainedModelRepository.findByTrainingJobJobId(jobId).orElse(null))
+                        : null;
+                yield JobResponse.from(job, result, config, mlUnreachableSince);
+            }
+            case INFERENCE -> {
+                InferenceConfig config = inferenceConfigRepository.findByJobJobId(jobId).orElse(null);
+                JobResult result = success
+                        ? InferenceJobResult.from(inferenceResultRepository.findAllByInferenceConfigJobJobIdOrderBySampleIndexAsc(jobId))
+                        : null;
+                yield JobResponse.from(job, result, config, findInputFiles(config), mlUnreachableSince);
+            }
+        };
     }
 
-    private JobResult findResult(Job job) {
-        Long jobId = job.getJobId();
-        return switch (job.getType()) {
-            case AUGMENTATION -> augmentationConfigRepository.findByJobJobId(jobId)
-                    .map(AugmentationJobResult::from)
-                    .orElse(null);
-            case TRAINING -> trainingConfigRepository.findByJobJobId(jobId)
-                    .map(config -> TrainingJobResult.from(config,
-                            trainedModelRepository.findByTrainingJobJobId(jobId).orElse(null)))
-                    .orElse(null);
-            case INFERENCE -> InferenceJobResult.from(
-                    inferenceResultRepository.findAllByInferenceConfigJobJobIdOrderBySampleIndexAsc(jobId));
-        };
+    private List<File> findInputFiles(InferenceConfig config) {
+        if (config == null || config.getInputFileIds() == null) {
+            return List.of();
+        }
+        return fileRepository.findAllById(config.getInputFileIds());
     }
 }
