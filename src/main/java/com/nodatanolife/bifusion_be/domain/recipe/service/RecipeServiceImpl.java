@@ -115,7 +115,6 @@ public class RecipeServiceImpl implements RecipeService {
 
         return RecipeRegisterResponse.from(savedRecipe);
     }
-
     /**
      * 대표 이미지로 쓸 임시 업로드 파일을 검증하고 영구 보관으로 바꾼다 (데이터셋 첨부 파일과 같은 방식).
      * - 없는 파일 404, 남이 올린 파일은 도용 방지를 위해 거부(FILE_READ_FAILED), 이미지가 아니면 400(RECIPE_THUMBNAIL_NOT_IMAGE)
@@ -218,7 +217,7 @@ public class RecipeServiceImpl implements RecipeService {
         if (!recipe.getUser().getUserId().equals(userId)) {
             throw new BusinessException(ErrorCode.FORBIDDEN_RECIPE_ACCESS);
         }
-
+        inspectionService.validateTargetEditable(userId, InspectionTargetType.RECIPE, recipeId);
         if (request.thumbnailFileId() != null) {
             recipe.updateThumbnail(takeThumbnail(request.thumbnailFileId(), userId));
         }

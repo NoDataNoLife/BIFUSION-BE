@@ -186,6 +186,8 @@ public enum ErrorCode {
     INSPECTION_REWARD_OUT_OF_RANGE(HttpStatus.BAD_REQUEST, "IS013", "검수 리워드가 허용 범위를 벗어났습니다."),
     INSPECTION_OWN_REQUEST(HttpStatus.FORBIDDEN, "IS014", "본인이 신청한 검수는 맡을 수 없습니다."),
     INSPECTION_ALREADY_TAKEN(HttpStatus.CONFLICT, "IS015", "다른 전문가가 이미 시작한 검수 요청입니다."),
+    INSPECTION_PENDING_TARGET_EDIT(HttpStatus.CONFLICT, "IS016", "검수 대기 중인 대상은 수정할 수 없습니다. 검수 신청을 취소한 뒤 수정해 주세요."),
+    INSPECTION_IN_PROGRESS_TARGET_EDIT(HttpStatus.CONFLICT, "IS017", "전문가 검수가 진행 중인 대상은 수정할 수 없습니다."),
 
     /* ================================
      * Notification
