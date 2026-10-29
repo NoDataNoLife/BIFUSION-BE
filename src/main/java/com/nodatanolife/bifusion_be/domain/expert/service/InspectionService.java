@@ -66,6 +66,4 @@ public interface InspectionService {
     InspectionDecisionResponse approveInspection(User expert, Long inspectionId, String expertComment);
 
     InspectionDecisionResponse rejectInspection(User expert, Long inspectionId, String expertComment);
-
-    void validateTargetEditable(Long userId, InspectionTargetType targetType, Long targetId);
 }

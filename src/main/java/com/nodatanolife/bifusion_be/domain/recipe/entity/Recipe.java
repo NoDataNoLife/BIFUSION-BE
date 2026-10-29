@@ -236,30 +236,4 @@ public class Recipe extends BaseEntity {
     public void delete() {
         this.markDeleted();
     }
-
-    /**
-     * 레시피 정보 수정.
-     * 프론트가 기존 값을 채운 폼 전체를 다시 제출하는 방식이라 전달받은 값 그대로 덮어쓴다.
-     */
-    public void update(String title, String shortDescription, String overview,
-                       List<String> keyFeatures, List<String> useCases, Boolean isPublic,
-                       String model, Integer steps, String sampler, BigDecimal cfgScale,
-                       String seed, String resolution, Integer batchSize) {
-        this.title = title;
-        this.shortDescription = shortDescription;
-        this.overview = overview;
-        this.keyFeatures = keyFeatures;
-        this.useCases = useCases;
-        if (isPublic != null) {
-            this.isPublic = isPublic;
-        }
-        this.model = model;
-        this.steps = steps;
-        this.sampler = sampler;
-        this.cfgScale = cfgScale;
-        this.seed = seed;
-        this.resolution = resolution;
-        this.batchSize = batchSize;
-    }
-
 }

@@ -263,10 +263,6 @@ public class DatasetServiceImpl implements DatasetService {
             throw new BusinessException(ErrorCode.POST_ACCESS_DENIED);
         }
 
-        if (dataset.getType() == DatasetType.UPLOADED) {
-            inspectionService.validateTargetEditable(userId, InspectionTargetType.UPLOADED_DATA, datasetId);
-        }
-
         if (request.getFileId() != null) {
             File file = fileRepository.findById(request.getFileId())
                     .orElseThrow(() -> new BusinessException(ErrorCode.RESOURCE_NOT_FOUND));

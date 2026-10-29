@@ -129,19 +129,4 @@ public class CommunityRecipeController {
         return CommonResponse.success(null, "레시피 삭제 성공!");
     }
 
-    @Operation(
-            summary = "레시피 수정",
-            description = "본인이 작성한 레시피를 수정합니다."
-    )
-    @PutMapping("/{recipeId}")
-    public CommonResponse<RecipeRegisterResponse> updateRecipe(
-            @PathVariable Long recipeId,
-            @RequestBody @Valid RecipeRegisterRequest request,
-            @AuthenticationPrincipal CustomOAuth2User oAuth2User
-    ) {
-        Long userId = oAuth2User.getUser().getUserId();
-        RecipeRegisterResponse response = recipeService.updateRecipe(recipeId, request, userId);
-        return CommonResponse.success(response, "레시피 수정 성공!");
-    }
-
 }

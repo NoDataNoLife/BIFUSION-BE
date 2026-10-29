@@ -89,8 +89,8 @@ public class RecruitmentController {
 
         return CommonResponse.success(response, "팀원 모집 목록 조회 성공!");
     }
-    @Operation(summary = "팀원 모집글 삭제", description = "본인이 작성한 모집글을 삭제(soft delete)합니다.")
-      @DeleteMapping("/{recruitmentId}")
+
+    @DeleteMapping("/{recruitmentId}")
     public CommonResponse<Void> deleteRecruitment(
             @PathVariable Long recruitmentId,
             @AuthenticationPrincipal CustomOAuth2User oAuth2User
@@ -98,17 +98,4 @@ public class RecruitmentController {
         recruitService.deleteRecruitment(recruitmentId, oAuth2User.getUser().getUserId());
         return CommonResponse.success(null);
     }
-
-    @Operation(summary = "팀원 모집글 수정", description = "본인이 작성한 모집글을 수정합니다. 태그는 전체 교체되며, 모집 정원은 이미 수락된 인원보다 적게 줄일 수 없습니다.")
-    @PutMapping("/{recruitmentId}")
-    public CommonResponse<RecruitmentResponse> updateRecruitment(
-            @PathVariable Long recruitmentId,
-            @RequestBody @Valid RecruitmentRequest request,
-            @AuthenticationPrincipal CustomOAuth2User oAuth2User
-    ) {
-        RecruitmentResponse response = recruitService.updateRecruitment(
-                recruitmentId, request, oAuth2User.getUser().getUserId());
-        return CommonResponse.success(response, "팀원 모집 공고가 수정되었습니다!");
-    }
-
 }

@@ -36,6 +36,4 @@ public interface RecruitService {
     void deleteRecruitment(Long recruitmentId, Long userId);
 
     List<Recruit> getPublicRecruitsByUser(Long userId);
-
-    RecruitmentResponse updateRecruitment(Long recruitmentId, RecruitmentRequest request, Long userId);
 }
