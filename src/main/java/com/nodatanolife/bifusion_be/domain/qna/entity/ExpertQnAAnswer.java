@@ -41,4 +41,12 @@ public class ExpertQnAAnswer extends BaseEntity {
                 .content(content)
                 .build();
     }
+
+    public void update(String content) {
+        this.content = content;
+    }
+
+    public void delete() {
+        markDeleted();
+    }
 }
