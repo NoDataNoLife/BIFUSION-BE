@@ -28,6 +28,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import java.math.BigDecimal;
 
 import java.util.List;
 import java.util.Map;
@@ -114,7 +115,6 @@ public class RecipeServiceImpl implements RecipeService {
 
         return RecipeRegisterResponse.from(savedRecipe);
     }
-
     /**
      * 대표 이미지로 쓸 임시 업로드 파일을 검증하고 영구 보관으로 바꾼다 (데이터셋 첨부 파일과 같은 방식).
      * - 없는 파일 404, 남이 올린 파일은 도용 방지를 위해 거부(FILE_READ_FAILED), 이미지가 아니면 400(RECIPE_THUMBNAIL_NOT_IMAGE)
@@ -207,5 +207,37 @@ public class RecipeServiceImpl implements RecipeService {
     @Transactional(readOnly = true)
     public List<Recipe> getPublicRecipesByUser(Long userId) {
         return recipeRepository.findPublicByUserId(userId);
+    }
+
+    @Override
+    public RecipeRegisterResponse updateRecipe(Long recipeId, RecipeRegisterRequest request, Long userId) {
+        Recipe recipe = recipeRepository.findByRecipeIdAndDeletedAtIsNull(recipeId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.RESOURCE_NOT_FOUND));
+
+        if (!recipe.getUser().getUserId().equals(userId)) {
+            throw new BusinessException(ErrorCode.FORBIDDEN_RECIPE_ACCESS);
+        }
+        inspectionService.validateTargetEditable(userId, InspectionTargetType.RECIPE, recipeId);
+        if (request.thumbnailFileId() != null) {
+            recipe.updateThumbnail(takeThumbnail(request.thumbnailFileId(), userId));
+        }
+
+        recipe.update(
+                request.title(),
+                request.description(),
+                request.overview(),
+                request.features(),
+                request.recommendations(),
+                request.isPublic(),
+                request.modelName(),
+                request.steps(),
+                request.sampler(),
+                request.cfgScale() != null ? BigDecimal.valueOf(request.cfgScale()) : null,
+                request.seed() != null ? String.valueOf(request.seed()) : null,
+                request.resolution(),
+                request.batchSize()
+        );
+
+        return RecipeRegisterResponse.from(recipe);
     }
 }

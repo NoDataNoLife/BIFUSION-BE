@@ -76,16 +76,7 @@ public class RecruitServiceImpl implements RecruitService {
         );
         recruitRepository.save(recruit);
 
-        List<String> tagNames = new ArrayList<>();
-        if (request.getTags() != null) {
-            for (String tagName : request.getTags()) {
-                Tag tag = tagRepository.findByName(tagName)
-                        .orElseGet(() -> tagRepository.save(Tag.create(tagName)));
-                tagMappingRepository.save(TagMapping.create(tag, recruit.getRecruitId(), "RECRUIT"));
-                tagNames.add(tag.getName());
-            }
-        }
-
+        List<String> tagNames = saveTags(recruit.getRecruitId(), request.getTags());
         return RecruitmentResponse.from(recruit, tagNames);
     }
 
@@ -247,14 +238,12 @@ public class RecruitServiceImpl implements RecruitService {
         ));
     }
 
-    @Transactional
+    @Override
     public void deleteRecruitment(Long recruitmentId, Long userId) {
         Recruit recruit = recruitRepository.findById(recruitmentId)
-                .orElseThrow(() -> new BusinessException(ErrorCode.RECRUITMENT_NOT_FOUND)); // 또는 기존 컨벤션에 맞는 코드
-
-        if (!recruit.getUser().getUserId().equals(userId)) {
-            throw new BusinessException(ErrorCode.FORBIDDEN_RECRUITMENT_ACCESS); // 없으면 신설
-        }
+                .filter(r -> !r.isDeleted())
+                .orElseThrow(() -> new BusinessException(ErrorCode.RECRUITMENT_NOT_FOUND));
+        validateRecruitOwner(recruit, userId);
 
         recruit.delete();
     }
@@ -263,5 +252,57 @@ public class RecruitServiceImpl implements RecruitService {
     @Transactional(readOnly = true)
     public List<Recruit> getPublicRecruitsByUser(Long userId) {
         return recruitRepository.findPublicByUserId(userId);
+    }
+
+    @Override
+    public RecruitmentResponse updateRecruitment(Long recruitmentId, RecruitmentRequest request, Long userId) {
+        // 지원 상태 변경과 같은 락을 써서 정원 체크가 꼬이지 않게 함
+        Recruit recruit = recruitRepository.findByIdForUpdate(recruitmentId)
+                .filter(r -> !r.isDeleted())
+                .orElseThrow(() -> new BusinessException(ErrorCode.RECRUITMENT_NOT_FOUND));
+        validateRecruitOwner(recruit, userId);
+
+        if (request.getTeamSize() != null) {
+            long acceptedCount = recruitApplicationRepository
+                    .countByRecruit_RecruitIdAndStatus(recruitmentId, RecruitApplicationStatus.ACCEPTED);
+            if (request.getTeamSize() < acceptedCount) {
+                throw new BusinessException(ErrorCode.RECRUITMENT_TEAM_SIZE_TOO_SMALL);
+            }
+        }
+
+        recruit.update(
+                request.getJobTitle(),
+                request.getOrganization(),
+                request.getDescription(),
+                request.getRequirements(),
+                request.getResponsibilities(),
+                request.getBenefits(),
+                request.getTeamSize(),
+                request.getDeadline()
+        );
+
+        // 태그는 전체 교체 (PUT 방식)
+        tagMappingRepository.deleteAllByTargetTypeAndTargetId("RECRUIT", recruitmentId);
+        List<String> tags = saveTags(recruitmentId, request.getTags());
+
+        return RecruitmentResponse.from(recruit, tags);
+    }
+
+    private void validateRecruitOwner(Recruit recruit, Long userId) {
+        if (!recruit.getUser().getUserId().equals(userId)) {
+            throw new BusinessException(ErrorCode.FORBIDDEN_RECRUITMENT_ACCESS);
+        }
+    }
+
+    private List<String> saveTags(Long recruitId, List<String> requestTags) {
+        List<String> tags = requestTags != null ? requestTags.stream().distinct().toList() : List.of();
+
+        tags.forEach(tagName -> {
+            Tag tag = tagRepository.findByName(tagName)
+                    .orElseGet(() -> tagRepository.save(Tag.create(tagName)));
+
+            tagMappingRepository.save(TagMapping.create(tag, recruitId, "RECRUIT"));
+        });
+        return tags;
     }
 }

@@ -44,4 +44,6 @@ public interface RecipeService {
     void deleteRecipe(Long recipeId, Long userId);
 
     List<Recipe> getPublicRecipesByUser(Long userId);
+
+    RecipeRegisterResponse updateRecipe(Long recipeId, RecipeRegisterRequest request, Long userId);
 }

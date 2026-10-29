@@ -191,7 +191,23 @@ public class InspectionServiceImpl implements InspectionService {
         }
         pendings.forEach(this::cancelAndRefund);
     }
-
+    /**
+     * 레시피/데이터셋 수정 직전에 호출한다. 대기 중(PENDING)인 검수 신청이 있으면 수정을 막는다(409).
+     * - 전문가가 시작한 신청: IS017, 시작 전 대기 신청: IS016 (신청 취소 후 수정 안내)
+     * - 삭제와 같이 신청 row를 잠가, 수정하는 동안 전문가가 검수를 시작하지 못하게 한다.
+     */
+    @Override
+    public void validateTargetEditable(Long userId, InspectionTargetType targetType, Long targetId) {
+        User user = userRepository.getReferenceById(userId);
+        inspectionRequestRepository.findForUpdate(user, targetType, targetId)
+                .filter(found -> found.getStatus() == InspectionRequestStatus.PENDING)
+                .ifPresent(pending -> {
+                    if (isTaken(pending)) {
+                        throw new BusinessException(ErrorCode.INSPECTION_IN_PROGRESS_TARGET_EDIT);
+                    }
+                    throw new BusinessException(ErrorCode.INSPECTION_PENDING_TARGET_EDIT);
+                });
+    }
     /**
      * 풀의 검수 신청을 시작해 맡는다 (task 생성 + 바로 검수 중).
      * - 전문가 인증(APPROVED)을 받지 않았으면 403, 본인 신청이면 403(INSPECTION_OWN_REQUEST)

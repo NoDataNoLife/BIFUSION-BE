@@ -87,4 +87,40 @@ public class ExpertQnAController {
         expertQnAService.deleteQna(userId, qnaId);
         return CommonResponse.success(null, "질문글 삭제 성공!");
     }
+
+    @Operation(summary = "전문가 QnA 답변 수정", description = "본인이 작성한 답변을 수정합니다.")
+    @PutMapping("/{qnaId}/answers/{answerId}")
+    public CommonResponse<ExpertQnAAnswerResponse> updateAnswer(
+            @AuthenticationPrincipal CustomOAuth2User userDetails,
+            @PathVariable Long qnaId,
+            @PathVariable Long answerId,
+            @RequestBody @Valid ExpertQnAAnswerRequest request
+    ) {
+        ExpertQnAAnswerResponse response = expertQnAService.updateAnswer(
+                userDetails.getUser().getUserId(), qnaId, answerId, request);
+        return CommonResponse.success(response, "답변이 수정되었습니다");
+    }
+
+    @Operation(summary = "전문가 QnA 답변 삭제", description = "본인이 작성한 답변을 삭제(soft delete)합니다.")
+    @DeleteMapping("/{qnaId}/answers/{answerId}")
+    public CommonResponse<Void> deleteAnswer(
+            @AuthenticationPrincipal CustomOAuth2User userDetails,
+            @PathVariable Long qnaId,
+            @PathVariable Long answerId
+    ) {
+        expertQnAService.deleteAnswer(userDetails.getUser().getUserId(), qnaId, answerId);
+        return CommonResponse.success(null, "답변이 삭제되었습니다");
+    }
+
+    @Operation(summary = "전문가 QnA 질문 수정", description = "본인이 작성한 질문의 제목, 내용, 태그를 수정합니다. 태그는 전체 교체됩니다.")
+    @PutMapping("/{qnaId}")
+    public CommonResponse<ExpertQnaResponse> updateQna(
+            @AuthenticationPrincipal CustomOAuth2User userDetails,
+            @PathVariable Long qnaId,
+            @RequestBody @Valid ExpertQnaRequest request
+    ) {
+        ExpertQnaResponse response = expertQnAService.updateQna(
+                userDetails.getUser().getUserId(), qnaId, request);
+        return CommonResponse.success(response, "질문이 수정되었습니다");
+    }
 }
