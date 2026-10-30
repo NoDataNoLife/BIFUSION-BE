@@ -55,7 +55,7 @@ class JobResultIntegrationTest extends IntegrationTestSupport {
         augmentationConfigRepository.save(AugmentationConfig.create(job, new AugmentationParameters(10, 0.3, 400, 50, 1L),
                 List.of(1L), List.of(2L)));
 
-        jobPollingService.applyAugmentationSuccess(job.getJobId(), new MlAugmentationResult("ds-1", 1, 1, 2, 2, null), null, null);
+        jobPollingService.applyAugmentationSuccess(job.getJobId(), new MlAugmentationResult("ds-1", 1, 1, 2, 2, null), null, null, null);
 
         assertThat(notifications(owner)).containsExactly(Map.of("type", "AUGMENTATION_SUCCESS", "target_type", "JOB",
                 "target_id", job.getJobId()));

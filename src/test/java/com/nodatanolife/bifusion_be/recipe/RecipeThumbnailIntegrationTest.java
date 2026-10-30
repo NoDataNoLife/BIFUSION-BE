@@ -55,8 +55,8 @@ class RecipeThumbnailIntegrationTest extends IntegrationTestSupport {
     }
 
     private Long register(User author, Long thumbnailFileId) {
-        RecipeRegisterRequest request = new RecipeRegisterRequest("레시피", "설명", "sd-1.5", 30, "euler", 7.5f, 42,
-                "512x512", 1, null, List.of(), List.of(), null, true, thumbnailFileId);
+        RecipeRegisterRequest request = new RecipeRegisterRequest("레시피", "설명", augmentationSettings(), null,
+                null, List.of(), List.of(), null, true, thumbnailFileId);
         String code = recipeService.registerRecipe(request, author.getUserId()).recipeId();
         return Long.parseLong(code.substring("REC-".length()));
     }

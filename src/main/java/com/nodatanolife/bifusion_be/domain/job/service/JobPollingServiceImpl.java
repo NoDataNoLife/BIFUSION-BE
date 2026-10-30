@@ -2,6 +2,7 @@ package com.nodatanolife.bifusion_be.domain.job.service;
 
 import com.nodatanolife.bifusion_be.domain.file.entity.File;
 import com.nodatanolife.bifusion_be.domain.file.repository.FileRepository;
+import com.nodatanolife.bifusion_be.domain.file.service.S3ObjectCleaner;
 import com.nodatanolife.bifusion_be.domain.job.entity.AugmentationConfig;
 import com.nodatanolife.bifusion_be.domain.job.entity.InferenceConfig;
 import com.nodatanolife.bifusion_be.domain.job.entity.InferenceResult;
@@ -54,6 +55,7 @@ public class JobPollingServiceImpl implements JobPollingService {
     private final MlProperties mlProperties;
     private final JobResultNotifier jobResultNotifier;
     private final JobPointService jobPointService;
+    private final S3ObjectCleaner s3ObjectCleaner;
 
     @Override
     @Transactional(readOnly = true)
@@ -93,13 +95,19 @@ public class JobPollingServiceImpl implements JobPollingService {
     }
 
     @Override
-    public void applyAugmentationSuccess(Long jobId, MlAugmentationResult result, ResultFileMeta dataset, ResultFileMeta preview) {
+    public void applyAugmentationSuccess(Long jobId, MlAugmentationResult result, ResultFileMeta dataset, ResultFileMeta preview,
+                                         ResultFileMeta downloadZip) {
+        // 결과로 기록하지 못하면(이미 끝난 Job, 잘못된 응답, 롤백) 미리 올린 zip이 남지 않게 지운다
+        List<String> zipKeys = Stream.ofNullable(ResultFileMeta.keyOf(downloadZip)).toList();
+        s3ObjectCleaner.deleteAfterRollback(zipKeys);
         Optional<Job> active = findActiveJob(jobId);
         if (active.isEmpty()) {
+            s3ObjectCleaner.deleteAfterCommit(zipKeys);
             return;
         }
         Job job = active.get();
         if (failIfInvalid(job, result.invalidReason())) {
+            s3ObjectCleaner.deleteAfterCommit(zipKeys);
             return;
         }
         AugmentationConfig config = augmentationConfigRepository.findByJobJobId(jobId)
@@ -114,7 +122,23 @@ public class JobPollingServiceImpl implements JobPollingService {
                 result.numSyntheticGenerated(),
                 result.totalSamples()
         );
-        saveResultFiles(job, dataset, preview);
+        config.recordDownloadZip(ResultFileMeta.keyOf(downloadZip));
+        saveResultFiles(job, dataset, preview, downloadZip);
+    }
+
+    @Override
+    public boolean recordDownloadZip(Long jobId, ResultFileMeta downloadZip) {
+        AugmentationConfig config = augmentationConfigRepository.findByJobIdForUpdate(jobId).orElse(null);
+        if (config == null || !config.canCreateDownloadZip()) {
+            s3ObjectCleaner.deleteAfterCommit(List.of(downloadZip.s3Key()));
+            return false;
+        }
+        if (config.getDownloadZipKey() != null) {
+            return true;
+        }
+        config.recordDownloadZip(downloadZip.s3Key());
+        saveResultFiles(config.getJob(), downloadZip);
+        return true;
     }
 
     @Override
