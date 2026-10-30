@@ -38,6 +38,7 @@ import java.util.concurrent.ConcurrentHashMap;
 public class MlJobPoller {
 
     private final MlClient mlClient;
+    private final AugmentationResultZipper augmentationResultZipper;
     private final JobPollingService jobPollingService;
     private final S3Service s3Service;
     private final MlProperties mlProperties;
@@ -156,9 +157,13 @@ public class MlJobPoller {
             return;
         }
         MlAugmentationResult result = response.result();
-        jobPollingService.applyAugmentationSuccess(job.getJobId(), result,
-                describeResultFile(job, "dataset", result.download()),
-                describeResultFile(job, "preview", result.preview()));
+        ResultFileMeta dataset = describeResultFile(job, "dataset", result.download());
+        // 다운로드는 npz와 PNG 이미지를 묶은 zip으로 준다. 만들지 못하면 npz로 남는다
+        ResultFileMeta downloadZip = dataset != null
+                ? augmentationResultZipper.create(job.getJobId(), job.getDisplayCode(), dataset.s3Key())
+                : null;
+        jobPollingService.applyAugmentationSuccess(job.getJobId(), result, dataset,
+                describeResultFile(job, "preview", result.preview()), downloadZip);
     }
 
     private void pollTraining(Job job, LocalDateTime now) {

@@ -71,6 +71,10 @@ public class AugmentationConfig extends BaseEntity {
     @Column(name = "preview_key")
     private String previewKey;
 
+    // 다운로드용으로 BE가 만든 zip(결과 npz + PNG 이미지)의 key. 없으면 npz(datasetKey)를 내려준다
+    @Column(name = "download_zip_key")
+    private String downloadZipKey;
+
     @Column(name = "generated_count")
     private Integer generatedCount;
 
@@ -114,6 +118,25 @@ public class AugmentationConfig extends BaseEntity {
         markDeleted();
         this.datasetKey = null;
         this.previewKey = null;
+        this.downloadZipKey = null;
+    }
+
+    /**
+     * 다운로드 zip을 만들 수 있는 결과인지. (삭제되지 않았고, 증강 Job이 SUCCESS이고 결과 npz가 있음)
+     */
+    public boolean canCreateDownloadZip() {
+        return !isDeleted() && job.getStatus() == JobStatus.SUCCESS && datasetKey != null;
+    }
+
+    public void recordDownloadZip(String downloadZipKey) {
+        this.downloadZipKey = downloadZipKey;
+    }
+
+    /**
+     * 결과 다운로드 파일의 key. zip을 만들었으면 zip, 아니면(생성 실패·도입 전 결과) npz.
+     */
+    public String getDownloadKey() {
+        return downloadZipKey != null ? downloadZipKey : datasetKey;
     }
 
     public void recordResult(String mlDatasetId, String datasetKey, String previewKey,
