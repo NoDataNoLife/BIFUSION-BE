@@ -37,6 +37,21 @@ public class JobRequestValidator {
      * 이미지 없이 설정값만 검증한다. 예상 비용 조회는 이미지를 고르기 전에도 부를 수 있어 따로 둔다.
      */
     public void validateAugmentationParameters(AugmentationParameters params) {
+        validateAugmentationValues(params);
+        requireSeed(params.seed());
+    }
+
+    /**
+     * 레시피 설정값 검증. 범위는 증강 실행과 같고, 레시피는 시드를 비워 둘 수 있어 시드가 있을 때만 범위를 본다.
+     */
+    public void validateRecipeAugmentationSettings(AugmentationParameters params) {
+        validateAugmentationValues(params);
+        if (params.seed() != null) {
+            requireSeed(params.seed());
+        }
+    }
+
+    private void validateAugmentationValues(AugmentationParameters params) {
         MlProperties.AugmentationLimits limits = mlProperties.limits().augmentation();
         requireRange(params.numSamplesPerClass(), limits.minNumSamplesPerClass(), limits.maxNumSamplesPerClass());
         if (params.strength() < limits.minStrength() || params.strength() > limits.maxStrength()) {
@@ -44,7 +59,6 @@ public class JobRequestValidator {
         }
         requireRange(params.finetuneSteps(), 1, limits.maxFinetuneSteps());
         requireRange(params.steps(), 1, limits.maxSteps());
-        requireSeed(params.seed());
     }
 
     public void validateTraining(TrainingParameters params) {

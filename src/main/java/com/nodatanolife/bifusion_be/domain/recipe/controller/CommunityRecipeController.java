@@ -31,6 +31,9 @@ public class CommunityRecipeController {
         description = """
                 새 레시피를 등록합니다. 일반 등록과 포크 등록이 이 API로 공동 처리됩니다.
 
+                - 설정값: augmentationSettings(직접 입력)와 sourceJobId(작업에서 불러오기) 중 정확히 하나를 보냅니다.                 둘 다 보내면 400(CM026), 둘 다 없으면 400(CM027).
+                  - augmentationSettings: numSamplesPerClass(1~100), strength(0~1), finetuneSteps(1~1000), steps(1~200)는 필수,                 seed(0~4294967295)는 선택. 범위를 벗어나면 400(J004).
+                  - sourceJobId: 내가 멤버인 프로젝트의 완료(SUCCESS)된 증강 작업 번호. 서버가 그 작업에 저장된 실행 값을 그대로 복사하고,                 상세 조회의 sourceJobId로 출처를 내려줍니다. 없는 작업 404(J003), 권한 없음 403(P002),                 증강이 아니거나 완료되지 않은 작업 400(CM028), 설정 기록이 없는 예전 작업 400(CM029).                 불러온 값을 고쳤다면 sourceJobId 대신 augmentationSettings로 보냅니다.
                 - 일반 등록: forkedFromId 없이 요청
                 - 포크 등록: 포크 원본 정보는 레시피 상세 조회 API(GET)로 미리 조회하여 \
                 프론트에서 값을 채운 뒤, forkedFromId에 원본 레시피 ID를 포함하여 요청. \
@@ -131,7 +134,8 @@ public class CommunityRecipeController {
 
     @Operation(
             summary = "레시피 수정",
-            description = "본인이 작성한 레시피를 수정합니다."
+            description = "본인이 작성한 레시피를 수정합니다. 설정값 규칙은 등록과 같고, 예전 형식 레시피도 수정하면 증강 설정값 형식으로 바뀝니다. "
+                    + "작업에서 불러온 설정을 그대로 두려면 sourceJobId를 다시 보냅니다."
     )
     @PutMapping("/{recipeId}")
     public CommonResponse<RecipeRegisterResponse> updateRecipe(

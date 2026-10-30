@@ -1,5 +1,7 @@
 package com.nodatanolife.bifusion_be.domain.recipe.entity;
 
+import com.nodatanolife.bifusion_be.domain.job.entity.AugmentationParameters;
+import com.nodatanolife.bifusion_be.domain.recipe.entity.converter.RecipeSettingsFormatConverter;
 import com.nodatanolife.bifusion_be.global.converter.StringListConverter;
 import java.util.List;
 import com.nodatanolife.bifusion_be.domain.recipe.dto.request.RecipeRegisterRequest;
@@ -7,6 +9,8 @@ import com.nodatanolife.bifusion_be.domain.user.entity.User;
 import com.nodatanolife.bifusion_be.global.entity.BaseEntity;
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 import java.math.BigDecimal;
 
 /**
@@ -99,6 +103,7 @@ public class Recipe extends BaseEntity {
     @Column(name = "is_mypage_visible")
     private Boolean isMyPageVisible;
 
+    // 아래 예전 생성 파라미터(model ~ batch_size)는 LEGACY 형식 레시피만 값이 있다
     // 생성에 사용된 모델명
     @Column(name = "model", length = 100)
     private String model;
@@ -127,6 +132,20 @@ public class Recipe extends BaseEntity {
     @Column(name = "batch_size")
     private Integer batchSize;
 
+    // 증강 설정값 (증강 실행 파라미터와 같은 형식). AUGMENTATION 형식 레시피만 값이 있고, seed는 비어 있을 수 있다
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "augmentation_settings", columnDefinition = "jsonb")
+    private AugmentationParameters augmentationSettings;
+
+    // 설정값 형식. 이 컬럼이 생기기 전 레시피는 null이며 getSettingsFormat()에서 LEGACY로 본다
+    @Convert(converter = RecipeSettingsFormatConverter.class)
+    @Column(name = "settings_format", length = 20)
+    private RecipeSettingsFormat settingsFormat;
+
+    // 설정값을 불러온 증강 작업 번호 (출처 표시용). 직접 입력했거나 예전 형식이면 null
+    @Column(name = "source_job_id")
+    private Long sourceJobId;
+
     /**
      * 회원 탈퇴 시 작성자를 탈퇴 계정으로 치환한다 (데이터는 남기되 개인 식별은 제거).
      */
@@ -145,8 +164,12 @@ public class Recipe extends BaseEntity {
      * 레시피 생성 팩토리 메서드. 일반 등록과 포크 등록을 함께 처리한다
      * (forkedFrom이 null이 아니면 포크 등록).
      * request.isPublic()이 null이면 기존과 동일하게 공개(true)로 기본 처리한다.
+     *
+     * @param augmentationSettings 검증을 마친 설정값 (직접 입력값 또는 sourceJobId 작업에서 복사한 값)
+     * @param sourceJobId          설정값을 불러온 작업 번호. 직접 입력했으면 null
      */
-    public static Recipe create(RecipeRegisterRequest request, User user, Recipe forkedFrom) {
+    public static Recipe create(RecipeRegisterRequest request, User user, Recipe forkedFrom,
+                                AugmentationParameters augmentationSettings, Long sourceJobId) {
         Recipe recipe = new Recipe();
         recipe.user = user;
         recipe.forkedFrom = forkedFrom;
@@ -155,13 +178,7 @@ public class Recipe extends BaseEntity {
         recipe.overview = request.overview();
         recipe.keyFeatures = request.features();
         recipe.useCases = request.recommendations();
-        recipe.model = request.modelName();
-        recipe.steps = request.steps();
-        recipe.sampler = request.sampler();
-        recipe.cfgScale = BigDecimal.valueOf(request.cfgScale());
-        recipe.seed = String.valueOf(request.seed());
-        recipe.resolution = request.resolution();
-        recipe.batchSize = request.batchSize();
+        recipe.applyAugmentationSettings(augmentationSettings, sourceJobId);
 
         // 요청에 isPublic이 없으면(null) 기존 커뮤니티 API와 동일하게 공개(true)로 기본 처리한다.
         recipe.isPublic = request.isPublic() != null ? request.isPublic() : true;
@@ -197,6 +214,10 @@ public class Recipe extends BaseEntity {
         recipe.seed = original.seed;
         recipe.resolution = original.resolution;
         recipe.batchSize = original.batchSize;
+        // 예전 형식 레시피는 형식(null = LEGACY)까지 그대로 복사한다
+        recipe.augmentationSettings = original.augmentationSettings;
+        recipe.settingsFormat = original.settingsFormat;
+        recipe.sourceJobId = original.sourceJobId;
 
         recipe.isPublic = false;
         recipe.isExpertVerified = false;
@@ -208,6 +229,13 @@ public class Recipe extends BaseEntity {
         recipe.isMyPageVisible = true;
 
         return recipe;
+    }
+
+    /**
+     * 형식 컬럼이 생기기 전 레시피(null)는 예전 형식으로 본다.
+     */
+    public RecipeSettingsFormat getSettingsFormat() {
+        return settingsFormat != null ? settingsFormat : RecipeSettingsFormat.LEGACY;
     }
 
     /**
@@ -240,11 +268,11 @@ public class Recipe extends BaseEntity {
     /**
      * 레시피 정보 수정.
      * 프론트가 기존 값을 채운 폼 전체를 다시 제출하는 방식이라 전달받은 값 그대로 덮어쓴다.
+     * 예전 형식 레시피도 수정하면 증강 설정값 형식으로 바뀐다.
      */
     public void update(String title, String shortDescription, String overview,
                        List<String> keyFeatures, List<String> useCases, Boolean isPublic,
-                       String model, Integer steps, String sampler, BigDecimal cfgScale,
-                       String seed, String resolution, Integer batchSize) {
+                       AugmentationParameters augmentationSettings, Long sourceJobId) {
         this.title = title;
         this.shortDescription = shortDescription;
         this.overview = overview;
@@ -253,13 +281,23 @@ public class Recipe extends BaseEntity {
         if (isPublic != null) {
             this.isPublic = isPublic;
         }
-        this.model = model;
-        this.steps = steps;
-        this.sampler = sampler;
-        this.cfgScale = cfgScale;
-        this.seed = seed;
-        this.resolution = resolution;
-        this.batchSize = batchSize;
+        applyAugmentationSettings(augmentationSettings, sourceJobId);
+    }
+
+    /**
+     * 증강 설정값 형식으로 저장한다. 예전 생성 파라미터는 새 설정값과 섞이지 않도록 비운다.
+     */
+    private void applyAugmentationSettings(AugmentationParameters augmentationSettings, Long sourceJobId) {
+        this.augmentationSettings = augmentationSettings;
+        this.settingsFormat = RecipeSettingsFormat.AUGMENTATION;
+        this.sourceJobId = sourceJobId;
+        this.model = null;
+        this.steps = null;
+        this.sampler = null;
+        this.cfgScale = null;
+        this.seed = null;
+        this.resolution = null;
+        this.batchSize = null;
     }
 
 }
