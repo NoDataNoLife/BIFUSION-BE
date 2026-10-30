@@ -22,6 +22,13 @@ public interface DatasetService {
     boolean backfillBannerImage(Long datasetId);
 
     /**
+     * 파일 수 집계 도입 전에 등록된 업로드 데이터셋의 파일 수를 채운다 (일회성).
+     *
+     * @return 채웠으면 true, 셀 수 없으면 false
+     */
+    boolean backfillFileCount(Long datasetId);
+
+    /**
      * 데이터셋을 생성한다. request.isPublic()에 따라 공개(커뮤니티 노출) 또는
      * 비공개(내 자산 전용)로 저장된다.
      */
