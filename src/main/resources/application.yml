@@ -82,6 +82,11 @@ dataset:
   file-count-backfill:
     enabled: ${DATASET_FILE_COUNT_BACKFILL_ENABLED:false}
 
+# 일회성: 다운로드 zip(결과 npz + PNG) 도입 전에 끝난 증강 결과의 zip을 만든다. 한 번 켜고 띄운 뒤 다시 끈다.
+augmentation:
+  zip-backfill:
+    enabled: ${AUGMENTATION_ZIP_BACKFILL_ENABLED:false}
+
 # 서비스 이용에 따른 포인트(앤트) 지급·차감. 임시 단가 1앤트 = 10원. 0으로 두면 그 항목은 지급·차감하지 않는다.
 points:
   # 가입 시 지급 (결제 도입 전까지 처음 쓸 포인트)

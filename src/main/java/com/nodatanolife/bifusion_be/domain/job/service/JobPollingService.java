@@ -29,8 +29,16 @@ public interface JobPollingService {
     /**
      * @param dataset 연결할 데이터셋 파일. 연결할 수 없으면 null
      * @param preview 연결할 미리보기 파일. 연결할 수 없으면 null
+     * @param downloadZip BE가 미리 만든 다운로드 zip(npz + PNG). 만들지 못했으면 null
      */
-    void applyAugmentationSuccess(Long jobId, MlAugmentationResult result, ResultFileMeta dataset, ResultFileMeta preview);
+    void applyAugmentationSuccess(Long jobId, MlAugmentationResult result, ResultFileMeta dataset, ResultFileMeta preview,
+                                  ResultFileMeta downloadZip);
+
+    /**
+     * 다운로드 zip 도입 전 결과에 만든 zip을 기록한다 (일회성 채우기용).
+     * 그 사이 증강 데이터가 삭제됐으면 올린 zip을 지우고 false.
+     */
+    boolean recordDownloadZip(Long jobId, ResultFileMeta downloadZip);
 
     /**
      * @param model 연결할 모델 파일. 연결할 수 없으면 null

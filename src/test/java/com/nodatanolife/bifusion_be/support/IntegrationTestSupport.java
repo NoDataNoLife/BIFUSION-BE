@@ -15,6 +15,7 @@ import com.nodatanolife.bifusion_be.domain.project.entity.ProjectRole;
 import com.nodatanolife.bifusion_be.domain.project.repository.ProjectMemberRepository;
 import com.nodatanolife.bifusion_be.domain.project.repository.ProjectRepository;
 import com.nodatanolife.bifusion_be.domain.project.service.ProjectService;
+import com.nodatanolife.bifusion_be.domain.recipe.dto.request.RecipeAugmentationSettingsRequest;
 import com.nodatanolife.bifusion_be.domain.recipe.dto.request.RecipeRegisterRequest;
 import com.nodatanolife.bifusion_be.domain.recipe.service.RecipeService;
 import com.nodatanolife.bifusion_be.domain.user.entity.User;
@@ -166,10 +167,17 @@ public abstract class IntegrationTestSupport {
     }
 
     protected Long recipe(User author, Long forkedFromId, boolean isPublic) {
-        RecipeRegisterRequest request = new RecipeRegisterRequest("레시피", "설명", "sd-1.5", 30, "euler", 7.5f, 42,
-                "512x512", 1, "개요", List.of("특징"), List.of("용도"), forkedFromId, isPublic, null);
+        RecipeRegisterRequest request = new RecipeRegisterRequest("레시피", "설명", augmentationSettings(), null,
+                "개요", List.of("특징"), List.of("용도"), forkedFromId, isPublic, null);
         String code = recipeService.registerRecipe(request, author.getUserId()).recipeId();
         return Long.parseLong(code.substring("REC-".length()));
+    }
+
+    // 생성자가 막혀 있는 요청 DTO라 JSON 변환으로 만든다
+    protected RecipeAugmentationSettingsRequest augmentationSettings() {
+        return objectMapper.convertValue(Map.of(
+                "numSamplesPerClass", 10, "strength", 0.3, "finetuneSteps", 400, "steps", 50, "seed", 42),
+                RecipeAugmentationSettingsRequest.class);
     }
 
     protected File tempFile(User owner, String fileType, long size) {

@@ -17,7 +17,7 @@ public record AugmentationJobResult(
         Integer totalSampleCount,
         @Schema(description = "미리보기 이미지 주소 (presigned, 없으면 null)")
         @PresignedUrl String previewUrl,
-        @Schema(description = "결과 데이터 다운로드 주소 (presigned, 없으면 null)")
+        @Schema(description = "결과 데이터 다운로드 주소 (presigned, 없으면 null). 결과 npz와 PNG 이미지를 묶은 zip이며, zip이 없는 결과는 npz")
         @PresignedUrl String downloadUrl
 ) implements JobResult {
 
@@ -27,7 +27,7 @@ public record AugmentationJobResult(
                 config.getGeneratedCount(),
                 config.getTotalSampleCount(),
                 config.getPreviewKey(),
-                config.getDatasetKey()
+                config.getDownloadKey()
         );
     }
 }
