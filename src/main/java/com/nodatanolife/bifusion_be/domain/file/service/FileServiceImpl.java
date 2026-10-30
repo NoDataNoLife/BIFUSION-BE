@@ -60,8 +60,10 @@ public class FileServiceImpl implements FileService {
                 .forEach(f -> f.anonymize(deletedUser));
     }
 
+    /**
+     * 데이터셋 첨부 파일이면 URL을 발급할 때마다 그 데이터셋의 다운로드 수를 1 올린다 (작성자 본인 포함).
+     */
     @Override
-    @Transactional(readOnly = true)
     public FileDownloadResponse getDownloadUrl(Long userId, Long fileId) {
         File file = fileRepository.findById(fileId)
                 .filter(found -> canDownload(userId, found))
@@ -76,6 +78,7 @@ public class FileServiceImpl implements FileService {
         if (presignedUrl == null || presignedUrl.isBlank()) {
             throw new BusinessException(ErrorCode.FILE_DOWNLOAD_FAILED);
         }
+        datasetRepository.increaseDownloadCount(file);
 
         return FileDownloadResponse.from(file, presignedUrl, DOWNLOAD_URL_EXPIRE_SECONDS);
     }

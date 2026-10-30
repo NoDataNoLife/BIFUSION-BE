@@ -223,6 +223,13 @@ public class Dataset extends BaseEntity {
     }
 
     /**
+     * 첨부 파일에 든 파일 수. 셀 수 없으면 null.
+     */
+    public void updateFileCount(Integer fileCount) {
+        this.fileCount = fileCount;
+    }
+
+    /**
      * 첨부 파일 교체. 수정 요청에 새 fileId가 포함된 경우에만 호출되며,
      * 생략 시(기존 파일 유지) 이 메서드는 호출되지 않는다.
      */

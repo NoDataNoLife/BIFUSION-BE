@@ -49,7 +49,7 @@ public class DatasetServiceImpl implements DatasetService {
     private final TagMappingRepository tagMappingRepository;
     private final InspectionResultService inspectionResultService;
     private final InspectionService inspectionService;
-    private final DatasetBannerExtractor datasetBannerExtractor;
+    private final DatasetFileInspector datasetFileInspector;
     private final S3ObjectCleaner s3ObjectCleaner;
 
 
@@ -72,7 +72,7 @@ public class DatasetServiceImpl implements DatasetService {
         // 업로드 직후 임시 상태였던 파일을 데이터셋에 실제로 연결되었으므로 영구 보관으로 전환
         file.markAsPermanent();
         Dataset dataset = Dataset.create(user, request, file);
-        dataset.updateBannerImage(datasetBannerExtractor.extract(file));
+        applyFileSummary(dataset, file);
         Dataset saved = datasetRepository.save(dataset);
 
         // 태그는 존재하면 재사용하고 없으면 새로 생성한 뒤, 데이터셋-태그 매핑을 저장
@@ -277,8 +277,8 @@ public class DatasetServiceImpl implements DatasetService {
             String previousBanner = dataset.getBannerImageUrl();
             file.markAsPermanent();
             dataset.updateFile(file);
-            // 대표 이미지는 첨부 파일에서 뽑으므로 파일이 바뀌면 다시 뽑는다
-            dataset.updateBannerImage(datasetBannerExtractor.extract(file));
+            // 대표 이미지와 파일 수는 첨부 파일에서 뽑으므로 파일이 바뀌면 다시 뽑는다
+            applyFileSummary(dataset, file);
             deleteReplacedObjects(dataset, previousFile, previousBanner);
         }
 
@@ -324,15 +324,35 @@ public class DatasetServiceImpl implements DatasetService {
         s3ObjectCleaner.deleteAfterCommit(keys);
     }
 
+    private void applyFileSummary(Dataset dataset, File file) {
+        DatasetFileSummary summary = datasetFileInspector.inspect(file);
+        dataset.updateBannerImage(summary.bannerKey());
+        dataset.updateFileCount(summary.fileCount());
+    }
+
     @Override
     public boolean backfillBannerImage(Long datasetId) {
         Dataset dataset = datasetRepository.findById(datasetId).orElse(null);
         if (dataset == null || dataset.getBannerImageUrl() != null) {
             return false;
         }
-        String bannerImage = datasetBannerExtractor.extract(dataset.getFile());
+        String bannerImage = datasetFileInspector.inspect(dataset.getFile()).bannerKey();
         dataset.updateBannerImage(bannerImage);
         return bannerImage != null;
+    }
+
+    @Override
+    public boolean backfillFileCount(Long datasetId) {
+        Dataset dataset = datasetRepository.findById(datasetId).orElse(null);
+        if (dataset == null) {
+            return false;
+        }
+        Integer fileCount = datasetFileInspector.countFiles(dataset.getFile());
+        if (fileCount == null) {
+            return false;
+        }
+        dataset.updateFileCount(fileCount);
+        return true;
     }
 
     @Override
