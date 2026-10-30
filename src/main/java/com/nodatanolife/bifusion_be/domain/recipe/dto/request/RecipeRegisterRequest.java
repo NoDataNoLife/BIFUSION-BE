@@ -1,13 +1,13 @@
 package com.nodatanolife.bifusion_be.domain.recipe.dto.request;
 
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import java.util.List;
 
 /**
  * 레시피 등록 요청 DTO.
- * POST /api/v1/community/recipes 요청 바디로 사용되며, 일반 등록과 포크 등록을 공동으로 처리한다.
+ * POST /api/v1/community/recipes(등록)와 PUT /api/v1/community/recipes/{recipeId}(수정) 요청 바디로 사용되며, 일반 등록과 포크 등록을 공동으로 처리한다.
  * (커뮤니티/내 자산 페이지 모두 이 API 하나를 공유하며, isPublic 값으로 공개 범위를 구분한다)
  */
 public record RecipeRegisterRequest(
@@ -15,20 +15,10 @@ public record RecipeRegisterRequest(
         @NotBlank @Size(max = 100, message = "제목은 100자 이하로 입력해 주세요.") String title,
         // 목록에 노출될 짧은 설명 (필수)
         @NotBlank @Size(max = 2000, message = "설명은 2000자 이하로 입력해 주세요.") String description,
-        // 생성에 사용된 모델명 (필수)
-        @NotBlank @Size(max = 100, message = "모델명은 100자 이하로 입력해 주세요.") String modelName,
-        // 생성 스텝 수 (필수)
-        @NotNull Integer steps,
-        // 샘플러 종류 (필수)
-        @NotBlank @Size(max = 50, message = "샘플러는 50자 이하로 입력해 주세요.") String sampler,
-        // CFG Scale 값 (필수)
-        @NotNull Float cfgScale,
-        // 시드값 (필수)
-        @NotNull Integer seed,
-        // 출력 해상도 (필수)
-        @NotBlank @Size(max = 20, message = "해상도는 20자 이하로 입력해 주세요.") String resolution,
-        // 배치 사이즈 (필수)
-        @NotNull Integer batchSize,
+        // 증강 설정값 직접 입력. sourceJobId와 둘 중 정확히 하나만 보낸다
+        @Valid RecipeAugmentationSettingsRequest augmentationSettings,
+        // 설정값을 불러올 내 프로젝트의 증강 작업 번호. 서버가 그 작업에 저장된 실행 값을 그대로 복사한다
+        Long sourceJobId,
         // 상세 페이지 본문 설명 (선택)
         @Size(max = 2000, message = "본문 설명은 2000자 이하로 입력해 주세요.") String overview,
         // 핵심 특징 목록 (선택)

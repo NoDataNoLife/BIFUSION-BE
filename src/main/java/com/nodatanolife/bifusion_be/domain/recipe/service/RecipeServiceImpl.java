@@ -7,6 +7,15 @@ import com.nodatanolife.bifusion_be.domain.expert.service.InspectionResultServic
 import com.nodatanolife.bifusion_be.domain.expert.service.InspectionService;
 import com.nodatanolife.bifusion_be.domain.file.entity.File;
 import com.nodatanolife.bifusion_be.domain.file.repository.FileRepository;
+import com.nodatanolife.bifusion_be.domain.job.entity.AugmentationConfig;
+import com.nodatanolife.bifusion_be.domain.job.entity.AugmentationParameters;
+import com.nodatanolife.bifusion_be.domain.job.entity.Job;
+import com.nodatanolife.bifusion_be.domain.job.entity.JobStatus;
+import com.nodatanolife.bifusion_be.domain.job.entity.JobType;
+import com.nodatanolife.bifusion_be.domain.job.repository.AugmentationConfigRepository;
+import com.nodatanolife.bifusion_be.domain.job.repository.JobRepository;
+import com.nodatanolife.bifusion_be.domain.job.service.JobRequestValidator;
+import com.nodatanolife.bifusion_be.domain.project.repository.ProjectMemberRepository;
 import com.nodatanolife.bifusion_be.domain.recipe.dto.response.MyRecipeListResponse;
 import com.nodatanolife.bifusion_be.domain.recipe.dto.response.RecipeDetailResponse;
 import com.nodatanolife.bifusion_be.domain.recipe.dto.request.RecipeRegisterRequest;
@@ -28,7 +37,6 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
-import java.math.BigDecimal;
 
 import java.util.List;
 import java.util.Map;
@@ -45,6 +53,10 @@ public class RecipeServiceImpl implements RecipeService {
     private final RecipeForkHistoryRepository recipeForkHistoryRepository;
     private final UserRepository userRepository;
     private final FileRepository fileRepository;
+    private final JobRepository jobRepository;
+    private final AugmentationConfigRepository augmentationConfigRepository;
+    private final ProjectMemberRepository projectMemberRepository;
+    private final JobRequestValidator jobRequestValidator;
 
     /**
      * 회원 탈퇴 시 레시피 익명화
@@ -99,6 +111,7 @@ public class RecipeServiceImpl implements RecipeService {
     public RecipeRegisterResponse registerRecipe(RecipeRegisterRequest request, Long userId) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
+        AugmentationParameters augmentationSettings = resolveAugmentationSettings(request, userId);
 
         Recipe forkedFrom = null;
         if (request.forkedFromId() != null) {
@@ -107,13 +120,52 @@ public class RecipeServiceImpl implements RecipeService {
             forkedFrom.increaseForkCount();
         }
 
-        Recipe recipe = Recipe.create(request, user, forkedFrom);
+        Recipe recipe = Recipe.create(request, user, forkedFrom, augmentationSettings, request.sourceJobId());
         if (request.thumbnailFileId() != null) {
             recipe.updateThumbnail(takeThumbnail(request.thumbnailFileId(), userId));
         }
         Recipe savedRecipe = recipeRepository.save(recipe);
 
         return RecipeRegisterResponse.from(savedRecipe);
+    }
+
+    /**
+     * 증강 설정값을 정한다. 직접 입력(augmentationSettings)과 작업에서 불러오기(sourceJobId) 중 정확히 하나만 받는다.
+     * 직접 입력값은 증강 실행과 같은 범위로 검증하고, 작업에서 불러오면 그 작업에 저장된 실행 값을 그대로 복사한다.
+     */
+    private AugmentationParameters resolveAugmentationSettings(RecipeRegisterRequest request, Long userId) {
+        boolean hasSettings = request.augmentationSettings() != null;
+        boolean hasSourceJob = request.sourceJobId() != null;
+        if (hasSettings && hasSourceJob) {
+            throw new BusinessException(ErrorCode.RECIPE_SETTINGS_SOURCE_CONFLICT);
+        }
+        if (!hasSettings && !hasSourceJob) {
+            throw new BusinessException(ErrorCode.RECIPE_SETTINGS_REQUIRED);
+        }
+        if (hasSourceJob) {
+            return copySourceJobSettings(request.sourceJobId(), userId);
+        }
+        AugmentationParameters settings = request.augmentationSettings().toParameters();
+        jobRequestValidator.validateRecipeAugmentationSettings(settings);
+        return settings;
+    }
+
+    /**
+     * 내가 멤버인 프로젝트의, 완료(SUCCESS)된 증강 작업에서만 불러올 수 있다.
+     * 실행 값(파라미터 스냅샷)이 기록되기 전에 만든 예전 작업은 불러올 값이 없어 거절한다.
+     */
+    private AugmentationParameters copySourceJobSettings(Long jobId, Long userId) {
+        Job job = jobRepository.findById(jobId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.JOB_NOT_FOUND));
+        if (!projectMemberRepository.existsByProjectProjectIdAndUserUserId(job.getProject().getProjectId(), userId)) {
+            throw new BusinessException(ErrorCode.PROJECT_ACCESS_DENIED);
+        }
+        if (job.getType() != JobType.AUGMENTATION || job.getStatus() != JobStatus.SUCCESS) {
+            throw new BusinessException(ErrorCode.RECIPE_SOURCE_JOB_INVALID);
+        }
+        return augmentationConfigRepository.findByJobJobId(jobId)
+                .map(AugmentationConfig::getParameters)
+                .orElseThrow(() -> new BusinessException(ErrorCode.RECIPE_SOURCE_JOB_NO_SETTINGS));
     }
     /**
      * 대표 이미지로 쓸 임시 업로드 파일을 검증하고 영구 보관으로 바꾼다 (데이터셋 첨부 파일과 같은 방식).
@@ -218,6 +270,7 @@ public class RecipeServiceImpl implements RecipeService {
             throw new BusinessException(ErrorCode.FORBIDDEN_RECIPE_ACCESS);
         }
         inspectionService.validateTargetEditable(userId, InspectionTargetType.RECIPE, recipeId);
+        AugmentationParameters augmentationSettings = resolveAugmentationSettings(request, userId);
         if (request.thumbnailFileId() != null) {
             recipe.updateThumbnail(takeThumbnail(request.thumbnailFileId(), userId));
         }
@@ -229,13 +282,8 @@ public class RecipeServiceImpl implements RecipeService {
                 request.features(),
                 request.recommendations(),
                 request.isPublic(),
-                request.modelName(),
-                request.steps(),
-                request.sampler(),
-                request.cfgScale() != null ? BigDecimal.valueOf(request.cfgScale()) : null,
-                request.seed() != null ? String.valueOf(request.seed()) : null,
-                request.resolution(),
-                request.batchSize()
+                augmentationSettings,
+                request.sourceJobId()
         );
 
         return RecipeRegisterResponse.from(recipe);
