@@ -5,7 +5,9 @@ import com.nodatanolife.bifusion_be.domain.expert.dto.response.InspectionSummary
 import com.nodatanolife.bifusion_be.domain.expert.dto.response.InspectionTargetResponse;
 import com.nodatanolife.bifusion_be.domain.expert.entity.InspectionStatus;
 import com.nodatanolife.bifusion_be.domain.file.presign.PresignedUrl;
+import com.nodatanolife.bifusion_be.domain.job.entity.AugmentationParameters;
 import com.nodatanolife.bifusion_be.domain.recipe.entity.Recipe;
+import com.nodatanolife.bifusion_be.domain.recipe.entity.RecipeSettingsFormat;
 import com.nodatanolife.bifusion_be.domain.user.entity.User;
 
 import java.time.LocalDateTime;
@@ -32,7 +34,13 @@ public record RecipeDetailResponse(
         int viewCount,
         int downloadCount,
         Overview overview,
+        // 예전 형식(LEGACY) 설정값. 증강 설정값 형식 레시피는 모든 값이 null
         Settings settings,
+        // 설정값 형식. LEGACY면 settings, AUGMENTATION이면 augmentationSettings를 쓴다
+        RecipeSettingsFormat settingsFormat,
+        AugmentationSettings augmentationSettings,
+        // 설정값을 불러온 증강 작업 번호. 직접 입력했거나 예전 형식이면 null
+        Long sourceJobId,
         InspectionStatus inspectionStatus,
         InspectionResultResponse inspectionResult,
         // 검수 신청 버튼·취소용. 작성자 본인에게만 내려주고 그 외에는 null
@@ -68,7 +76,7 @@ public record RecipeDetailResponse(
     }
 
     /**
-     * 생성 파라미터 설정값 영역. 레시피에 설정값이 없을 수 있어(엔티티 컬럼 nullable) 모든 값이 null일 수 있다.
+     * 예전 형식(LEGACY) 생성 파라미터 설정값 영역. 레시피에 설정값이 없을 수 있어(엔티티 컬럼 nullable) 모든 값이 null일 수 있다.
      */
     public record Settings(
             String model,
@@ -93,6 +101,34 @@ public record RecipeDetailResponse(
     }
 
     /**
+     * 증강 설정값 영역 (증강 실행 파라미터와 같은 이름). seed는 비어 있을 수 있다(실행할 때 랜덤 시드 사용).
+     */
+    public record AugmentationSettings(
+            Integer numSamplesPerClass,
+            Double strength,
+            Integer finetuneSteps,
+            Integer steps,
+            Long seed
+    ) {
+        /**
+         * 예전 형식 레시피는 증강 설정값이 없어 null을 돌려준다.
+         */
+        public static AugmentationSettings from(Recipe recipe) {
+            AugmentationParameters settings = recipe.getAugmentationSettings();
+            if (settings == null) {
+                return null;
+            }
+            return new AugmentationSettings(
+                    settings.numSamplesPerClass(),
+                    settings.strength(),
+                    settings.finetuneSteps(),
+                    settings.steps(),
+                    settings.seed()
+            );
+        }
+    }
+
+    /**
      * @param reviewCount 최상위 리뷰 + 대댓글 합산 (리뷰 목록 API의 totalElements는 최상위 리뷰 수라 다르다)
      */
     public static RecipeDetailResponse from(Recipe recipe, InspectionSummary verificationSummary, long reviewCount,
@@ -112,6 +148,9 @@ public record RecipeDetailResponse(
                 recipe.getDownloadCount(),
                 Overview.from(recipe),
                 Settings.from(recipe),
+                recipe.getSettingsFormat(),
+                AugmentationSettings.from(recipe),
+                recipe.getSourceJobId(),
                 verificationSummary.status(),
                 verificationSummary.result(),
                 inspectionTarget,

@@ -12,6 +12,7 @@ import com.nodatanolife.bifusion_be.domain.job.entity.AugmentationSampleImage;
 import com.nodatanolife.bifusion_be.domain.job.entity.SampleImageLabel;
 import com.nodatanolife.bifusion_be.domain.recipe.dto.response.RecipeDetailResponse;
 import com.nodatanolife.bifusion_be.domain.recipe.entity.Recipe;
+import com.nodatanolife.bifusion_be.domain.recipe.entity.RecipeSettingsFormat;
 import com.nodatanolife.bifusion_be.domain.user.entity.User;
 
 import java.math.BigDecimal;
@@ -118,6 +119,8 @@ public record InspectionDetailResponse(
             @PresignedUrl String bannerUrl,
             RecipeDetailResponse.Overview overview,
             RecipeDetailResponse.Settings settings,
+            RecipeSettingsFormat settingsFormat,
+            RecipeDetailResponse.AugmentationSettings augmentationSettings,
             boolean isDeleted
     ) {
         public static RecipeTarget from(Recipe recipe) {
@@ -128,6 +131,8 @@ public record InspectionDetailResponse(
                     recipe.getThumbnailUrl(),
                     RecipeDetailResponse.Overview.from(recipe),
                     RecipeDetailResponse.Settings.from(recipe),
+                    recipe.getSettingsFormat(),
+                    RecipeDetailResponse.AugmentationSettings.from(recipe),
                     recipe.isDeleted()
             );
         }

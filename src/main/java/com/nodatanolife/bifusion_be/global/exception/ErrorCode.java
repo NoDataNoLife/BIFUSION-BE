@@ -65,6 +65,10 @@ public enum ErrorCode {
     RECIPE_THUMBNAIL_NOT_IMAGE(HttpStatus.BAD_REQUEST, "CM023", "레시피 대표 이미지는 이미지 파일만 올릴 수 있습니다."),
     APPLICATION_ALREADY_PROCESSED(HttpStatus.CONFLICT, "CM024", "이미 수락 또는 거절된 지원서입니다."),
     RECRUITMENT_TEAM_SIZE_TOO_SMALL(HttpStatus.CONFLICT, "CM025", "이미 수락된 지원자 수보다 모집 정원을 줄일 수 없습니다."),
+    RECIPE_SETTINGS_SOURCE_CONFLICT(HttpStatus.BAD_REQUEST, "CM026", "설정값 직접 입력과 작업에서 불러오기 중 하나만 선택해 주세요."),
+    RECIPE_SETTINGS_REQUIRED(HttpStatus.BAD_REQUEST, "CM027", "레시피 설정값을 입력하거나 불러올 작업을 선택해 주세요."),
+    RECIPE_SOURCE_JOB_INVALID(HttpStatus.BAD_REQUEST, "CM028", "완료된 증강 작업의 설정만 불러올 수 있습니다."),
+    RECIPE_SOURCE_JOB_NO_SETTINGS(HttpStatus.BAD_REQUEST, "CM029", "설정 기록이 없는 예전 작업이라 불러올 수 없습니다."),
     /* ================================
      * Dataset
      * ================================ */
