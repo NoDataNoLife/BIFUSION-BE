@@ -6,6 +6,7 @@ import com.nodatanolife.bifusion_be.domain.file.entity.File;
 import com.nodatanolife.bifusion_be.domain.user.entity.User;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.data.domain.Page;
@@ -34,6 +35,25 @@ public interface DatasetRepository extends JpaRepository<Dataset, Long> {
               AND d.type = com.nodatanolife.bifusion_be.domain.dataset.entity.DatasetType.UPLOADED
             """)
     List<Long> findIdsWithoutBannerImage();
+
+    // 파일 수 집계 도입 전에 등록돼 파일 수가 0 또는 비어 있는 업로드 데이터셋 (일회성 채우기용)
+    @Query("""
+            SELECT d.datasetId FROM Dataset d
+            WHERE (d.fileCount IS NULL OR d.fileCount = 0) AND d.deletedAt IS NULL AND d.file IS NOT NULL
+              AND d.type = com.nodatanolife.bifusion_be.domain.dataset.entity.DatasetType.UPLOADED
+            """)
+    List<Long> findIdsWithoutFileCount();
+
+    /**
+     * 이 파일을 첨부한 삭제되지 않은 데이터셋의 다운로드 수를 1 올린다.
+     * 동시에 받아도 값이 빠지지 않도록 엔티티를 읽어 더하지 않고 update 한 번으로 올린다.
+     */
+    @Modifying
+    @Query("""
+            UPDATE Dataset d SET d.downloadCount = COALESCE(d.downloadCount, 0) + 1
+            WHERE d.file = :file AND d.deletedAt IS NULL
+            """)
+    int increaseDownloadCount(@Param("file") File file);
 
     /**
      * "내 자산" 목록 조회용. 공개 여부와 무관하게 본인이 작성한 데이터셋만 type으로 필터링한다.
